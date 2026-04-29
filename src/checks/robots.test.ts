@@ -14,6 +14,11 @@ vi.mock("node:module", () => ({
   createRequire: () => () => mockRobotsParser,
 }));
 
+const mockSafeFetch = vi.fn();
+vi.mock("../utils.js", () => ({
+  safeFetch: (...args: unknown[]) => mockSafeFetch(...args),
+}));
+
 // Must import after mocks are set up
 const { RobotsCheck } = await import("./robots.js");
 
@@ -29,11 +34,10 @@ function makeEndpoint(url = "https://example.com/page"): EndpointData {
 
 describe("RobotsCheck", () => {
   const check = new RobotsCheck();
-  let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    fetchSpy = vi.fn();
-    vi.stubGlobal("fetch", fetchSpy);
+    mockSafeFetch.mockReset();
+    mockRobotsParser.mockReset();
   });
 
   afterEach(() => {
@@ -41,9 +45,9 @@ describe("RobotsCheck", () => {
   });
 
   it("parses robots.txt with sitemaps and crawl-delay", async () => {
-    fetchSpy.mockResolvedValue({
+    mockSafeFetch.mockResolvedValue({
       ok: true,
-      text: async () => "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml",
+      body: "User-agent: *\nAllow: /\nSitemap: https://example.com/sitemap.xml",
     });
 
     mockRobotsParser.mockReturnValue({
@@ -61,11 +65,11 @@ describe("RobotsCheck", () => {
     expect(result.data.blocksGooglebot).toBe(false);
     expect(result.data.blocksAll).toBe(false);
     expect(result.data.error).toBeNull();
-    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/robots.txt");
+    expect(mockSafeFetch).toHaveBeenCalledWith("https://example.com/robots.txt", 10_000);
   });
 
   it("returns exists false when robots.txt is not found (404)", async () => {
-    fetchSpy.mockResolvedValue({ ok: false, status: 404 });
+    mockSafeFetch.mockResolvedValue({ ok: false, statusCode: 404 });
 
     const result = await check.run(makeEndpoint(), "example.com");
 
@@ -75,18 +79,18 @@ describe("RobotsCheck", () => {
   });
 
   it("returns exists false with error on fetch failure", async () => {
-    fetchSpy.mockRejectedValue(new Error("Network failure"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(makeEndpoint(), "example.com");
 
     expect(result.data.exists).toBe(false);
-    expect(result.data.error).toBe("Network failure");
+    expect(result.data.error).toBe("Fetch failed");
   });
 
   it("detects when Googlebot is blocked", async () => {
-    fetchSpy.mockResolvedValue({
+    mockSafeFetch.mockResolvedValue({
       ok: true,
-      text: async () => "User-agent: Googlebot\nDisallow: /",
+      body: "User-agent: Googlebot\nDisallow: /",
     });
 
     mockRobotsParser.mockReturnValue({
@@ -104,9 +108,9 @@ describe("RobotsCheck", () => {
   });
 
   it("detects when all bots are blocked", async () => {
-    fetchSpy.mockResolvedValue({
+    mockSafeFetch.mockResolvedValue({
       ok: true,
-      text: async () => "User-agent: *\nDisallow: /",
+      body: "User-agent: *\nDisallow: /",
     });
 
     mockRobotsParser.mockReturnValue({
