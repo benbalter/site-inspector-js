@@ -11,7 +11,12 @@ async function queryDoh(name: string, type: number): Promise<DohResponse> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}&do=1`;
-  const res = await fetch(url, { signal: controller.signal });
+  const res = await fetch(url, {
+    signal: controller.signal,
+    headers: {
+      "User-Agent": "site-inspector/0.1 (https://github.com/benbalter/site-inspector-js)",
+    },
+  });
   clearTimeout(timer);
   return res.json() as Promise<DohResponse>;
 }

@@ -5,15 +5,15 @@ const { mockResolveTxt } = vi.hoisted(() => ({
   mockResolveTxt: vi.fn(),
 }));
 
-const { mockFetch } = vi.hoisted(() => ({
-  mockFetch: vi.fn(),
-}));
+const mockSafeFetch = vi.fn();
 
 vi.mock("node:dns/promises", () => ({
   default: { resolveTxt: mockResolveTxt },
 }));
 
-vi.stubGlobal("fetch", mockFetch);
+vi.mock("../utils.js", () => ({
+  safeFetch: (...args: unknown[]) => mockSafeFetch(...args),
+}));
 
 import { EmailSecurityCheck } from "./email-security.js";
 
@@ -50,9 +50,9 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockResolvedValue({
-      status: 200,
-      text: async () => "version: STSv1\nmode: enforce\nmx: mail.example.com\n",
+    mockSafeFetch.mockResolvedValue({
+      statusCode: 200,
+      body: "version: STSv1\nmode: enforce\nmx: mail.example.com\n",
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
@@ -82,7 +82,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new Error("No MTA-STS"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
     const bimi = result.data.bimi as Record<string, unknown>;
@@ -99,7 +99,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new Error("No MTA-STS"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
     const bimi = result.data.bimi as Record<string, unknown>;
@@ -116,9 +116,9 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockResolvedValue({
-      status: 200,
-      text: async () => "version: STSv1\nmode: enforce\nmx: mail.example.com\n",
+    mockSafeFetch.mockResolvedValue({
+      statusCode: 200,
+      body: "version: STSv1\nmode: enforce\nmx: mail.example.com\n",
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
@@ -136,9 +136,9 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockResolvedValue({
-      status: 200,
-      text: async () => "version: STSv1\nmode: testing\nmx: mail.example.com\n",
+    mockSafeFetch.mockResolvedValue({
+      statusCode: 200,
+      body: "version: STSv1\nmode: testing\nmx: mail.example.com\n",
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
@@ -155,7 +155,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new Error("Not found"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
@@ -172,9 +172,9 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockResolvedValue({
-      status: 404,
-      text: async () => "",
+    mockSafeFetch.mockResolvedValue({
+      statusCode: 404,
+      body: "",
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
@@ -191,9 +191,9 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockResolvedValue({
-      status: 200,
-      text: async () => "version: STSv1\nmx: mail.example.com\n",
+    mockSafeFetch.mockResolvedValue({
+      statusCode: 200,
+      body: "version: STSv1\nmx: mail.example.com\n",
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
@@ -210,7 +210,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new Error("No MTA-STS"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
     const tlsRpt = result.data.tlsRpt as Record<string, unknown>;
@@ -224,7 +224,7 @@ describe("EmailSecurityCheck", () => {
       Object.assign(new Error("ENODATA"), { code: "ENODATA" }),
     );
 
-    mockFetch.mockRejectedValue(new Error("Not found"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
 
@@ -241,7 +241,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new DOMException("The operation was aborted", "AbortError"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
@@ -258,9 +258,9 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockResolvedValue({
-      status: 200,
-      text: async () => "version: STSv1\nmode:   enforce  \nmx: mail.example.com\n",
+    mockSafeFetch.mockResolvedValue({
+      statusCode: 200,
+      body: "version: STSv1\nmode:   enforce  \nmx: mail.example.com\n",
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
@@ -280,7 +280,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new Error("No MTA-STS"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
     const tlsRpt = result.data.tlsRpt as Record<string, unknown>;
@@ -297,7 +297,7 @@ describe("EmailSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    mockFetch.mockRejectedValue(new Error("Not found"));
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(dummyEndpoint, "example.com");
 

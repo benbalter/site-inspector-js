@@ -1,6 +1,7 @@
 import dns from "node:dns/promises";
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { safeFetch } from "../utils.js";
 
 export class EmailSecurityCheck implements Check {
   name = "email-security";
@@ -39,21 +40,10 @@ export class EmailSecurityCheck implements Check {
     }
 
     // Also check MTA-STS policy file via HTTPS (/.well-known/mta-sts.txt)
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`https://${domain}/.well-known/mta-sts.txt`, {
-        signal: controller.signal,
-        redirect: "follow",
-      });
-      clearTimeout(timer);
-      if (res.status === 200) {
-        const body = await res.text();
-        const modeMatch = body.match(/mode:\s*(enforce|testing|none)/i);
-        mtaStsMode = modeMatch ? modeMatch[1].toLowerCase() : null;
-      }
-    } catch {
-      // policy file not available
+    const mtaStsRes = await safeFetch(`https://${domain}/.well-known/mta-sts.txt`, 5000);
+    if (mtaStsRes && mtaStsRes.statusCode === 200) {
+      const modeMatch = mtaStsRes.body.match(/mode:\s*(enforce|testing|none)/i);
+      mtaStsMode = modeMatch ? modeMatch[1].toLowerCase() : null;
     }
 
     // TLS-RPT: _smtp._tls.DOMAIN

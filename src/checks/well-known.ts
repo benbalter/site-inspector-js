@@ -1,27 +1,18 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { safeFetch } from "../utils.js";
 
 async function fetchWellKnown(
   baseUrl: string,
   path: string,
 ): Promise<{ ok: boolean; body: string }> {
-  try {
-    const url = new URL(path, baseUrl).href;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    clearTimeout(timer);
-    const body = res.status === 200 ? await res.text() : "";
-    return {
-      ok: res.status === 200 || (res.status >= 300 && res.status < 400),
-      body,
-    };
-  } catch {
-    return { ok: false, body: "" };
-  }
+  const url = new URL(path, baseUrl).href;
+  const res = await safeFetch(url, 5000);
+  if (!res) return { ok: false, body: "" };
+  return {
+    ok: res.statusCode === 200,
+    body: res.statusCode === 200 ? res.body : "",
+  };
 }
 
 interface SecurityTxtResult {

@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { WellKnownCheck } from "./well-known.js";
 import type { EndpointData } from "../types.js";
+
+const mockSafeFetch = vi.fn();
+vi.mock("../utils.js", () => ({
+  safeFetch: (...args: unknown[]) => mockSafeFetch(...args),
+}));
+
+import { WellKnownCheck } from "./well-known.js";
 
 function makeEndpoint(url = "https://example.com/"): EndpointData {
   return {
@@ -12,21 +18,21 @@ function makeEndpoint(url = "https://example.com/"): EndpointData {
   };
 }
 
-function mockFetch(
-  handler: (url: string) => { status: number; body: string },
+function setupSafeFetch(
+  handler: (url: string) => { statusCode: number; body: string } | null,
 ) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
-      const url = typeof input === "string" ? input : input.toString();
-      const { status, body } = handler(url);
-      return {
-        status,
-        ok: status >= 200 && status < 300,
-        text: async () => body,
-      } as Response;
-    }),
-  );
+  mockSafeFetch.mockImplementation(async (url: string) => {
+    const res = handler(url);
+    if (!res) return null;
+    return {
+      ok: res.statusCode >= 200 && res.statusCode < 300,
+      statusCode: res.statusCode,
+      headers: {},
+      body: res.body,
+      redirected: false,
+      finalUrl: url,
+    };
+  });
 }
 
 describe("WellKnownCheck", () => {
@@ -48,11 +54,11 @@ describe("WellKnownCheck", () => {
       "Policy: https://example.com/security-policy",
     ].join("\n");
 
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("security.txt")) {
-        return { status: 200, body: securityTxt };
+        return { statusCode: 200, body: securityTxt };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -75,7 +81,7 @@ describe("WellKnownCheck", () => {
   });
 
   it("reports absent security.txt when not found", async () => {
-    mockFetch(() => ({ status: 404, body: "" }));
+    setupSafeFetch(() => ({ statusCode: 404, body: "" }));
 
     const result = await check.run(makeEndpoint(), "example.com");
 
@@ -89,23 +95,23 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects change-password support (200)", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("change-password")) {
-        return { status: 200, body: "" };
+        return { statusCode: 200, body: "" };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
     expect(result.data.changePassword).toBe(true);
   });
 
-  it("detects change-password support (redirect)", async () => {
-    mockFetch((url) => {
+  it("detects change-password support (redirect followed to 200)", async () => {
+    setupSafeFetch((url) => {
       if (url.includes("change-password")) {
-        return { status: 302, body: "" };
+        return { statusCode: 200, body: "" };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -113,11 +119,11 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects openid-configuration", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("openid-configuration")) {
-        return { status: 200, body: '{"issuer":"https://example.com"}' };
+        return { statusCode: 200, body: '{"issuer":"https://example.com"}' };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -125,11 +131,11 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects webfinger support", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("webfinger")) {
-        return { status: 200, body: '{"subject":"acct:test@test"}' };
+        return { statusCode: 200, body: '{"subject":"acct:test@test"}' };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -137,14 +143,14 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects MTA-STS policy", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("mta-sts")) {
         return {
-          status: 200,
+          statusCode: 200,
           body: "version: STSv1\nmode: enforce\nmx: mail.example.com\nmax_age: 86400",
         };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -152,11 +158,11 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects Android assetlinks.json", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("assetlinks.json")) {
-        return { status: 200, body: "[]" };
+        return { statusCode: 200, body: "[]" };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -164,11 +170,11 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects Apple app-site-association", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("apple-app-site-association")) {
-        return { status: 200, body: '{"applinks":{}}' };
+        return { statusCode: 200, body: '{"applinks":{}}' };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -176,11 +182,11 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects nodeinfo (Fediverse)", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("nodeinfo")) {
-        return { status: 200, body: '{"links":[]}' };
+        return { statusCode: 200, body: '{"links":[]}' };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -188,11 +194,11 @@ describe("WellKnownCheck", () => {
   });
 
   it("detects humans.txt", async () => {
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("humans.txt")) {
-        return { status: 200, body: "/* TEAM */\nLead: Example" };
+        return { statusCode: 200, body: "/* TEAM */\nLead: Example" };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -208,11 +214,11 @@ describe("WellKnownCheck", () => {
       "",
     ].join("\n");
 
-    mockFetch((url) => {
+    setupSafeFetch((url) => {
       if (url.includes("security.txt")) {
-        return { status: 200, body: securityTxt };
+        return { statusCode: 200, body: securityTxt };
       }
-      return { status: 404, body: "" };
+      return { statusCode: 404, body: "" };
     });
 
     const result = await check.run(makeEndpoint(), "example.com");
@@ -227,12 +233,7 @@ describe("WellKnownCheck", () => {
   });
 
   it("handles network errors gracefully", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("Network error");
-      }),
-    );
+    mockSafeFetch.mockResolvedValue(null);
 
     const result = await check.run(makeEndpoint(), "example.com");
 

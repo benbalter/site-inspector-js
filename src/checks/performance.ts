@@ -52,6 +52,9 @@ export class PerformanceCheck implements Check {
       const start = Date.now();
       const response = await fetch(endpoint.url, {
         signal: AbortSignal.timeout(10000),
+        headers: {
+          "User-Agent": "site-inspector/0.1 (https://github.com/benbalter/site-inspector-js)",
+        },
       });
       await response.text();
       responseTimeMs = Date.now() - start;
