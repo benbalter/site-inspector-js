@@ -65,6 +65,13 @@ describe("WellKnownCheck", () => {
       policy: "https://example.com/security-policy",
     });
     expect(result.data.changePassword).toBe(false);
+    expect(result.data.openidConfiguration).toBe(false);
+    expect(result.data.webfinger).toBe(false);
+    expect(result.data.mtaSts).toBe(false);
+    expect(result.data.assetlinks).toBe(false);
+    expect(result.data.appleAppSiteAssociation).toBe(false);
+    expect(result.data.nodeinfo).toBe(false);
+    expect(result.data.humansTxt).toBe(false);
   });
 
   it("reports absent security.txt when not found", async () => {
@@ -103,6 +110,93 @@ describe("WellKnownCheck", () => {
 
     const result = await check.run(makeEndpoint(), "example.com");
     expect(result.data.changePassword).toBe(true);
+  });
+
+  it("detects openid-configuration", async () => {
+    mockFetch((url) => {
+      if (url.includes("openid-configuration")) {
+        return { status: 200, body: '{"issuer":"https://example.com"}' };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.openidConfiguration).toBe(true);
+  });
+
+  it("detects webfinger support", async () => {
+    mockFetch((url) => {
+      if (url.includes("webfinger")) {
+        return { status: 200, body: '{"subject":"acct:test@test"}' };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.webfinger).toBe(true);
+  });
+
+  it("detects MTA-STS policy", async () => {
+    mockFetch((url) => {
+      if (url.includes("mta-sts")) {
+        return {
+          status: 200,
+          body: "version: STSv1\nmode: enforce\nmx: mail.example.com\nmax_age: 86400",
+        };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.mtaSts).toBe(true);
+  });
+
+  it("detects Android assetlinks.json", async () => {
+    mockFetch((url) => {
+      if (url.includes("assetlinks.json")) {
+        return { status: 200, body: "[]" };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.assetlinks).toBe(true);
+  });
+
+  it("detects Apple app-site-association", async () => {
+    mockFetch((url) => {
+      if (url.includes("apple-app-site-association")) {
+        return { status: 200, body: '{"applinks":{}}' };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.appleAppSiteAssociation).toBe(true);
+  });
+
+  it("detects nodeinfo (Fediverse)", async () => {
+    mockFetch((url) => {
+      if (url.includes("nodeinfo")) {
+        return { status: 200, body: '{"links":[]}' };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.nodeinfo).toBe(true);
+  });
+
+  it("detects humans.txt", async () => {
+    mockFetch((url) => {
+      if (url.includes("humans.txt")) {
+        return { status: 200, body: "/* TEAM */\nLead: Example" };
+      }
+      return { status: 404, body: "" };
+    });
+
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.humansTxt).toBe(true);
   });
 
   it("parses security.txt with comments and Acknowledgments", async () => {

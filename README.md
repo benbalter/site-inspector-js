@@ -128,7 +128,7 @@ Site Inspector runs 20 checks organized into five categories. All checks run in 
 | **opengraph** | Open Graph and Twitter Card meta tags — social sharing readiness | [open-graph-scraper](https://www.npmjs.com/package/open-graph-scraper) |
 | **structured-data** | JSON-LD / schema.org blocks, OpenSearch description, microdata detection | — |
 | **accessibility** | `lang` attribute, heading hierarchy, image alt text coverage, viewport meta | — |
-| **well-known** | `security.txt` (RFC 9116) parsing, `change-password` well-known URL | — |
+| **well-known** | `security.txt` (RFC 9116), `change-password`, OpenID Connect, WebFinger, MTA-STS, Android asset links, Apple app-site-association, NodeInfo (Fediverse), `humans.txt` | — |
 
 ### ⚡ Performance
 

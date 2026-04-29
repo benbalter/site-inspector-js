@@ -66,9 +66,26 @@ export class WellKnownCheck implements Check {
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const origin = new URL(endpoint.url).origin;
 
-    const [securityRes, changePasswordRes] = await Promise.all([
+    const [
+      securityRes,
+      changePasswordRes,
+      openidRes,
+      webfingerRes,
+      mtaStsRes,
+      assetlinksRes,
+      appleAppRes,
+      nodeInfoRes,
+      humansRes,
+    ] = await Promise.all([
       fetchWellKnown(origin, "/.well-known/security.txt"),
       fetchWellKnown(origin, "/.well-known/change-password"),
+      fetchWellKnown(origin, "/.well-known/openid-configuration"),
+      fetchWellKnown(origin, "/.well-known/webfinger?resource=acct:test@test"),
+      fetchWellKnown(origin, "/.well-known/mta-sts.txt"),
+      fetchWellKnown(origin, "/.well-known/assetlinks.json"),
+      fetchWellKnown(origin, "/.well-known/apple-app-site-association"),
+      fetchWellKnown(origin, "/.well-known/nodeinfo"),
+      fetchWellKnown(origin, "/humans.txt"),
     ]);
 
     const parsed = parseSecurityTxt(securityRes.body);
@@ -82,6 +99,13 @@ export class WellKnownCheck implements Check {
       data: {
         securityTxt,
         changePassword: changePasswordRes.ok,
+        openidConfiguration: openidRes.ok,
+        webfinger: webfingerRes.ok,
+        mtaSts: mtaStsRes.ok,
+        assetlinks: assetlinksRes.ok,
+        appleAppSiteAssociation: appleAppRes.ok,
+        nodeinfo: nodeInfoRes.ok,
+        humansTxt: humansRes.ok,
       },
     };
   }
