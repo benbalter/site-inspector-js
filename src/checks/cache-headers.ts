@@ -1,6 +1,8 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { parse as parseCacheControl } from "cache-control-parser";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const { parse: parseCacheControl } = require("cache-control-parser");
 
 export class CacheHeadersCheck implements Check {
   name = "cache-headers";
