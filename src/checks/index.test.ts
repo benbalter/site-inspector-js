@@ -56,6 +56,36 @@ vi.mock("./well-known.js", () => ({
     run = vi.fn().mockResolvedValue({ name: "well-known", data: {} });
   },
 }));
+vi.mock("./sri.js", () => ({
+  SriCheck: class {
+    name = "sri";
+    run = vi.fn().mockResolvedValue({ name: "sri", data: { coverage: 1 } });
+  },
+}));
+vi.mock("./mixed-content.js", () => ({
+  MixedContentCheck: class {
+    name = "mixed-content";
+    run = vi.fn().mockResolvedValue({ name: "mixed-content", data: {} });
+  },
+}));
+vi.mock("./carbon.js", () => ({
+  CarbonCheck: class {
+    name = "carbon";
+    run = vi.fn().mockResolvedValue({ name: "carbon", data: {} });
+  },
+}));
+vi.mock("./whois.js", () => ({
+  WhoisCheck: class {
+    name = "whois";
+    run = vi.fn().mockResolvedValue({ name: "whois", data: {} });
+  },
+}));
+vi.mock("./lighthouse.js", () => ({
+  LighthouseCheck: class {
+    name = "lighthouse";
+    run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} });
+  },
+}));
 
 const { runChecks, availableChecks } = await import("./index.js");
 
@@ -79,12 +109,17 @@ describe("Check Registry", () => {
     expect(names).toContain("sniffer");
     expect(names).toContain("accessibility");
     expect(names).toContain("well-known");
-    expect(names).toHaveLength(9);
+    expect(names).toContain("sri");
+    expect(names).toContain("mixed-content");
+    expect(names).toContain("carbon");
+    expect(names).toContain("whois");
+    expect(names).toContain("lighthouse");
+    expect(names).toHaveLength(14);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(9);
+    expect(Object.keys(results)).toHaveLength(14);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });
@@ -138,6 +173,21 @@ describe("Check Registry", () => {
     }));
     vi.doMock("./well-known.js", () => ({
       WellKnownCheck: class { name = "well-known"; run = vi.fn().mockResolvedValue({ name: "well-known", data: {} }); },
+    }));
+    vi.doMock("./sri.js", () => ({
+      SriCheck: class { name = "sri"; run = vi.fn().mockResolvedValue({ name: "sri", data: {} }); },
+    }));
+    vi.doMock("./mixed-content.js", () => ({
+      MixedContentCheck: class { name = "mixed-content"; run = vi.fn().mockResolvedValue({ name: "mixed-content", data: {} }); },
+    }));
+    vi.doMock("./carbon.js", () => ({
+      CarbonCheck: class { name = "carbon"; run = vi.fn().mockResolvedValue({ name: "carbon", data: {} }); },
+    }));
+    vi.doMock("./whois.js", () => ({
+      WhoisCheck: class { name = "whois"; run = vi.fn().mockResolvedValue({ name: "whois", data: {} }); },
+    }));
+    vi.doMock("./lighthouse.js", () => ({
+      LighthouseCheck: class { name = "lighthouse"; run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} }); },
     }));
 
     const freshModule = await import("./index.js");

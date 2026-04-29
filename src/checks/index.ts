@@ -9,6 +9,11 @@ import { CookiesCheck } from "./cookies.js";
 import { SnifferCheck } from "./sniffer.js";
 import { AccessibilityCheck } from "./accessibility.js";
 import { WellKnownCheck } from "./well-known.js";
+import { SriCheck } from "./sri.js";
+import { MixedContentCheck } from "./mixed-content.js";
+import { CarbonCheck } from "./carbon.js";
+import { WhoisCheck } from "./whois.js";
+import { LighthouseCheck } from "./lighthouse.js";
 
 /** All available checks, keyed by name. */
 const ALL_CHECKS: Check[] = [
@@ -21,6 +26,11 @@ const ALL_CHECKS: Check[] = [
   new SnifferCheck(),
   new AccessibilityCheck(),
   new WellKnownCheck(),
+  new SriCheck(),
+  new MixedContentCheck(),
+  new CarbonCheck(),
+  new WhoisCheck(),
+  new LighthouseCheck(),
 ];
 
 /** Get the list of all available check names. */

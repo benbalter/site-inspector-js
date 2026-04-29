@@ -15,7 +15,8 @@
     "site-inspector": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "data"
   ],
   "scripts": {
     "build": "tsc",
@@ -45,7 +46,12 @@
   },
   "dependencies": {
     "chalk": "^5.6.2",
-    "commander": "^14.0.3"
+    "chrome-launcher": "^1.2.1",
+    "commander": "^14.0.3",
+    "lighthouse": "^13.1.0",
+    "ssl-checker": "^3.0.1",
+    "wappalyzer-core": "^6.10.66",
+    "whois-json": "^2.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

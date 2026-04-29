@@ -1,15 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { EndpointData } from "../types.js";
 
-// Mock node:tls before importing the check
-vi.mock("node:tls", () => {
-  return { default: { connect: vi.fn() } };
+vi.mock("ssl-checker", () => {
+  return { sslChecker: vi.fn() };
 });
 
-import tls from "node:tls";
+import { sslChecker } from "ssl-checker";
 import { HttpsCheck } from "./https.js";
 
-const mockedConnect = vi.mocked(tls.connect);
+const mockedSslChecker = vi.mocked(sslChecker);
 
 const dummyEndpoint: EndpointData = {
   url: "https://example.com",
@@ -19,30 +18,27 @@ const dummyEndpoint: EndpointData = {
   redirectChain: [],
 };
 
-function createMockSocket(overrides: {
-  authorized?: boolean;
-  cert?: Record<string, unknown>;
-  protocol?: string | null;
-  error?: Error;
-  timeout?: boolean;
-}) {
-  const handlers: Record<string, ((...args: unknown[]) => void)[]> = {};
-  const socket = {
-    authorized: overrides.authorized ?? true,
-    getPeerCertificate: vi.fn(() => overrides.cert ?? {}),
-    getProtocol: vi.fn(() => overrides.protocol ?? "TLSv1.3"),
-    end: vi.fn(),
-    destroy: vi.fn(),
-    on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
-      handlers[event] = handlers[event] || [];
-      handlers[event].push(cb);
-      return socket;
-    }),
-    emit: (event: string, ...args: unknown[]) => {
-      for (const cb of handlers[event] ?? []) cb(...args);
-    },
+function makeSslResult(overrides: Record<string, unknown> = {}) {
+  return {
+    valid: true,
+    validationError: null,
+    validFrom: "2024-01-01T00:00:00.000Z",
+    validTo: "2025-06-01T00:00:00.000Z",
+    daysRemaining: 90,
+    issuer: { CN: "Let's Encrypt Authority X3", O: "Let's Encrypt", C: "US" },
+    subject: { CN: "example.com", O: "Example Inc", C: "US" },
+    fingerprint256: "AB:CD:EF:12:34:56:78:90",
+    serialNumber: "0123456789ABCDEF",
+    protocol: "TLSv1.3",
+    cipher: "TLS_AES_256_GCM_SHA384",
+    bits: 256,
+    chain: [
+      { subject: { CN: "example.com" }, issuer: { CN: "Let's Encrypt Authority X3" } },
+      { subject: { CN: "Let's Encrypt Authority X3" }, issuer: { CN: "DST Root CA X3" } },
+    ],
+    chainComplete: true,
+    ...overrides,
   };
-  return socket;
 }
 
 describe("HttpsCheck", () => {
@@ -58,92 +54,94 @@ describe("HttpsCheck", () => {
   });
 
   it("reports a valid TLS certificate", async () => {
-    const futureDateMs = Date.now() + 90 * 24 * 60 * 60 * 1000;
-    const futureDate = new Date(futureDateMs);
-    futureDate.setMilliseconds(0); // toUTCString drops ms
-    const cert = {
-      issuer: { CN: "Let's Encrypt Authority X3", O: "Let's Encrypt" },
-      valid_to: futureDate.toUTCString(),
-    };
-    const socket = createMockSocket({ authorized: true, cert, protocol: "TLSv1.3" });
-
-    mockedConnect.mockImplementation((...args: unknown[]) => {
-      const cb = args[args.length - 1] as () => void;
-      if (typeof cb === "function") process.nextTick(cb);
-      return socket as unknown as tls.TLSSocket;
-    });
+    mockedSslChecker.mockResolvedValue(makeSslResult() as never);
 
     const result = await check.run(dummyEndpoint, "example.com");
 
+    expect(mockedSslChecker).toHaveBeenCalledWith("example.com", { timeout: 10_000 });
     expect(result.name).toBe("https");
     expect(result.data.valid).toBe(true);
+    expect(result.data.validationError).toBeNull();
     expect(result.data.certIssuer).toBe("Let's Encrypt Authority X3");
-    expect(result.data.certExpiry).toBe(futureDate.toISOString());
-    expect(result.data.certDaysRemaining).toBeGreaterThanOrEqual(89);
-    expect(result.data.certDaysRemaining).toBeLessThanOrEqual(90);
+    expect(result.data.certSubject).toBe("example.com");
+    expect(result.data.validFrom).toBe("2024-01-01T00:00:00.000Z");
+    expect(result.data.validTo).toBe("2025-06-01T00:00:00.000Z");
+    expect(result.data.certDaysRemaining).toBe(90);
+    expect(result.data.expiringSoon).toBe(false);
     expect(result.data.protocol).toBe("TLSv1.3");
+    expect(result.data.cipher).toBe("TLS_AES_256_GCM_SHA384");
+    expect(result.data.bits).toBe(256);
+    expect(result.data.fingerprint256).toBe("AB:CD:EF:12:34:56:78:90");
+    expect(result.data.chainComplete).toBe(true);
+    expect(result.data.chainLength).toBe(2);
     expect(result.data.error).toBeNull();
   });
 
-  it("reports an expired certificate", async () => {
-    const pastDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
-    const cert = {
-      issuer: { O: "DigiCert Inc" },
-      valid_to: pastDate.toUTCString(),
-    };
-    const socket = createMockSocket({ authorized: true, cert, protocol: "TLSv1.2" });
-
-    mockedConnect.mockImplementation((...args: unknown[]) => {
-      const cb = args[args.length - 1] as () => void;
-      if (typeof cb === "function") process.nextTick(cb);
-      return socket as unknown as tls.TLSSocket;
-    });
+  it("reports an invalid/expired certificate", async () => {
+    mockedSslChecker.mockResolvedValue(
+      makeSslResult({
+        valid: false,
+        validationError: "CERT_HAS_EXPIRED",
+        daysRemaining: -10,
+        validTo: "2023-01-01T00:00:00.000Z",
+      }) as never,
+    );
 
     const result = await check.run(dummyEndpoint, "expired.example.com");
 
-    expect(result.data.valid).toBe(true);
-    expect(result.data.certIssuer).toBe("DigiCert Inc");
-    expect(result.data.certDaysRemaining).toBeLessThan(0);
-    expect(result.data.protocol).toBe("TLSv1.2");
+    expect(result.data.valid).toBe(false);
+    expect(result.data.validationError).toBe("CERT_HAS_EXPIRED");
+    expect(result.data.certDaysRemaining).toBe(-10);
+    expect(result.data.expiringSoon).toBe(true);
     expect(result.data.error).toBeNull();
   });
 
   it("handles a connection error", async () => {
-    const socket = createMockSocket({ error: new Error("ECONNREFUSED") });
-
-    mockedConnect.mockImplementation((..._args: unknown[]) => {
-      process.nextTick(() => socket.emit("error", new Error("ECONNREFUSED")));
-      return socket as unknown as tls.TLSSocket;
-    });
+    mockedSslChecker.mockRejectedValue(new Error("ECONNREFUSED"));
 
     const result = await check.run(dummyEndpoint, "down.example.com");
 
     expect(result.data.valid).toBe(false);
     expect(result.data.certIssuer).toBeNull();
-    expect(result.data.certExpiry).toBeNull();
+    expect(result.data.certSubject).toBeNull();
+    expect(result.data.validFrom).toBeNull();
+    expect(result.data.validTo).toBeNull();
     expect(result.data.certDaysRemaining).toBeNull();
+    expect(result.data.expiringSoon).toBeNull();
     expect(result.data.protocol).toBeNull();
+    expect(result.data.cipher).toBeNull();
+    expect(result.data.bits).toBeNull();
+    expect(result.data.fingerprint256).toBeNull();
+    expect(result.data.chainComplete).toBeNull();
+    expect(result.data.chainLength).toBeNull();
     expect(result.data.error).toBe("ECONNREFUSED");
   });
 
-  it("calculates days remaining correctly", async () => {
-    const daysFromNow = 42;
-    const futureDate = new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000);
-    const cert = {
-      issuer: { CN: "Test CA" },
-      valid_to: futureDate.toUTCString(),
-    };
-    const socket = createMockSocket({ authorized: true, cert, protocol: "TLSv1.3" });
-
-    mockedConnect.mockImplementation((...args: unknown[]) => {
-      const cb = args[args.length - 1] as () => void;
-      if (typeof cb === "function") process.nextTick(cb);
-      return socket as unknown as tls.TLSSocket;
-    });
+  it("populates all output fields", async () => {
+    mockedSslChecker.mockResolvedValue(makeSslResult() as never);
 
     const result = await check.run(dummyEndpoint, "example.com");
+    const expectedKeys = [
+      "valid",
+      "validationError",
+      "certIssuer",
+      "certSubject",
+      "validFrom",
+      "validTo",
+      "certDaysRemaining",
+      "expiringSoon",
+      "protocol",
+      "cipher",
+      "bits",
+      "fingerprint256",
+      "chainComplete",
+      "chainLength",
+      "error",
+    ];
 
-    expect(result.data.certDaysRemaining).toBeGreaterThanOrEqual(41);
-    expect(result.data.certDaysRemaining).toBeLessThanOrEqual(42);
+    for (const key of expectedKeys) {
+      expect(result.data).toHaveProperty(key);
+      expect(result.data[key]).not.toBeUndefined();
+    }
   });
 });

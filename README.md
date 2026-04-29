@@ -4,10 +4,10 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **9 built-in checks**: DNS, Headers, HTTPS/TLS, HSTS, Content, Cookies, Technology Sniffer, Accessibility, Well-Known paths
+- **14 built-in checks**: DNS, Headers, HTTPS/TLS, HSTS, Content, Cookies, Technology Sniffer (Wappalyzer), Accessibility, Well-Known, SRI, Mixed Content, Carbon, WHOIS, Lighthouse
 - **CLI and library**: Use from the command line or import as a module
 - **TypeScript-first**: Full type definitions, strict mode
-- **Zero heavy dependencies**: Uses Node.js built-in `fetch`, `dns`, and `tls` modules
+- **Open-source powered**: Uses [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/AliasIO/wappalyzer) fingerprints, [ssl-checker](https://www.npmjs.com/package/ssl-checker), [whois-json](https://www.npmjs.com/package/whois-json), and [Lighthouse](https://github.com/GoogleChrome/lighthouse)
 - **Parallel execution**: All checks run concurrently for fast results
 
 ## Installation
@@ -95,9 +95,14 @@ const partial = await inspect("example.com", {
 | **hsts** | Strict-Transport-Security parsing, preload readiness |
 | **content** | DOCTYPE, title, meta tags, robots.txt, sitemap.xml |
 | **cookies** | Cookie inventory, Secure/HttpOnly/SameSite flags |
-| **sniffer** | CMS, JS framework, analytics, advertising, CDN detection |
+| **sniffer** | Technology detection via Wappalyzer engine — CMS, frameworks, analytics, CDNs, and thousands more |
 | **accessibility** | `lang` attribute, heading hierarchy, image alt coverage, viewport |
 | **well-known** | `security.txt` parsing, `change-password` support |
+| **sri** | Subresource Integrity coverage for external scripts and stylesheets |
+| **mixed-content** | Detects `http://` resources on HTTPS pages (active & passive) |
+| **carbon** | Page weight analysis — HTML size, resource counts, inline content |
+| **whois** | Domain registration info — registrar, creation/expiry dates, nameservers |
+| **lighthouse** | Performance, accessibility, SEO, best-practices scores via Google Lighthouse (requires Chrome) |
 
 ## Development
 
