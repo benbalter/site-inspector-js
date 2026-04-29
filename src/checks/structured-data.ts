@@ -1,5 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { load } from "cheerio";
 
 interface SchemaInfo {
   type: string | string[];
@@ -9,13 +10,11 @@ interface SchemaInfo {
 function extractJsonLdBlocks(body: string): { schemas: SchemaInfo[]; parseErrors: number } {
   const schemas: SchemaInfo[] = [];
   let parseErrors = 0;
+  const $ = load(body);
 
-  const pattern = /<script[^>]+type=["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = pattern.exec(body)) !== null) {
+  $('script[type="application/ld+json"]').each((_i, el) => {
     try {
-      const parsed = JSON.parse(match[1]);
+      const parsed = JSON.parse($(el).text());
       const items = Array.isArray(parsed) ? parsed : [parsed];
       for (const item of items) {
         const info: SchemaInfo = { type: item["@type"] ?? "Unknown" };
@@ -25,18 +24,9 @@ function extractJsonLdBlocks(body: string): { schemas: SchemaInfo[]; parseErrors
     } catch {
       parseErrors++;
     }
-  }
+  });
 
   return { schemas, parseErrors };
-}
-
-function hasOpenSearch(body: string): boolean {
-  return /<link[^>]+rel=["']search["'][^>]+type=["']application\/opensearchdescription\+xml["'][^>]*>/i.test(body)
-    || /<link[^>]+type=["']application\/opensearchdescription\+xml["'][^>]+rel=["']search["'][^>]*>/i.test(body);
-}
-
-function hasMicrodata(body: string): boolean {
-  return /\bitemscope\b/i.test(body) && /\bitemtype\b/i.test(body);
 }
 
 export class StructuredDataCheck implements Check {
@@ -44,7 +34,13 @@ export class StructuredDataCheck implements Check {
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
+    const $ = load(body);
     const { schemas, parseErrors } = extractJsonLdBlocks(body);
+
+    const hasOpenSearch =
+      $('link[rel="search"][type="application/opensearchdescription+xml"]').length > 0;
+
+    const hasMicrodata = $("[itemscope][itemtype]").length > 0;
 
     return {
       name: this.name,
@@ -53,8 +49,8 @@ export class StructuredDataCheck implements Check {
         jsonLdCount: schemas.length,
         schemas,
         parseErrors,
-        hasOpenSearch: hasOpenSearch(body),
-        hasMicrodata: hasMicrodata(body),
+        hasOpenSearch,
+        hasMicrodata,
       },
     };
   }

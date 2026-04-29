@@ -1,16 +1,49 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { load } from "cheerio";
 
 export class AccessibilityCheck implements Check {
   name = "accessibility";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
+    const $ = load(body);
 
-    const { htmlLang, langValue } = this.checkLang(body);
-    const { viewport, viewportContent } = this.checkViewport(body);
-    const headingStructure = this.checkHeadings(body);
-    const images = this.checkImages(body);
+    const langAttr = $("html").attr("lang");
+    const htmlLang = langAttr !== undefined;
+    const langValue = htmlLang ? langAttr : null;
+
+    const viewportMeta = $('meta[name="viewport"]');
+    const viewportContent = viewportMeta.attr("content") ?? null;
+    const viewport = viewportContent !== null;
+
+    const hierarchy: number[] = [];
+    $("h1, h2, h3, h4, h5, h6").each((_i, el) => {
+      const level = parseInt(el.tagName.replace("h", ""), 10);
+      hierarchy.push(level);
+    });
+    const h1Count = hierarchy.filter((l) => l === 1).length;
+    let isSequential = true;
+    for (let i = 1; i < hierarchy.length; i++) {
+      if (hierarchy[i] > hierarchy[i - 1] + 1) {
+        isSequential = false;
+        break;
+      }
+    }
+    const headingStructure = { hasH1: h1Count > 0, h1Count, hierarchy, isSequential };
+
+    const imgElements = $("img");
+    const total = imgElements.length;
+    let withAlt = 0;
+    imgElements.each((_i, el) => {
+      const alt = $(el).attr("alt");
+      if (alt !== undefined && alt.length > 0) {
+        withAlt++;
+      }
+    });
+    const withoutAlt = total - withAlt;
+    const altCoverage = total > 0 ? Math.round((withAlt / total) * 100) : 0;
+    const images = { total, withAlt, withoutAlt, altCoverage };
 
     return {
       name: this.name,
@@ -23,82 +56,5 @@ export class AccessibilityCheck implements Check {
         images,
       },
     };
-  }
-
-  private checkLang(body: string): {
-    htmlLang: boolean;
-    langValue: string | null;
-  } {
-    const match = body.match(/<html[^>]*lang=["']([^"']*)["']/i);
-    return {
-      htmlLang: match !== null,
-      langValue: match ? match[1] : null,
-    };
-  }
-
-  private checkViewport(body: string): {
-    viewport: boolean;
-    viewportContent: string | null;
-  } {
-    // Try name before content, then content before name
-    const pattern1 =
-      /<meta[^>]*name=["']viewport["'][^>]*content=["']([^"']*)["']/i;
-    const pattern2 =
-      /<meta[^>]*content=["']([^"']*)["'][^>]*name=["']viewport["']/i;
-    const match = body.match(pattern1) ?? body.match(pattern2);
-    return {
-      viewport: match !== null,
-      viewportContent: match ? match[1] : null,
-    };
-  }
-
-  private checkHeadings(body: string): {
-    hasH1: boolean;
-    h1Count: number;
-    hierarchy: number[];
-    isSequential: boolean;
-  } {
-    const headingRegex = /<h([1-6])[^>]*>/gi;
-    const hierarchy: number[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = headingRegex.exec(body)) !== null) {
-      hierarchy.push(parseInt(match[1], 10));
-    }
-
-    const h1Count = hierarchy.filter((l) => l === 1).length;
-
-    let isSequential = true;
-    for (let i = 1; i < hierarchy.length; i++) {
-      if (hierarchy[i] > hierarchy[i - 1] + 1) {
-        isSequential = false;
-        break;
-      }
-    }
-
-    return { hasH1: h1Count > 0, h1Count, hierarchy, isSequential };
-  }
-
-  private checkImages(body: string): {
-    total: number;
-    withAlt: number;
-    withoutAlt: number;
-    altCoverage: number;
-  } {
-    const imgRegex = /<img[^>]*>/gi;
-    const imgs = body.match(imgRegex) ?? [];
-    const total = imgs.length;
-
-    let withAlt = 0;
-    for (const img of imgs) {
-      // Non-empty alt attribute
-      if (/alt=["'][^"']+["']/i.test(img)) {
-        withAlt++;
-      }
-    }
-
-    const withoutAlt = total - withAlt;
-    const altCoverage = total > 0 ? Math.round((withAlt / total) * 100) : 0;
-
-    return { total, withAlt, withoutAlt, altCoverage };
   }
 }

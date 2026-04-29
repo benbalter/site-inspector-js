@@ -227,7 +227,8 @@ describe("HstsPreloadCheck", () => {
     await check.run(endpoint, "example-test.com");
 
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("domain=example-test.com")
+      expect.stringContaining("domain=example-test.com"),
+      expect.any(Object),
     );
   });
 });

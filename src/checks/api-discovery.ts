@@ -1,5 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { probeUrl } from "../utils.js";
 
 const API_ENDPOINTS = [
   { name: "graphql", path: "/graphql" },
@@ -14,25 +15,6 @@ const API_ENDPOINTS = [
   { name: "api-explorer", path: "/explorer" },
 ];
 
-async function probeEndpoint(
-  origin: string,
-  path: string,
-): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(`${origin}${path}`, {
-      method: "HEAD",
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    clearTimeout(timer);
-    return res.status >= 200 && res.status < 400;
-  } catch {
-    return false;
-  }
-}
-
 export class ApiDiscoveryCheck implements Check {
   name = "api-discovery";
 
@@ -43,7 +25,7 @@ export class ApiDiscoveryCheck implements Check {
       API_ENDPOINTS.map(async (ep) => ({
         name: ep.name,
         path: ep.path,
-        found: await probeEndpoint(origin, ep.path),
+        found: await probeUrl(`${origin}${ep.path}`),
       })),
     );
 

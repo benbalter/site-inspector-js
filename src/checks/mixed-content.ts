@@ -1,5 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { load } from "cheerio";
 
 interface MixedContentItem {
   url: string;
@@ -7,18 +8,19 @@ interface MixedContentItem {
   severity: "active" | "passive";
 }
 
-const patterns: Array<{
-  regex: RegExp;
+const selectors: Array<{
+  selector: string;
+  attr: string;
   type: MixedContentItem["type"];
   severity: MixedContentItem["severity"];
 }> = [
-  { regex: /<script[^>]+src=["'](http:\/\/[^"']+)["']/gi, type: "script", severity: "active" },
-  { regex: /<link[^>]+href=["'](http:\/\/[^"']+)["']/gi, type: "stylesheet", severity: "active" },
-  { regex: /<img[^>]+src=["'](http:\/\/[^"']+)["']/gi, type: "image", severity: "passive" },
-  { regex: /<iframe[^>]+src=["'](http:\/\/[^"']+)["']/gi, type: "iframe", severity: "active" },
-  { regex: /<(?:video|source)[^>]+src=["'](http:\/\/[^"']+)["']/gi, type: "media", severity: "passive" },
-  { regex: /<form[^>]+action=["'](http:\/\/[^"']+)["']/gi, type: "form", severity: "active" },
-  { regex: /<object[^>]+data=["'](http:\/\/[^"']+)["']/gi, type: "object", severity: "active" },
+  { selector: "script[src]", attr: "src", type: "script", severity: "active" },
+  { selector: "link[href]", attr: "href", type: "stylesheet", severity: "active" },
+  { selector: "img[src]", attr: "src", type: "image", severity: "passive" },
+  { selector: "iframe[src]", attr: "src", type: "iframe", severity: "active" },
+  { selector: "video[src], source[src]", attr: "src", type: "media", severity: "passive" },
+  { selector: "form[action]", attr: "action", type: "form", severity: "active" },
+  { selector: "object[data]", attr: "data", type: "object", severity: "active" },
 ];
 
 const emptyResult = {
@@ -41,15 +43,16 @@ export class MixedContentCheck implements Check {
     }
 
     const body = endpoint.body ?? "";
+    const $ = load(body);
     const mixedContent: MixedContentItem[] = [];
 
-    for (const { regex, type, severity } of patterns) {
-      // Reset lastIndex since regexes have the global flag
-      regex.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = regex.exec(body)) !== null) {
-        mixedContent.push({ url: match[1], type, severity });
-      }
+    for (const { selector, attr, type, severity } of selectors) {
+      $(selector).each((_i, el) => {
+        const value = $(el).attr(attr);
+        if (value && value.startsWith("http://")) {
+          mixedContent.push({ url: value, type, severity });
+        }
+      });
     }
 
     const activeCount = mixedContent.filter((m) => m.severity === "active").length;

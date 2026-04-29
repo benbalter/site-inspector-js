@@ -1,38 +1,7 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 import { load } from "cheerio";
-
-async function fetchJson(url: string): Promise<Record<string, unknown> | null> {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, {
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    clearTimeout(timer);
-    if (res.status !== 200) return null;
-    return (await res.json()) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-async function probeUrl(url: string): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, {
-      method: "HEAD",
-      signal: controller.signal,
-      redirect: "follow",
-    });
-    clearTimeout(timer);
-    return res.status === 200;
-  } catch {
-    return false;
-  }
-}
+import { fetchJson, probeUrl } from "../utils.js";
 
 export class PwaCheck implements Check {
   name = "pwa";

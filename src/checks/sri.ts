@@ -1,18 +1,11 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { load } from "cheerio";
 
 const EXTERNAL_URL_RE = /^(?:https?:)?\/\//i;
 
-const SCRIPT_RE = /<script[^>]+src=["']([^"']+)["'][^>]*>/gi;
-const LINK_STYLESHEET_RE =
-  /<link[^>]+(?:rel=["']stylesheet["'][^>]+href=["']([^"']+)["']|href=["']([^"']+)["'][^>]+rel=["']stylesheet["'])[^>]*>/gi;
-
 function isExternal(url: string): boolean {
   return EXTERNAL_URL_RE.test(url);
-}
-
-function hasIntegrity(tag: string): boolean {
-  return /integrity=/i.test(tag);
 }
 
 export class SriCheck implements Check {
@@ -20,36 +13,37 @@ export class SriCheck implements Check {
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
+    const $ = load(body);
 
     const scriptsWithoutSri: string[] = [];
     let totalExternalScripts = 0;
     let scriptsWithSri = 0;
 
-    for (const match of body.matchAll(SCRIPT_RE)) {
-      const url = match[1];
-      if (!isExternal(url)) continue;
+    $("script[src]").each((_i, el) => {
+      const url = $(el).attr("src");
+      if (!url || !isExternal(url)) return;
       totalExternalScripts++;
-      if (hasIntegrity(match[0])) {
+      if ($(el).attr("integrity")) {
         scriptsWithSri++;
       } else {
         scriptsWithoutSri.push(url);
       }
-    }
+    });
 
     const stylesheetsWithoutSri: string[] = [];
     let totalExternalStylesheets = 0;
     let stylesheetsWithSri = 0;
 
-    for (const match of body.matchAll(LINK_STYLESHEET_RE)) {
-      const url = match[1] ?? match[2];
-      if (!isExternal(url)) continue;
+    $("link[rel='stylesheet'][href]").each((_i, el) => {
+      const url = $(el).attr("href");
+      if (!url || !isExternal(url)) return;
       totalExternalStylesheets++;
-      if (hasIntegrity(match[0])) {
+      if ($(el).attr("integrity")) {
         stylesheetsWithSri++;
       } else {
         stylesheetsWithoutSri.push(url);
       }
-    }
+    });
 
     const totalExternal = totalExternalScripts + totalExternalStylesheets;
     const totalWithSri = scriptsWithSri + stylesheetsWithSri;

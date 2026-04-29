@@ -1,6 +1,7 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 import { load } from "cheerio";
+import { probeUrl } from "../utils.js";
 
 interface FaviconLink {
   rel: string;
@@ -40,20 +41,7 @@ export class FaviconCheck implements Check {
     const sizes = icons.map((i) => i.sizes).filter(Boolean) as string[];
 
     // Probe /favicon.ico
-    let faviconIco = false;
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`${origin}/favicon.ico`, {
-        method: "HEAD",
-        signal: controller.signal,
-        redirect: "follow",
-      });
-      clearTimeout(timer);
-      faviconIco = res.status === 200;
-    } catch {
-      // not available
-    }
+    const faviconIco = await probeUrl(`${origin}/favicon.ico`);
 
     return {
       name: this.name,

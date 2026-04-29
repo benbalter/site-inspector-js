@@ -68,3 +68,37 @@ export async function safeFetch(
     return null;
   }
 }
+
+/** Fetch JSON from a URL with timeout, returning null on failure. */
+export async function fetchJson(
+  url: string,
+  timeoutMs = 5000,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { signal: controller.signal, redirect: "follow" });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    return (await res.json()) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Probe a URL with a HEAD (or other method) request, returning true if status is 200. */
+export async function probeUrl(
+  url: string,
+  method: string = "HEAD",
+  timeoutMs = 5000,
+): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const res = await fetch(url, { method, signal: controller.signal, redirect: "follow" });
+    clearTimeout(timer);
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}

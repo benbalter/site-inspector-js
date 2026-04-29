@@ -42,6 +42,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "My App",
@@ -114,6 +115,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "App",
@@ -144,6 +146,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             start_url: "/",
@@ -174,6 +177,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             short_name: "App",
@@ -203,6 +207,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "App",
@@ -231,6 +236,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "App",
@@ -260,6 +266,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "App",
@@ -304,6 +311,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest.json")) {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "App",
@@ -332,6 +340,7 @@ describe("PwaCheck", () => {
     fetchSpy.mockImplementation((url: string) => {
       if (url === "https://example.com/manifest.json") {
         return Promise.resolve({
+          ok: true,
           status: 200,
           json: async () => ({
             name: "App",

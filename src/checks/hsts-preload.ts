@@ -1,5 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { fetchJson } from "../utils.js";
 
 interface PreloadStatus {
   status: string;
@@ -22,9 +23,12 @@ export class HstsPreloadCheck implements Check {
   name = "hsts-preload";
 
   async run(_endpoint: EndpointData, domain: string): Promise<CheckResult> {
+    const statusUrl = `https://hstspreload.org/api/v2/status?domain=${encodeURIComponent(domain)}`;
+    const preloadableUrl = `https://hstspreload.org/api/v2/preloadable?domain=${encodeURIComponent(domain)}`;
+
     const [statusData, preloadableData] = await Promise.all([
-      this.fetchStatus(domain),
-      this.fetchPreloadable(domain),
+      fetchJson(statusUrl) as Promise<PreloadStatus | null>,
+      fetchJson(preloadableUrl) as Promise<PreloadableStatus | null>,
     ]);
 
     return {
@@ -36,35 +40,5 @@ export class HstsPreloadCheck implements Check {
         issues: preloadableData?.issues ?? [],
       },
     };
-  }
-
-  private async fetchStatus(domain: string): Promise<PreloadStatus | null> {
-    try {
-      const response = await fetch(
-        `https://hstspreload.org/api/v2/status?domain=${encodeURIComponent(domain)}`
-      );
-      if (!response.ok) {
-        return null;
-      }
-      return (await response.json()) as PreloadStatus;
-    } catch {
-      return null;
-    }
-  }
-
-  private async fetchPreloadable(
-    domain: string
-  ): Promise<PreloadableStatus | null> {
-    try {
-      const response = await fetch(
-        `https://hstspreload.org/api/v2/preloadable?domain=${encodeURIComponent(domain)}`
-      );
-      if (!response.ok) {
-        return null;
-      }
-      return (await response.json()) as PreloadableStatus;
-    } catch {
-      return null;
-    }
   }
 }
