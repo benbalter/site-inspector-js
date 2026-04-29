@@ -86,6 +86,42 @@ vi.mock("./lighthouse.js", () => ({
     run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} });
   },
 }));
+vi.mock("./csp.js", () => ({
+  CspCheck: class {
+    name = "csp";
+    run = vi.fn().mockResolvedValue({ name: "csp", data: {} });
+  },
+}));
+vi.mock("./robots.js", () => ({
+  RobotsCheck: class {
+    name = "robots";
+    run = vi.fn().mockResolvedValue({ name: "robots", data: {} });
+  },
+}));
+vi.mock("./opengraph.js", () => ({
+  OpenGraphCheck: class {
+    name = "opengraph";
+    run = vi.fn().mockResolvedValue({ name: "opengraph", data: {} });
+  },
+}));
+vi.mock("./dns-security.js", () => ({
+  DnsSecurityCheck: class {
+    name = "dns-security";
+    run = vi.fn().mockResolvedValue({ name: "dns-security", data: {} });
+  },
+}));
+vi.mock("./performance.js", () => ({
+  PerformanceCheck: class {
+    name = "performance";
+    run = vi.fn().mockResolvedValue({ name: "performance", data: {} });
+  },
+}));
+vi.mock("./structured-data.js", () => ({
+  StructuredDataCheck: class {
+    name = "structured-data";
+    run = vi.fn().mockResolvedValue({ name: "structured-data", data: {} });
+  },
+}));
 
 const { runChecks, availableChecks } = await import("./index.js");
 
@@ -114,12 +150,18 @@ describe("Check Registry", () => {
     expect(names).toContain("carbon");
     expect(names).toContain("whois");
     expect(names).toContain("lighthouse");
-    expect(names).toHaveLength(14);
+    expect(names).toContain("csp");
+    expect(names).toContain("robots");
+    expect(names).toContain("opengraph");
+    expect(names).toContain("dns-security");
+    expect(names).toContain("performance");
+    expect(names).toContain("structured-data");
+    expect(names).toHaveLength(20);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(14);
+    expect(Object.keys(results)).toHaveLength(20);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });
@@ -188,6 +230,24 @@ describe("Check Registry", () => {
     }));
     vi.doMock("./lighthouse.js", () => ({
       LighthouseCheck: class { name = "lighthouse"; run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} }); },
+    }));
+    vi.doMock("./csp.js", () => ({
+      CspCheck: class { name = "csp"; run = vi.fn().mockResolvedValue({ name: "csp", data: {} }); },
+    }));
+    vi.doMock("./robots.js", () => ({
+      RobotsCheck: class { name = "robots"; run = vi.fn().mockResolvedValue({ name: "robots", data: {} }); },
+    }));
+    vi.doMock("./opengraph.js", () => ({
+      OpenGraphCheck: class { name = "opengraph"; run = vi.fn().mockResolvedValue({ name: "opengraph", data: {} }); },
+    }));
+    vi.doMock("./dns-security.js", () => ({
+      DnsSecurityCheck: class { name = "dns-security"; run = vi.fn().mockResolvedValue({ name: "dns-security", data: {} }); },
+    }));
+    vi.doMock("./performance.js", () => ({
+      PerformanceCheck: class { name = "performance"; run = vi.fn().mockResolvedValue({ name: "performance", data: {} }); },
+    }));
+    vi.doMock("./structured-data.js", () => ({
+      StructuredDataCheck: class { name = "structured-data"; run = vi.fn().mockResolvedValue({ name: "structured-data", data: {} }); },
     }));
 
     const freshModule = await import("./index.js");

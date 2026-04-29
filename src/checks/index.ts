@@ -13,7 +13,13 @@ import { SriCheck } from "./sri.js";
 import { MixedContentCheck } from "./mixed-content.js";
 import { CarbonCheck } from "./carbon.js";
 import { WhoisCheck } from "./whois.js";
+import { CspCheck } from "./csp.js";
 import { LighthouseCheck } from "./lighthouse.js";
+import { RobotsCheck } from "./robots.js";
+import { OpenGraphCheck } from "./opengraph.js";
+import { DnsSecurityCheck } from "./dns-security.js";
+import { PerformanceCheck } from "./performance.js";
+import { StructuredDataCheck } from "./structured-data.js";
 
 /** All available checks, keyed by name. */
 const ALL_CHECKS: Check[] = [
@@ -30,7 +36,13 @@ const ALL_CHECKS: Check[] = [
   new MixedContentCheck(),
   new CarbonCheck(),
   new WhoisCheck(),
+  new CspCheck(),
   new LighthouseCheck(),
+  new RobotsCheck(),
+  new OpenGraphCheck(),
+  new DnsSecurityCheck(),
+  new PerformanceCheck(),
+  new StructuredDataCheck(),
 ];
 
 /** Get the list of all available check names. */

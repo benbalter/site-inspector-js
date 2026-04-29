@@ -4,10 +4,10 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **14 built-in checks**: DNS, Headers, HTTPS/TLS, HSTS, Content, Cookies, Technology Sniffer (Wappalyzer), Accessibility, Well-Known, SRI, Mixed Content, Carbon, WHOIS, Lighthouse
+- **20 built-in checks**: DNS, Headers, HTTPS/TLS, HSTS, Content, Cookies, Technology Sniffer (Wappalyzer), Accessibility, Well-Known, SRI, Mixed Content, Carbon, WHOIS, Lighthouse, CSP Evaluator, robots.txt, Open Graph, DNS Security (SPF/DMARC), Performance, Structured Data
 - **CLI and library**: Use from the command line or import as a module
 - **TypeScript-first**: Full type definitions, strict mode
-- **Open-source powered**: Uses [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/AliasIO/wappalyzer) fingerprints, [ssl-checker](https://www.npmjs.com/package/ssl-checker), [whois-json](https://www.npmjs.com/package/whois-json), and [Lighthouse](https://github.com/GoogleChrome/lighthouse)
+- **Open-source powered**: Uses [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/AliasIO/wappalyzer) fingerprints, [ssl-checker](https://www.npmjs.com/package/ssl-checker), [whois-json](https://www.npmjs.com/package/whois-json), [Lighthouse](https://github.com/GoogleChrome/lighthouse), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [robots-parser](https://www.npmjs.com/package/robots-parser), and [open-graph-scraper](https://www.npmjs.com/package/open-graph-scraper)
 - **Parallel execution**: All checks run concurrently for fast results
 
 ## Installation
@@ -103,6 +103,12 @@ const partial = await inspect("example.com", {
 | **carbon** | Page weight analysis — HTML size, resource counts, inline content |
 | **whois** | Domain registration info — registrar, creation/expiry dates, nameservers |
 | **lighthouse** | Performance, accessibility, SEO, best-practices scores via Google Lighthouse (requires Chrome) |
+| **csp** | CSP header evaluation — detects unsafe-inline, unsafe-eval, bypasses, missing directives |
+| **robots** | robots.txt parsing — sitemaps, crawl-delay, Googlebot/all-bot blocking |
+| **opengraph** | Open Graph & Twitter Card meta tags — social sharing readiness |
+| **dns-security** | Email security — SPF and DMARC record parsing, policy strength |
+| **performance** | Response timing, page size, compression, server-timing, size category |
+| **structured-data** | JSON-LD / schema.org detection, OpenSearch, microdata |
 
 ## Development
 
