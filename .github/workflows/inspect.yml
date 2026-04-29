@@ -1,0 +1,49 @@
+name: Inspect Domain
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Domain to inspect (e.g., example.com)"
+        required: true
+        type: string
+      checks:
+        description: "Comma-separated list of checks to run (leave empty for all)"
+        required: false
+        type: string
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: Inspect domain
+        id: inspect
+        run: |
+          args="--json"
+          if [ -n "${{ inputs.checks }}" ]; then
+            args="$args --checks ${{ inputs.checks }}"
+          fi
+          node dist/cli.js inspect "${{ inputs.domain }}" $args | tee result.json
+
+      - name: Generate summary
+        run: |
+          echo "## 🔍 Inspection: \`${{ inputs.domain }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`json" >> "$GITHUB_STEP_SUMMARY"
+          cat result.json >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspection-${{ inputs.domain }}
+          path: result.json
+          retention-days: 90
