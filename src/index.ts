@@ -1,6 +1,6 @@
 import type { InspectOptions, InspectionResult } from "./types.js";
 import { Domain } from "./domain.js";
-import { runChecks, availableChecks } from "./checks/index.js";
+import { runChecks } from "./checks/index.js";
 
 export type { InspectOptions, InspectionResult, CheckResult, EndpointData, EndpointInfo, DomainProperties } from "./types.js";
 export { availableChecks } from "./checks/index.js";

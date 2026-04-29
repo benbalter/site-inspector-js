@@ -90,7 +90,7 @@ describe("CookiesCheck", () => {
       sameSite: string | null;
       secure: boolean;
     }>;
-    expect(cookies[0]!.sameSite).toBe("None");
-    expect(cookies[0]!.secure).toBe(true);
+    expect(cookies[0]?.sameSite).toBe("None");
+    expect(cookies[0]?.secure).toBe(true);
   });
 });

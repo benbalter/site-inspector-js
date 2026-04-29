@@ -13,10 +13,10 @@ describe("TlsVersionsCheck", () => {
   function mockTlsConnect(supportedVersions: string[] = []) {
     const connectMock = vi.fn(
       (
-        opts: { minVersion?: string; maxVersion?: string; [key: string]: any },
-        cb?: () => void
+        opts: Record<string, unknown>,
+        cb?: () => void,
       ) => {
-        const handlers: Record<string, Function[]> = {};
+        const handlers: Record<string, Array<() => void>> = {};
         const socket = {
           on: vi.fn((event: string, handler: () => void) => {
             if (!handlers[event]) {
@@ -28,8 +28,7 @@ describe("TlsVersionsCheck", () => {
           destroy: vi.fn(),
         };
 
-        // Determine the version being tested
-        const version = opts.minVersion || opts.maxVersion || "";
+        const version = (opts.minVersion as string) || (opts.maxVersion as string) || "";
         const isSupported = supportedVersions.includes(version);
 
         // Simulate async behavior
@@ -47,7 +46,7 @@ describe("TlsVersionsCheck", () => {
       }
     );
 
-    (tls.connect as any).mockImplementation(connectMock);
+    vi.mocked(tls.connect).mockImplementation(connectMock);
   }
 
   it("should have the correct name", async () => {
@@ -162,10 +161,9 @@ describe("TlsVersionsCheck", () => {
       redirectChain: [],
     };
 
-    const result = await check.run(endpoint, "example.com");
+    await check.run(endpoint, "example.com");
 
-    // Verify the mock was called with the correct hostname and port
-    const calls = (tls.connect as any).mock.calls;
+    const calls = vi.mocked(tls.connect).mock.calls;
     const call = calls[0]; // First call for TLSv1
     expect(call[0].host).toBe("example.com");
     expect(call[0].port).toBe(443);
@@ -183,10 +181,9 @@ describe("TlsVersionsCheck", () => {
       redirectChain: [],
     };
 
-    const result = await check.run(endpoint, "example.com");
+    await check.run(endpoint, "example.com");
 
-    // Verify the mock was called with the correct custom port
-    const calls = (tls.connect as any).mock.calls;
+    const calls = vi.mocked(tls.connect).mock.calls;
     const call = calls[0]; // First call for TLSv1
     expect(call[0].host).toBe("example.com");
     expect(call[0].port).toBe(8443);

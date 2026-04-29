@@ -7,6 +7,19 @@ const { JSDOM } = require("jsdom");
 // axe-core needs a window context
 const axeSource = require.resolve("axe-core");
 
+interface AxeViolation {
+  id: string;
+  impact: string;
+  description: string;
+  nodes: unknown[];
+}
+
+interface AxeResults {
+  violations: AxeViolation[];
+  passes: unknown[];
+  incomplete: unknown[];
+}
+
 export class A11yAxeCheck implements Check {
   name = "a11y-axe";
 
@@ -42,8 +55,8 @@ export class A11yAxeCheck implements Check {
       const axeScript = fs.readFileSync(axeSource, "utf-8");
       dom.window.eval(axeScript);
 
-      const results = await new Promise<any>((resolve, reject) => {
-        dom.window.axe.run(dom.window.document, { runOnly: ["wcag2a", "wcag2aa"] }, (err: any, res: any) => {
+      const results = await new Promise<AxeResults>((resolve, reject) => {
+        dom.window.axe.run(dom.window.document, { runOnly: ["wcag2a", "wcag2aa"] }, (err: Error | null, res: AxeResults) => {
           if (err) reject(err);
           else resolve(res);
         });
@@ -58,7 +71,7 @@ export class A11yAxeCheck implements Check {
         if (impact in bySeverity) bySeverity[impact]++;
       }
 
-      const topIssues = violations.slice(0, 10).map((v: any) => ({
+      const topIssues = violations.slice(0, 10).map((v: AxeViolation) => ({
         id: v.id,
         impact: v.impact,
         description: v.description,

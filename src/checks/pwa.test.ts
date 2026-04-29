@@ -361,7 +361,7 @@ describe("PwaCheck", () => {
       </html>
     `;
 
-    fetchSpy.mockImplementation((url: string) => {
+    fetchSpy.mockImplementation((_url: string) => {
       // For manifest requests, abort immediately
       return Promise.reject(new Error("Abort"));
     });
