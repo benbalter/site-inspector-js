@@ -20,6 +20,24 @@ import { OpenGraphCheck } from "./opengraph.js";
 import { DnsSecurityCheck } from "./dns-security.js";
 import { PerformanceCheck } from "./performance.js";
 import { StructuredDataCheck } from "./structured-data.js";
+import { HstsPreloadCheck } from "./hsts-preload.js";
+import { CorsCheck } from "./cors.js";
+import { ReferrerPolicyCheck } from "./referrer-policy.js";
+import { PermissionsPolicyCheck } from "./permissions-policy.js";
+import { CacheHeadersCheck } from "./cache-headers.js";
+import { TlsVersionsCheck } from "./tls-versions.js";
+import { EmailSecurityCheck } from "./email-security.js";
+import { DnssecCheck } from "./dnssec.js";
+import { Ipv6Check } from "./ipv6.js";
+import { GeoCheck } from "./geo.js";
+import { CanonicalCheck } from "./canonical.js";
+import { I18nCheck } from "./i18n.js";
+import { MobileCheck } from "./mobile.js";
+import { FaviconCheck } from "./favicon.js";
+import { PrivacyCheck } from "./privacy.js";
+import { A11yAxeCheck } from "./a11y-axe.js";
+import { ApiDiscoveryCheck } from "./api-discovery.js";
+import { PwaCheck } from "./pwa.js";
 
 /** All available checks, keyed by name. */
 const ALL_CHECKS: Check[] = [
@@ -43,6 +61,24 @@ const ALL_CHECKS: Check[] = [
   new DnsSecurityCheck(),
   new PerformanceCheck(),
   new StructuredDataCheck(),
+  new HstsPreloadCheck(),
+  new CorsCheck(),
+  new ReferrerPolicyCheck(),
+  new PermissionsPolicyCheck(),
+  new CacheHeadersCheck(),
+  new TlsVersionsCheck(),
+  new EmailSecurityCheck(),
+  new DnssecCheck(),
+  new Ipv6Check(),
+  new GeoCheck(),
+  new CanonicalCheck(),
+  new I18nCheck(),
+  new MobileCheck(),
+  new FaviconCheck(),
+  new PrivacyCheck(),
+  new A11yAxeCheck(),
+  new ApiDiscoveryCheck(),
+  new PwaCheck(),
 ];
 
 /** Get the list of all available check names. */

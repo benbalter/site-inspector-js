@@ -122,6 +122,114 @@ vi.mock("./structured-data.js", () => ({
     run = vi.fn().mockResolvedValue({ name: "structured-data", data: {} });
   },
 }));
+vi.mock("./hsts-preload.js", () => ({
+  HstsPreloadCheck: class {
+    name = "hsts-preload";
+    run = vi.fn().mockResolvedValue({ name: "hsts-preload", data: {} });
+  },
+}));
+vi.mock("./cors.js", () => ({
+  CorsCheck: class {
+    name = "cors";
+    run = vi.fn().mockResolvedValue({ name: "cors", data: {} });
+  },
+}));
+vi.mock("./referrer-policy.js", () => ({
+  ReferrerPolicyCheck: class {
+    name = "referrer-policy";
+    run = vi.fn().mockResolvedValue({ name: "referrer-policy", data: {} });
+  },
+}));
+vi.mock("./permissions-policy.js", () => ({
+  PermissionsPolicyCheck: class {
+    name = "permissions-policy";
+    run = vi.fn().mockResolvedValue({ name: "permissions-policy", data: {} });
+  },
+}));
+vi.mock("./cache-headers.js", () => ({
+  CacheHeadersCheck: class {
+    name = "cache-headers";
+    run = vi.fn().mockResolvedValue({ name: "cache-headers", data: {} });
+  },
+}));
+vi.mock("./tls-versions.js", () => ({
+  TlsVersionsCheck: class {
+    name = "tls-versions";
+    run = vi.fn().mockResolvedValue({ name: "tls-versions", data: {} });
+  },
+}));
+vi.mock("./email-security.js", () => ({
+  EmailSecurityCheck: class {
+    name = "email-security";
+    run = vi.fn().mockResolvedValue({ name: "email-security", data: {} });
+  },
+}));
+vi.mock("./dnssec.js", () => ({
+  DnssecCheck: class {
+    name = "dnssec";
+    run = vi.fn().mockResolvedValue({ name: "dnssec", data: { enabled: false } });
+  },
+}));
+vi.mock("./ipv6.js", () => ({
+  Ipv6Check: class {
+    name = "ipv6";
+    run = vi.fn().mockResolvedValue({ name: "ipv6", data: { hasIpv6: true } });
+  },
+}));
+vi.mock("./geo.js", () => ({
+  GeoCheck: class {
+    name = "geo";
+    run = vi.fn().mockResolvedValue({ name: "geo", data: {} });
+  },
+}));
+vi.mock("./canonical.js", () => ({
+  CanonicalCheck: class {
+    name = "canonical";
+    run = vi.fn().mockResolvedValue({ name: "canonical", data: {} });
+  },
+}));
+vi.mock("./i18n.js", () => ({
+  I18nCheck: class {
+    name = "i18n";
+    run = vi.fn().mockResolvedValue({ name: "i18n", data: {} });
+  },
+}));
+vi.mock("./mobile.js", () => ({
+  MobileCheck: class {
+    name = "mobile";
+    run = vi.fn().mockResolvedValue({ name: "mobile", data: { isMobile: false } });
+  },
+}));
+vi.mock("./favicon.js", () => ({
+  FaviconCheck: class {
+    name = "favicon";
+    run = vi.fn().mockResolvedValue({ name: "favicon", data: {} });
+  },
+}));
+vi.mock("./privacy.js", () => ({
+  PrivacyCheck: class {
+    name = "privacy";
+    run = vi.fn().mockResolvedValue({ name: "privacy", data: {} });
+  },
+}));
+vi.mock("./a11y-axe.js", () => ({
+  A11yAxeCheck: class {
+    name = "a11y-axe";
+    run = vi.fn().mockResolvedValue({ name: "a11y-axe", data: {} });
+  },
+}));
+vi.mock("./api-discovery.js", () => ({
+  ApiDiscoveryCheck: class {
+    name = "api-discovery";
+    run = vi.fn().mockResolvedValue({ name: "api-discovery", data: { hasApi: false } });
+  },
+}));
+vi.mock("./pwa.js", () => ({
+  PwaCheck: class {
+    name = "pwa";
+    run = vi.fn().mockResolvedValue({ name: "pwa", data: { installable: false } });
+  },
+}));
 
 const { runChecks, availableChecks } = await import("./index.js");
 
@@ -156,12 +264,30 @@ describe("Check Registry", () => {
     expect(names).toContain("dns-security");
     expect(names).toContain("performance");
     expect(names).toContain("structured-data");
-    expect(names).toHaveLength(20);
+    expect(names).toContain("hsts-preload");
+    expect(names).toContain("cors");
+    expect(names).toContain("referrer-policy");
+    expect(names).toContain("permissions-policy");
+    expect(names).toContain("cache-headers");
+    expect(names).toContain("tls-versions");
+    expect(names).toContain("email-security");
+    expect(names).toContain("dnssec");
+    expect(names).toContain("ipv6");
+    expect(names).toContain("geo");
+    expect(names).toContain("canonical");
+    expect(names).toContain("i18n");
+    expect(names).toContain("mobile");
+    expect(names).toContain("favicon");
+    expect(names).toContain("privacy");
+    expect(names).toContain("a11y-axe");
+    expect(names).toContain("api-discovery");
+    expect(names).toContain("pwa");
+    expect(names).toHaveLength(38);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(20);
+    expect(Object.keys(results)).toHaveLength(38);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });
@@ -248,6 +374,60 @@ describe("Check Registry", () => {
     }));
     vi.doMock("./structured-data.js", () => ({
       StructuredDataCheck: class { name = "structured-data"; run = vi.fn().mockResolvedValue({ name: "structured-data", data: {} }); },
+    }));
+    vi.doMock("./hsts-preload.js", () => ({
+      HstsPreloadCheck: class { name = "hsts-preload"; run = vi.fn().mockResolvedValue({ name: "hsts-preload", data: {} }); },
+    }));
+    vi.doMock("./cors.js", () => ({
+      CorsCheck: class { name = "cors"; run = vi.fn().mockResolvedValue({ name: "cors", data: {} }); },
+    }));
+    vi.doMock("./referrer-policy.js", () => ({
+      ReferrerPolicyCheck: class { name = "referrer-policy"; run = vi.fn().mockResolvedValue({ name: "referrer-policy", data: {} }); },
+    }));
+    vi.doMock("./permissions-policy.js", () => ({
+      PermissionsPolicyCheck: class { name = "permissions-policy"; run = vi.fn().mockResolvedValue({ name: "permissions-policy", data: {} }); },
+    }));
+    vi.doMock("./cache-headers.js", () => ({
+      CacheHeadersCheck: class { name = "cache-headers"; run = vi.fn().mockResolvedValue({ name: "cache-headers", data: {} }); },
+    }));
+    vi.doMock("./tls-versions.js", () => ({
+      TlsVersionsCheck: class { name = "tls-versions"; run = vi.fn().mockResolvedValue({ name: "tls-versions", data: {} }); },
+    }));
+    vi.doMock("./email-security.js", () => ({
+      EmailSecurityCheck: class { name = "email-security"; run = vi.fn().mockResolvedValue({ name: "email-security", data: {} }); },
+    }));
+    vi.doMock("./dnssec.js", () => ({
+      DnssecCheck: class { name = "dnssec"; run = vi.fn().mockResolvedValue({ name: "dnssec", data: {} }); },
+    }));
+    vi.doMock("./ipv6.js", () => ({
+      Ipv6Check: class { name = "ipv6"; run = vi.fn().mockResolvedValue({ name: "ipv6", data: {} }); },
+    }));
+    vi.doMock("./geo.js", () => ({
+      GeoCheck: class { name = "geo"; run = vi.fn().mockResolvedValue({ name: "geo", data: {} }); },
+    }));
+    vi.doMock("./canonical.js", () => ({
+      CanonicalCheck: class { name = "canonical"; run = vi.fn().mockResolvedValue({ name: "canonical", data: {} }); },
+    }));
+    vi.doMock("./i18n.js", () => ({
+      I18nCheck: class { name = "i18n"; run = vi.fn().mockResolvedValue({ name: "i18n", data: {} }); },
+    }));
+    vi.doMock("./mobile.js", () => ({
+      MobileCheck: class { name = "mobile"; run = vi.fn().mockResolvedValue({ name: "mobile", data: {} }); },
+    }));
+    vi.doMock("./favicon.js", () => ({
+      FaviconCheck: class { name = "favicon"; run = vi.fn().mockResolvedValue({ name: "favicon", data: {} }); },
+    }));
+    vi.doMock("./privacy.js", () => ({
+      PrivacyCheck: class { name = "privacy"; run = vi.fn().mockResolvedValue({ name: "privacy", data: {} }); },
+    }));
+    vi.doMock("./a11y-axe.js", () => ({
+      A11yAxeCheck: class { name = "a11y-axe"; run = vi.fn().mockResolvedValue({ name: "a11y-axe", data: {} }); },
+    }));
+    vi.doMock("./api-discovery.js", () => ({
+      ApiDiscoveryCheck: class { name = "api-discovery"; run = vi.fn().mockResolvedValue({ name: "api-discovery", data: {} }); },
+    }));
+    vi.doMock("./pwa.js", () => ({
+      PwaCheck: class { name = "pwa"; run = vi.fn().mockResolvedValue({ name: "pwa", data: {} }); },
     }));
 
     const freshModule = await import("./index.js");
