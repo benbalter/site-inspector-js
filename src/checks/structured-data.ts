@@ -10,7 +10,7 @@ function extractJsonLdBlocks(body: string): { schemas: SchemaInfo[]; parseErrors
   const schemas: SchemaInfo[] = [];
   let parseErrors = 0;
 
-  const pattern = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const pattern = /<script[^>]+type=["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(body)) !== null) {

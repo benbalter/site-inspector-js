@@ -107,4 +107,21 @@ describe("StructuredDataCheck", () => {
     const result = await check.run(makeEndpoint(body), "example.com");
     expect(result.data).toMatchObject({ hasMicrodata: true });
   });
+
+  it("detects JSON-LD with unquoted type attribute (minified HTML)", async () => {
+    const body = `<html><head>
+      <script type=application/ld+json>{"@type":"Book","name":"Open & Async"}</script>
+      <script type=application/ld+json>{"@type":"Person","name":"Ben"}</script>
+    </head><body></body></html>`;
+    const result = await check.run(makeEndpoint(body), "example.com");
+    expect(result.data).toMatchObject({
+      hasJsonLd: true,
+      jsonLdCount: 2,
+      schemas: [
+        { type: "Book", name: "Open & Async" },
+        { type: "Person", name: "Ben" },
+      ],
+      parseErrors: 0,
+    });
+  });
 });
