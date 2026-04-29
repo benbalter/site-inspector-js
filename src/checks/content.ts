@@ -25,21 +25,35 @@ function extractTitle(body: string): string | null {
 }
 
 function extractMeta(body: string, name: string): string | null {
-  // name before content
+  // name before content — match quote type to avoid breaking on apostrophes
   const pattern1 = new RegExp(
-    `<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']*?)["']`,
+    `<meta[^>]+name=["']${name}["'][^>]+content="([^"]*)"`,
     "i",
   );
   const m1 = body.match(pattern1);
   if (m1) return m1[1];
 
+  const pattern1s = new RegExp(
+    `<meta[^>]+name=["']${name}["'][^>]+content='([^']*)'`,
+    "i",
+  );
+  const m1s = body.match(pattern1s);
+  if (m1s) return m1s[1];
+
   // content before name
   const pattern2 = new RegExp(
-    `<meta[^>]+content=["']([^"']*?)["'][^>]+name=["']${name}["']`,
+    `<meta[^>]+content="([^"]*)"[^>]+name=["']${name}["']`,
     "i",
   );
   const m2 = body.match(pattern2);
   if (m2) return m2[1];
+
+  const pattern2s = new RegExp(
+    `<meta[^>]+content='([^']*)'[^>]+name=["']${name}["']`,
+    "i",
+  );
+  const m2s = body.match(pattern2s);
+  if (m2s) return m2s[1];
 
   return null;
 }

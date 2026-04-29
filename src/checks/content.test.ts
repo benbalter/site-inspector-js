@@ -103,6 +103,19 @@ describe("ContentCheck", () => {
     expect(result.data.sitemapXml).toBe(false);
   });
 
+  it("handles description with apostrophes in double-quoted content", async () => {
+    const html = `<!doctype html>
+<html>
+<head>
+  <meta content="I'm Ben — it's a great site" name="description">
+</head>
+</html>`;
+
+    const result = await check.run(makeEndpoint(html), "example.com");
+
+    expect(result.data.description).toBe("I'm Ben — it's a great site");
+  });
+
   it("passes AbortSignal and follows redirects", async () => {
     fetchMock.mockResolvedValue({ status: 200 });
 
