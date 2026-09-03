@@ -24,6 +24,30 @@ npx site-inspector inspect example.com
 
 Requires **Node.js ≥ 20**. The optional Lighthouse check requires Google Chrome.
 
+## Running Locally (from source)
+
+To run from a clone of this repository — before it's published, or while developing — build the TypeScript first, then invoke the compiled CLI:
+
+```bash
+git clone https://github.com/benbalter/site-inspector-js.git
+cd site-inspector-js
+npm install          # Install dependencies
+npm run build        # Compile TypeScript to dist/
+
+# Run the CLI directly
+node dist/cli.js inspect example.com
+```
+
+The `site-inspector` command isn't on your `PATH` after a build alone. To make it globally available from your clone, symlink it with `npm link`:
+
+```bash
+npm link                              # Links dist/cli.js into your global bin
+site-inspector inspect example.com    # Now works anywhere
+npm unlink -g site-inspector          # Undo when done
+```
+
+Since the `site-inspector` bin points at `dist/`, rebuild after changing source (`npm run build`), or run `npm run dev` to recompile on save.
+
 ## CLI Usage
 
 ```bash

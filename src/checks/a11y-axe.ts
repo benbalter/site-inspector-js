@@ -50,6 +50,61 @@ export class A11yAxeCheck implements Check {
         url: endpoint.url,
       });
 
+      // axe-core may use canvas APIs; jsdom does not implement getContext by default.
+      const canvasProto = (dom.window.HTMLCanvasElement as unknown as { prototype: any })?.prototype;
+      if (canvasProto) {
+        canvasProto.getContext = function getContext() {
+          return {
+            canvas: this,
+            getContextAttributes: () => null,
+            getImageData: () => ({ width: 0, height: 0, data: new Uint8ClampedArray(0) }),
+            createImageData: (width = 0, height = 0) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }),
+            putImageData: () => {},
+            measureText: () => ({ width: 0 }),
+            fillRect: () => {},
+            strokeRect: () => {},
+            beginPath: () => {},
+            closePath: () => {},
+            moveTo: () => {},
+            lineTo: () => {},
+            arc: () => {},
+            rect: () => {},
+            setTransform: () => {},
+            transform: () => {},
+            save: () => {},
+            restore: () => {},
+            translate: () => {},
+            scale: () => {},
+            rotate: () => {},
+            fillText: () => {},
+            strokeText: () => {},
+            createLinearGradient: () => ({ addColorStop: () => {} }),
+            createPattern: () => null,
+            drawImage: () => {},
+          };
+        };
+      }
+
+      const originalGetComputedStyle = dom.window.getComputedStyle.bind(dom.window);
+      dom.window.getComputedStyle = (element: unknown, pseudoElt?: string | null) => {
+        if (!pseudoElt) {
+          return originalGetComputedStyle(element);
+        }
+
+        return {
+          getPropertyValue: (property: string) => {
+            if (property === "content") return "";
+            if (property === "display") return "none";
+            if (property === "visibility") return "hidden";
+            return "";
+          },
+          getPropertyPriority: () => "",
+          getPropertyValueByPriority: () => "",
+          getPropertyCSSValue: () => null,
+          getPropertyShorthand: () => null,
+        };
+      };
+
       // Inject axe-core
       const fs = require("fs");
       const axeScript = fs.readFileSync(axeSource, "utf-8");
