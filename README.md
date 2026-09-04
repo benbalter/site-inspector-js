@@ -60,6 +60,9 @@ site-inspector inspect example.com --json
 # Run only specific checks
 site-inspector inspect example.com --checks dns,headers,https,csp
 
+# Show only what needs attention (like a lab report's abnormal-results view)
+site-inspector inspect example.com --only-issues
+
 # Show all 4 endpoint variants (http/https × www/non-www)
 site-inspector inspect example.com --all-endpoints
 
@@ -98,15 +101,46 @@ const partial = await inspect("example.com", {
 });
 ```
 
+### Assessment (what's good / what needs attention)
+
+The raw `data` is the readout; `assess()` layers the engine's opinion on top —
+a per-field verdict of `pass`, `attention`, or `neutral`. Verdicts come from a
+curated table (never guessed from field names), so a `neutral` fact like "no
+IPv6" or "no tracker present" is never mistaken for a failing. This is the single
+source of truth shared by the CLI (`--only-issues`) and the web UI.
+
+```typescript
+import { inspect, assess, assessField } from "site-inspector";
+
+const result = await inspect("example.com");
+const { attentionCount, attention } = assess(result);
+
+console.log(`${attentionCount} items need attention`);
+for (const finding of attention) {
+  console.log(`- ${finding.check}: ${finding.label}`);
+}
+
+// Verdict for a single field
+assessField("hsts", "enabled", false);          // "attention"
+assessField("ipv6", "hasIpv6", false);           // "neutral" (absence isn't bad)
+assessField("mixed-content", "hasMixedContent", true); // "attention"
+```
+
 ### Exports
 
 ```typescript
 import {
   inspect,           // Main inspection function
   availableChecks,   // List all check names
+  assess,            // Verdicts + "needs attention" rollup for a result
+  assessField,       // Verdict for a single field
   Domain,            // Domain class (4-endpoint probing)
   Endpoint,          // Single endpoint class
 } from "site-inspector";
+
+// The assessment logic is also available on its own dependency-free subpath,
+// handy for client bundles that shouldn't pull in the full engine:
+import { assess, assessField } from "site-inspector/assess";
 
 // Types
 import type {
@@ -116,6 +150,9 @@ import type {
   EndpointData,
   EndpointInfo,
   DomainProperties,
+  Severity,          // "pass" | "attention" | "neutral"
+  Finding,
+  Assessment,
 } from "site-inspector";
 ```
 

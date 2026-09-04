@@ -1,0 +1,25 @@
+{
+  "name": "site-inspector-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Lightweight local web front-end for site-inspector",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.0.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "astro": "^5.0.0",
+    "site-inspector": "file:..",
+    "tailwindcss": "^4.0.0"
+  }
+}

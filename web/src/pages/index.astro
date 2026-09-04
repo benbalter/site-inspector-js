@@ -1,0 +1,139 @@
+---
+import { availableChecks } from "site-inspector";
+import Layout from "../layouts/Layout.astro";
+import { HEAVY_CHECKS, checkLabel } from "../lib/checkGroups";
+
+// Fast checks = everything except the heavy, Chrome-launching ones.
+const all = availableChecks();
+const heavy = HEAVY_CHECKS.filter((c) => all.includes(c));
+const fastChecks = all.filter((c) => !heavy.includes(c));
+---
+
+<Layout>
+  <header class="mb-8">
+    <div class="kicker mb-2">Domain diagnostics</div>
+    <h1 class="text-4xl font-bold tracking-tight text-ink sm:text-5xl">Site Inspector</h1>
+    <p class="mt-3 max-w-2xl text-ink-muted">
+      A read on a domain's technology, security, and capabilities — with a clear
+      call on what's healthy and what needs attention.
+    </p>
+  </header>
+
+  <form
+    id="inspect-form"
+    class="card p-2"
+    data-fast-checks={JSON.stringify(fastChecks)}
+  >
+    <div class="flex flex-col gap-2 sm:flex-row">
+      <div class="flex flex-1 items-center gap-2 px-3">
+        <span class="val text-ink-faint select-none">▸</span>
+        <input
+          id="domain"
+          name="domain"
+          type="text"
+          required
+          autofocus
+          placeholder="example.com"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          class="val flex-1 bg-transparent py-3 text-base text-ink placeholder:text-ink-faint focus:outline-none"
+        />
+      </div>
+      <button
+        id="submit-btn"
+        type="submit"
+        class="inline-flex items-center justify-center gap-2 rounded-[4px] bg-ink px-6 py-3 text-sm font-semibold tracking-wide text-white transition hover:bg-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        Inspect
+      </button>
+    </div>
+
+    {
+      heavy.length > 0 && (
+        <details class="border-t border-hairline px-3 pb-3 pt-2">
+          <summary class="kicker cursor-pointer list-none hover:text-accent">
+            + Advanced — slower checks (launch headless Chrome)
+          </summary>
+          <div class="mt-3 flex flex-wrap gap-4">
+            {heavy.map((name) => (
+              <label class="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  name="heavy-check"
+                  value={name}
+                  class="h-4 w-4 rounded border-hairline-strong text-accent focus:ring-accent"
+                />
+                {checkLabel(name)}
+              </label>
+            ))}
+          </div>
+        </details>
+      )
+    }
+  </form>
+
+  <div id="status" class="mt-6" aria-live="polite"></div>
+  <div id="results" class="mt-8"></div>
+</Layout>
+
+<script>
+  import { renderResult } from "../lib/render";
+  import type { InspectionResult } from "site-inspector";
+
+  const form = document.getElementById("inspect-form") as HTMLFormElement;
+  const domainInput = document.getElementById("domain") as HTMLInputElement;
+  const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const statusEl = document.getElementById("status") as HTMLDivElement;
+  const resultsEl = document.getElementById("results") as HTMLDivElement;
+
+  const fastChecks: string[] = JSON.parse(form.dataset.fastChecks ?? "[]");
+
+  function setStatus(html: string): void {
+    statusEl.innerHTML = html;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const domain = domainInput.value.trim();
+    if (!domain) return;
+
+    const heavy = Array.from(
+      form.querySelectorAll<HTMLInputElement>('input[name="heavy-check"]:checked'),
+    ).map((c) => c.value);
+    const checks = [...fastChecks, ...heavy];
+
+    submitBtn.disabled = true;
+    resultsEl.replaceChildren();
+    const heavyNote = heavy.length
+      ? " Running headless Chrome checks — this can take a while."
+      : "";
+    setStatus(
+      `<div class="card flex items-center gap-3 p-4">
+        <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-hairline-strong border-t-accent"></span>
+        <span class="kicker">Inspecting ${domain}…${heavyNote}</span>
+      </div>`,
+    );
+
+    try {
+      const res = await fetch("/api/inspect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ domain, checks }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body?.error ?? `Request failed (${res.status})`);
+      }
+      setStatus("");
+      renderResult(body as InspectionResult, resultsEl);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setStatus(
+        `<div class="card border-[#f2c6c0] bg-[#fbe9e7] p-4"><span class="kicker text-[#bd2f26]">Error</span> <span class="val text-ink">${msg}</span></div>`,
+      );
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
