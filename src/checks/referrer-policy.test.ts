@@ -74,10 +74,7 @@ describe("ReferrerPolicyCheck", () => {
   });
 
   it("identifies moderate policy (origin)", async () => {
-    const result = await check.run(
-      makeEndpoint({ "referrer-policy": "origin" }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint({ "referrer-policy": "origin" }), "example.com");
 
     expect(result.data.present).toBe(true);
     expect(result.data.policy).toBe("origin");
@@ -138,9 +135,7 @@ describe("ReferrerPolicyCheck", () => {
     expect(result.data.present).toBe(true);
     expect(result.data.policy).toBe("strict-origin-when-cross-origin");
     expect(result.data.strictness).toBe("moderate");
-    expect(result.data.rawHeader).toBe(
-      "invalid-policy, strict-origin-when-cross-origin",
-    );
+    expect(result.data.rawHeader).toBe("invalid-policy, strict-origin-when-cross-origin");
   });
 
   it("handles comma-separated fallback values with multiple valid policies (uses last)", async () => {
@@ -180,10 +175,7 @@ describe("ReferrerPolicyCheck", () => {
 
   it("includes raw header in result", async () => {
     const raw = "strict-origin-when-cross-origin";
-    const result = await check.run(
-      makeEndpoint({ "referrer-policy": raw }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint({ "referrer-policy": raw }), "example.com");
 
     expect(result.data.rawHeader).toBe(raw);
   });

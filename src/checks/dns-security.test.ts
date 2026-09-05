@@ -32,9 +32,7 @@ describe("DnsSecurityCheck", () => {
         return Promise.resolve([["v=spf1 include:_spf.google.com -all"]]);
       }
       if (domain === "_dmarc.example.com") {
-        return Promise.resolve([
-          ["v=DMARC1; p=reject; pct=100; rua=mailto:dmarc@example.com"],
-        ]);
+        return Promise.resolve([["v=DMARC1; p=reject; pct=100; rua=mailto:dmarc@example.com"]]);
       }
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
@@ -78,9 +76,7 @@ describe("DnsSecurityCheck", () => {
   });
 
   it("handles domain with no TXT records at all", async () => {
-    mockResolveTxt.mockRejectedValue(
-      Object.assign(new Error("ENODATA"), { code: "ENODATA" }),
-    );
+    mockResolveTxt.mockRejectedValue(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
 
     const result = await check.run(dummyEndpoint, "example.com");
 

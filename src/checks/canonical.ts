@@ -12,8 +12,7 @@ export class CanonicalCheck implements Check {
 
     const canonical = $('link[rel="canonical"]').attr("href") ?? null;
 
-    const robotsContent =
-      $('meta[name="robots"]').attr("content")?.toLowerCase() ?? "";
+    const robotsContent = $('meta[name="robots"]').attr("content")?.toLowerCase() ?? "";
     const noindex = robotsContent.includes("noindex");
 
     // Check HTTP Link header for canonical

@@ -37,8 +37,7 @@ export class PrivacyCheck implements Check {
 
     // Detect cookie policy link
     const hasCookiePolicy =
-      /href=["'][^"']*cookie[^"']*polic[^"']*["']/i.test(body) ||
-      />cookie\s*policy</i.test(body);
+      /href=["'][^"']*cookie[^"']*polic[^"']*["']/i.test(body) || />cookie\s*policy</i.test(body);
 
     // Detect Do Not Track / GPC respect
     const dntHeader = endpoint.headers["tk"] ?? null;
@@ -48,10 +47,8 @@ export class PrivacyCheck implements Check {
     const p3p = endpoint.headers["p3p"] ?? null;
 
     // Detect Google Analytics / tracking
-    const hasGoogleAnalytics =
-      /gtag|google-analytics|googletagmanager|ga\('create'/i.test(body);
-    const hasFacebookPixel =
-      /facebook.*pixel|fbq\(|connect\.facebook/i.test(body);
+    const hasGoogleAnalytics = /gtag|google-analytics|googletagmanager|ga\('create'/i.test(body);
+    const hasFacebookPixel = /facebook.*pixel|fbq\(|connect\.facebook/i.test(body);
 
     return {
       name: this.name,

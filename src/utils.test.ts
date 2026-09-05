@@ -86,7 +86,11 @@ describe("probeUrl", () => {
     expect(result).toBe(true);
     expect(fetchSpy).toHaveBeenCalledWith(
       "https://example.com/test",
-      expect.objectContaining({ method: "HEAD", signal: expect.any(AbortSignal), redirect: "follow" }),
+      expect.objectContaining({
+        method: "HEAD",
+        signal: expect.any(AbortSignal),
+        redirect: "follow",
+      }),
     );
   });
 

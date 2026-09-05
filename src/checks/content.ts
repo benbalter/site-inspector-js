@@ -17,10 +17,8 @@ export class ContentCheck implements Check {
     const titleEl = $("title");
     const title = titleEl.length > 0 ? titleEl.text().trim() || null : null;
 
-    const description =
-      $('meta[name="description"]').attr("content") ?? null;
-    const generator =
-      $('meta[name="generator"]').attr("content") ?? null;
+    const description = $('meta[name="description"]').attr("content") ?? null;
+    const generator = $('meta[name="generator"]').attr("content") ?? null;
 
     const [robotsTxt, sitemapXml] = await Promise.all([
       probeUrl(new URL("/robots.txt", baseUrl).href, "GET"),

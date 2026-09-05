@@ -87,10 +87,7 @@ describe("HeadersCheck", () => {
   });
 
   it("derives clickjackingProtection from x-frame-options presence", async () => {
-    const withHeader = await check.run(
-      makeEndpoint({ "x-frame-options": "DENY" }),
-      "example.com",
-    );
+    const withHeader = await check.run(makeEndpoint({ "x-frame-options": "DENY" }), "example.com");
     expect(withHeader.data.clickjackingProtection).toBe(true);
 
     const withoutHeader = await check.run(makeEndpoint({}), "example.com");
@@ -98,10 +95,7 @@ describe("HeadersCheck", () => {
   });
 
   it('sets xssProtection true for "1"', async () => {
-    const result = await check.run(
-      makeEndpoint({ "x-xss-protection": "1" }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint({ "x-xss-protection": "1" }), "example.com");
     expect(result.data.xssProtection).toBe(true);
   });
 
@@ -114,10 +108,7 @@ describe("HeadersCheck", () => {
   });
 
   it('sets xssProtection false for "0"', async () => {
-    const result = await check.run(
-      makeEndpoint({ "x-xss-protection": "0" }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint({ "x-xss-protection": "0" }), "example.com");
     expect(result.data.xssProtection).toBe(false);
   });
 });

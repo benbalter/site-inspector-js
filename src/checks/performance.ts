@@ -9,7 +9,10 @@ interface ServerTimingEntry {
 
 function parseServerTiming(header: string): ServerTimingEntry[] {
   return header.split(",").map((entry) => {
-    const parts = entry.trim().split(";").map((p) => p.trim());
+    const parts = entry
+      .trim()
+      .split(";")
+      .map((p) => p.trim());
     const name = parts[0];
     let duration: number | null = null;
     let description: string | null = null;

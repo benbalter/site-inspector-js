@@ -77,7 +77,9 @@ describe("EmailSecurityCheck", () => {
   it("detects BIMI with logo URL", async () => {
     mockResolveTxt.mockImplementation((domain: string) => {
       if (domain === "default._bimi.example.com") {
-        return Promise.resolve([["v=BIMI1; l=https://example.com/bimi-logo.svg; a=https://example.com/vmc"]]);
+        return Promise.resolve([
+          ["v=BIMI1; l=https://example.com/bimi-logo.svg; a=https://example.com/vmc"],
+        ]);
       }
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
@@ -220,9 +222,7 @@ describe("EmailSecurityCheck", () => {
   });
 
   it("returns no records when all DNS lookups fail", async () => {
-    mockResolveTxt.mockRejectedValue(
-      Object.assign(new Error("ENODATA"), { code: "ENODATA" }),
-    );
+    mockResolveTxt.mockRejectedValue(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
 
     mockSafeFetch.mockResolvedValue(null);
 
@@ -272,10 +272,7 @@ describe("EmailSecurityCheck", () => {
   it("handles multiple TXT records and extracts the v=TLSRPTv1 record", async () => {
     mockResolveTxt.mockImplementation((domain: string) => {
       if (domain === "_smtp._tls.example.com") {
-        return Promise.resolve([
-          ["v=TLSRPTv1; rua=mailto:tlsrpt@example.com"],
-          ["other=data"],
-        ]);
+        return Promise.resolve([["v=TLSRPTv1; rua=mailto:tlsrpt@example.com"], ["other=data"]]);
       }
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });

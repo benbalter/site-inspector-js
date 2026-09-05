@@ -22,8 +22,7 @@ export class CspCheck implements Check {
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const rawPolicy = endpoint.headers["content-security-policy"] ?? null;
-    const reportOnlyPolicy =
-      endpoint.headers["content-security-policy-report-only"] ?? null;
+    const reportOnlyPolicy = endpoint.headers["content-security-policy-report-only"] ?? null;
 
     if (!rawPolicy) {
       return {
@@ -62,8 +61,7 @@ export class CspCheck implements Check {
         rawPolicy,
         findings,
         highSeverityCount: rawFindings.filter((f) => f.severity === 10).length,
-        mediumSeverityCount: rawFindings.filter((f) => f.severity === 20)
-          .length,
+        mediumSeverityCount: rawFindings.filter((f) => f.severity === 20).length,
         infoCount: rawFindings.filter((f) => f.severity === 30).length,
       },
     };

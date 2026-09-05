@@ -2,10 +2,7 @@ import { describe, it, expect } from "vitest";
 import { I18nCheck } from "./i18n.js";
 import type { EndpointData } from "../types.js";
 
-function makeEndpoint(
-  body: string,
-  headers?: Record<string, string>,
-): EndpointData {
+function makeEndpoint(body: string, headers?: Record<string, string>): EndpointData {
   return {
     url: "https://example.com",
     statusCode: 200,
@@ -66,9 +63,7 @@ describe("I18nCheck", () => {
       href: string;
     }>;
     expect(hreflangs).toHaveLength(3);
-    expect(hreflangs.map((h) => h.lang)).toEqual(
-      expect.arrayContaining(["es", "fr", "x-default"]),
-    );
+    expect(hreflangs.map((h) => h.lang)).toEqual(expect.arrayContaining(["es", "fr", "x-default"]));
 
     expect(result.data.languageCount).toBe(2);
     expect(result.data.hasXDefault).toBe(true);
@@ -188,9 +183,7 @@ describe("I18nCheck", () => {
       href: string;
     }>;
     expect(hreflangs.length).toBeGreaterThanOrEqual(2);
-    expect(hreflangs.map((h) => h.lang)).toEqual(
-      expect.arrayContaining(["es", "fr"]),
-    );
+    expect(hreflangs.map((h) => h.lang)).toEqual(expect.arrayContaining(["es", "fr"]));
   });
 
   it("detects http-equiv charset declaration", async () => {

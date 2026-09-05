@@ -43,7 +43,11 @@ describe("MixedContentCheck", () => {
     expect(result.data.activeCount).toBe(1);
     expect(result.data.passiveCount).toBe(1);
 
-    const items = result.data.mixedContent as Array<{ url: string; type: string; severity: string }>;
+    const items = result.data.mixedContent as Array<{
+      url: string;
+      type: string;
+      severity: string;
+    }>;
     expect(items).toContainEqual({
       url: "http://cdn.example.com/app.js",
       type: "script",

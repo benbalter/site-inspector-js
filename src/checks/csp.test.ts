@@ -58,7 +58,9 @@ describe("CspCheck", () => {
   it("returns hasCsp: true with no high severity findings for a strong CSP", async () => {
     const csp = "default-src 'none'; script-src 'self'; style-src 'self'";
     const mockParsed = { directives: [] };
-    mockCspParser.mockImplementation(function (this: Record<string, unknown>) { this.csp = mockParsed; });
+    mockCspParser.mockImplementation(function (this: Record<string, unknown>) {
+      this.csp = mockParsed;
+    });
     mockCspEvaluator.mockImplementation(function () {
       return {
         evaluate: () => [
@@ -71,10 +73,7 @@ describe("CspCheck", () => {
       };
     });
 
-    const result = await check.run(
-      makeEndpoint({ "content-security-policy": csp }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint({ "content-security-policy": csp }), "example.com");
 
     expect(result.data.hasCsp).toBe(true);
     expect(result.data.rawPolicy).toBe(csp);
@@ -93,7 +92,9 @@ describe("CspCheck", () => {
   it("reports high severity findings for weak CSP with unsafe-inline", async () => {
     const csp = "default-src 'self'; script-src 'unsafe-inline'";
     const mockParsed = { directives: [] };
-    mockCspParser.mockImplementation(function (this: Record<string, unknown>) { this.csp = mockParsed; });
+    mockCspParser.mockImplementation(function (this: Record<string, unknown>) {
+      this.csp = mockParsed;
+    });
     mockCspEvaluator.mockImplementation(function () {
       return {
         evaluate: () => [
@@ -111,10 +112,7 @@ describe("CspCheck", () => {
       };
     });
 
-    const result = await check.run(
-      makeEndpoint({ "content-security-policy": csp }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint({ "content-security-policy": csp }), "example.com");
 
     expect(result.data.hasCsp).toBe(true);
     expect(result.data.highSeverityCount).toBe(1);
@@ -139,7 +137,9 @@ describe("CspCheck", () => {
   it("handles both enforced and report-only headers", async () => {
     const csp = "default-src 'self'";
     const mockParsed = { directives: [] };
-    mockCspParser.mockImplementation(function (this: Record<string, unknown>) { this.csp = mockParsed; });
+    mockCspParser.mockImplementation(function (this: Record<string, unknown>) {
+      this.csp = mockParsed;
+    });
     mockCspEvaluator.mockImplementation(function () {
       return { evaluate: () => [] };
     });

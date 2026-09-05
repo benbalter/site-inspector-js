@@ -51,14 +51,22 @@ export class A11yAxeCheck implements Check {
       });
 
       // axe-core may use canvas APIs; jsdom does not implement getContext by default.
-      const canvasProto = (dom.window.HTMLCanvasElement as unknown as { prototype: any })?.prototype;
+      const canvasProto = (
+        dom.window.HTMLCanvasElement as unknown as {
+          prototype: Record<string, unknown>;
+        }
+      )?.prototype;
       if (canvasProto) {
         canvasProto.getContext = function getContext() {
           return {
             canvas: this,
             getContextAttributes: () => null,
             getImageData: () => ({ width: 0, height: 0, data: new Uint8ClampedArray(0) }),
-            createImageData: (width = 0, height = 0) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }),
+            createImageData: (width = 0, height = 0) => ({
+              width,
+              height,
+              data: new Uint8ClampedArray(width * height * 4),
+            }),
             putImageData: () => {},
             measureText: () => ({ width: 0 }),
             fillRect: () => {},
@@ -111,10 +119,14 @@ export class A11yAxeCheck implements Check {
       dom.window.eval(axeScript);
 
       const results = await new Promise<AxeResults>((resolve, reject) => {
-        dom.window.axe.run(dom.window.document, { runOnly: ["wcag2a", "wcag2aa"] }, (err: Error | null, res: AxeResults) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
+        dom.window.axe.run(
+          dom.window.document,
+          { runOnly: ["wcag2a", "wcag2aa"] },
+          (err: Error | null, res: AxeResults) => {
+            if (err) reject(err);
+            else resolve(res);
+          },
+        );
       });
 
       dom.window.close();

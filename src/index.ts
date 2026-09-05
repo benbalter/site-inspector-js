@@ -2,7 +2,14 @@ import type { InspectOptions, InspectionResult } from "./types.js";
 import { Domain } from "./domain.js";
 import { runChecks } from "./checks/index.js";
 
-export type { InspectOptions, InspectionResult, CheckResult, EndpointData, EndpointInfo, DomainProperties } from "./types.js";
+export type {
+  InspectOptions,
+  InspectionResult,
+  CheckResult,
+  EndpointData,
+  EndpointInfo,
+  DomainProperties,
+} from "./types.js";
 export { availableChecks } from "./checks/index.js";
 export { assess, assessField } from "./assess.js";
 export type { Severity, Finding, Assessment } from "./assess.js";

@@ -15,7 +15,9 @@ export class GeoCheck implements Check {
     try {
       const addresses = await dns.resolve4(domain);
       ip = addresses[0] ?? null;
-    } catch { /* no A record */ }
+    } catch {
+      /* no A record */
+    }
 
     if (!ip) {
       return {

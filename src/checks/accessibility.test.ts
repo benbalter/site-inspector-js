@@ -41,9 +41,7 @@ describe("AccessibilityCheck", () => {
     expect(result.data.htmlLang).toBe(true);
     expect(result.data.langValue).toBe("en");
     expect(result.data.viewport).toBe(true);
-    expect(result.data.viewportContent).toBe(
-      "width=device-width, initial-scale=1",
-    );
+    expect(result.data.viewportContent).toBe("width=device-width, initial-scale=1");
 
     const headings = result.data.headingStructure as {
       hasH1: boolean;

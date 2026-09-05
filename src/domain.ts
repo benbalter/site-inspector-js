@@ -78,24 +78,23 @@ export class Domain {
     // HTTPS canonical endpoint redirects to HTTP
     const canonical = this.canonicalEndpointFor(https, root);
     const downgradesHttps =
-      https &&
-      canonical !== null &&
-      canonical.isRedirect &&
-      redirectsToHttp(canonical);
+      https && canonical !== null && canonical.isRedirect && redirectsToHttp(canonical);
 
     // Non-www redirects to www, or all non-www endpoints are down
-    const canonicallyWww = www && !root
-      ? true
-      : www && root
-        ? redirectsToWww(this.httpsRoot) || redirectsToWww(this.httpRoot)
-        : false;
+    const canonicallyWww =
+      www && !root
+        ? true
+        : www && root
+          ? redirectsToWww(this.httpsRoot) || redirectsToWww(this.httpRoot)
+          : false;
 
     // HTTP redirects to HTTPS, or all HTTP endpoints are down
-    const canonicallyHttps = https && !httpRootUp && !httpWwwUp
-      ? true
-      : https && (httpRootUp || httpWwwUp)
-        ? httpRootEnforces && httpWwwEnforces
-        : false;
+    const canonicallyHttps =
+      https && !httpRootUp && !httpWwwUp
+        ? true
+        : https && (httpRootUp || httpWwwUp)
+          ? httpRootEnforces && httpWwwEnforces
+          : false;
 
     // Determine canonical endpoint inline to avoid recursion
     let canonicalEp: Endpoint;
@@ -123,12 +122,7 @@ export class Domain {
 
   /** EndpointInfo for all 4 endpoints. */
   get endpoints(): EndpointInfo[] {
-    return [
-      this.httpsRoot.info,
-      this.httpsWww.info,
-      this.httpRoot.info,
-      this.httpWww.info,
-    ];
+    return [this.httpsRoot.info, this.httpsWww.info, this.httpRoot.info, this.httpWww.info];
   }
 
   /** Helper to pick the canonical HTTPS endpoint without triggering recursion. */

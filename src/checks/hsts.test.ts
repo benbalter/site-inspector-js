@@ -21,8 +21,7 @@ describe("HstsCheck", () => {
 
   it("parses a full HSTS header with all directives", async () => {
     const endpoint = makeEndpoint({
-      "strict-transport-security":
-        "max-age=63072000; includeSubDomains; preload",
+      "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
     });
     const result = await check.run(endpoint, "example.com");
     expect(result.data).toEqual({
@@ -66,8 +65,7 @@ describe("HstsCheck", () => {
   describe("preload readiness", () => {
     it("is not preload-ready when max-age is too low", async () => {
       const endpoint = makeEndpoint({
-        "strict-transport-security":
-          "max-age=100; includeSubDomains; preload",
+        "strict-transport-security": "max-age=100; includeSubDomains; preload",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.preloadReady).toBe(false);
@@ -86,8 +84,7 @@ describe("HstsCheck", () => {
 
     it("is not preload-ready when preload is missing", async () => {
       const endpoint = makeEndpoint({
-        "strict-transport-security":
-          "max-age=63072000; includeSubDomains",
+        "strict-transport-security": "max-age=63072000; includeSubDomains",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.preloadReady).toBe(false);
@@ -96,8 +93,7 @@ describe("HstsCheck", () => {
 
     it("is preload-ready at exactly 31536000 seconds", async () => {
       const endpoint = makeEndpoint({
-        "strict-transport-security":
-          "max-age=31536000; includeSubDomains; preload",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.preloadReady).toBe(true);
@@ -107,8 +103,7 @@ describe("HstsCheck", () => {
   describe("edge cases", () => {
     it("handles extra whitespace around directives", async () => {
       const endpoint = makeEndpoint({
-        "strict-transport-security":
-          "  max-age=31536000 ;  includeSubDomains ;  preload  ",
+        "strict-transport-security": "  max-age=31536000 ;  includeSubDomains ;  preload  ",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.maxAge).toBe(31536000);
@@ -119,8 +114,7 @@ describe("HstsCheck", () => {
 
     it("handles mixed-case directives", async () => {
       const endpoint = makeEndpoint({
-        "strict-transport-security":
-          "Max-Age=31536000; IncludeSubDomains; Preload",
+        "strict-transport-security": "Max-Age=31536000; IncludeSubDomains; Preload",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.maxAge).toBe(31536000);

@@ -113,20 +113,14 @@ describe("PrivacyCheck", () => {
 
   it("respects Do Not Track header", async () => {
     const body = "<html><body>Test</body></html>";
-    const result = await check.run(
-      makeEndpoint(body, { tk: "1" }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint(body, { tk: "1" }), "example.com");
 
     expect(result.data.dntHeader).toBe("1");
   });
 
   it("respects GPC (Global Privacy Control) header", async () => {
     const body = "<html><body>Test</body></html>";
-    const result = await check.run(
-      makeEndpoint(body, { "sec-gpc": "1" }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint(body, { "sec-gpc": "1" }), "example.com");
 
     expect(result.data.gpcHeader).toBe("1");
   });

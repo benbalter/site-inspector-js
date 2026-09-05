@@ -18,9 +18,7 @@ function makeEndpoint(url = "https://example.com/"): EndpointData {
   };
 }
 
-function setupSafeFetch(
-  handler: (url: string) => { statusCode: number; body: string } | null,
-) {
+function setupSafeFetch(handler: (url: string) => { statusCode: number; body: string } | null) {
   mockSafeFetch.mockImplementation(async (url: string) => {
     const res = handler(url);
     if (!res) return null;

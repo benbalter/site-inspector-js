@@ -97,9 +97,7 @@ export async function runChecks(
   domain: string,
   filter?: string[],
 ): Promise<Record<string, CheckResult>> {
-  const checks = filter
-    ? ALL_CHECKS.filter((c) => filter.includes(c.name))
-    : ALL_CHECKS;
+  const checks = filter ? ALL_CHECKS.filter((c) => filter.includes(c.name)) : ALL_CHECKS;
 
   const results = await Promise.allSettled(checks.map((c) => c.run(endpoint, domain)));
 
@@ -111,7 +109,9 @@ export async function runChecks(
     } else {
       output[checks[i].name] = {
         name: checks[i].name,
-        data: { error: result.reason instanceof Error ? result.reason.message : String(result.reason) },
+        data: {
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+        },
       };
     }
   }

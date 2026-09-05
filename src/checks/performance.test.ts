@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { PerformanceCheck } from "./performance.js";
 import type { EndpointData } from "../types.js";
 
-function makeEndpoint(
-  overrides: Partial<EndpointData> = {},
-): EndpointData {
+function makeEndpoint(overrides: Partial<EndpointData> = {}): EndpointData {
   return {
     url: "https://example.com",
     statusCode: 200,
@@ -105,10 +103,7 @@ describe("PerformanceCheck", () => {
   });
 
   it("handles fetch errors gracefully", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockRejectedValue(new Error("timeout")),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
 
     const endpoint = makeEndpoint();
 
@@ -124,11 +119,7 @@ describe("PerformanceCheck", () => {
     vi.stubGlobal("fetch", mockFetch());
 
     const endpoint = makeEndpoint({
-      redirectChain: [
-        "http://example.com",
-        "https://example.com",
-        "https://www.example.com",
-      ],
+      redirectChain: ["http://example.com", "https://example.com", "https://www.example.com"],
     });
 
     const result = await check.run(endpoint, "example.com");

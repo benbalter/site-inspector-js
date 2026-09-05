@@ -16,9 +16,7 @@ const SENSITIVE_FEATURES = [
 
 // Permissions-Policy format: feature=allowlist, feature2=allowlist
 // e.g. "camera=(), microphone=(self), geolocation=*"
-function parsePermissionsPolicy(
-  header: string,
-): Record<string, string> {
+function parsePermissionsPolicy(header: string): Record<string, string> {
   const features: Record<string, string> = {};
   // Split on comma, then parse each directive
   for (const part of header.split(",")) {
@@ -39,11 +37,7 @@ export class PermissionsPolicyCheck implements Check {
     const ppHeader = endpoint.headers["permissions-policy"] ?? null;
     const fpHeader = endpoint.headers["feature-policy"] ?? null;
     const raw = ppHeader ?? fpHeader ?? null;
-    const headerType = ppHeader
-      ? "permissions-policy"
-      : fpHeader
-        ? "feature-policy"
-        : null;
+    const headerType = ppHeader ? "permissions-policy" : fpHeader ? "feature-policy" : null;
 
     if (!raw) {
       return {
