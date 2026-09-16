@@ -23,36 +23,47 @@ program
   .option("-c, --checks <checks>", "Comma-separated list of checks to run")
   .option("-i, --only-issues", "Show only items that need attention")
   .option("-t, --timeout <ms>", "Request timeout in milliseconds", "10000")
-  .action(async (domain: string, opts: { json?: boolean; allEndpoints?: boolean; checks?: string; onlyIssues?: boolean; timeout?: string }) => {
-    try {
-      const checks = opts.checks?.split(",").map((c) => c.trim());
-      const timeout = parseInt(opts.timeout ?? "10000", 10);
+  .action(
+    async (
+      domain: string,
+      opts: {
+        json?: boolean;
+        allEndpoints?: boolean;
+        checks?: string;
+        onlyIssues?: boolean;
+        timeout?: string;
+      },
+    ) => {
+      try {
+        const checks = opts.checks?.split(",").map((c) => c.trim());
+        const timeout = parseInt(opts.timeout ?? "10000", 10);
 
-      if (checks) {
-        const valid = availableChecks();
-        const invalid = checks.filter((c) => !valid.includes(c));
-        if (invalid.length > 0) {
-          console.error(chalk.red(`Unknown checks: ${invalid.join(", ")}`));
-          console.error(`Available: ${valid.join(", ")}`);
-          process.exit(1);
+        if (checks) {
+          const valid = availableChecks();
+          const invalid = checks.filter((c) => !valid.includes(c));
+          if (invalid.length > 0) {
+            console.error(chalk.red(`Unknown checks: ${invalid.join(", ")}`));
+            console.error(`Available: ${valid.join(", ")}`);
+            process.exit(1);
+          }
         }
-      }
 
-      console.error(chalk.gray(`Inspecting ${domain}...`));
-      const result = await inspect(domain, { timeout, checks, allEndpoints: opts.allEndpoints });
+        console.error(chalk.gray(`Inspecting ${domain}...`));
+        const result = await inspect(domain, { timeout, checks, allEndpoints: opts.allEndpoints });
 
-      if (opts.json) {
-        console.log(JSON.stringify(result, null, 2));
-      } else if (opts.onlyIssues) {
-        printIssues(result);
-      } else {
-        printResult(result);
+        if (opts.json) {
+          console.log(JSON.stringify(result, null, 2));
+        } else if (opts.onlyIssues) {
+          printIssues(result);
+        } else {
+          printResult(result);
+        }
+      } catch (err) {
+        console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
+        process.exit(1);
       }
-    } catch (err) {
-      console.error(chalk.red(`Error: ${err instanceof Error ? err.message : String(err)}`));
-      process.exit(1);
-    }
-  });
+    },
+  );
 
 program
   .command("checks")

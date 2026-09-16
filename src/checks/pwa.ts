@@ -12,18 +12,14 @@ export class PwaCheck implements Check {
     const $ = load(body);
 
     // Detect service worker registration in HTML/JS
-    const swRegistration =
-      /navigator\.serviceWorker\.register|serviceWorker\.register/i.test(body);
+    const swRegistration = /navigator\.serviceWorker\.register|serviceWorker\.register/i.test(body);
 
     const manifestHref = $('link[rel="manifest"]').attr("href") ?? null;
 
     // Probe for service worker
     const swUrl = `${origin}/sw.js`;
     const swAltUrl = `${origin}/service-worker.js`;
-    const [swExists, swAltExists] = await Promise.all([
-      probeUrl(swUrl),
-      probeUrl(swAltUrl),
-    ]);
+    const [swExists, swAltExists] = await Promise.all([probeUrl(swUrl), probeUrl(swAltUrl)]);
     const hasServiceWorker = swRegistration || swExists || swAltExists;
 
     // Fetch and parse manifest
@@ -47,8 +43,7 @@ export class PwaCheck implements Check {
 
     if (manifest) {
       hasManifest = true;
-      manifestName =
-        ((manifest.name as string) ?? (manifest.short_name as string)) ?? null;
+      manifestName = (manifest.name as string) ?? (manifest.short_name as string) ?? null;
       manifestDisplay = (manifest.display as string) ?? null;
       manifestStartUrl = (manifest.start_url as string) ?? null;
       manifestIcons = Array.isArray(manifest.icons) ? manifest.icons.length : 0;

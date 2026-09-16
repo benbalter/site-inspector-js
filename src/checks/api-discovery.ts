@@ -30,9 +30,7 @@ export class ApiDiscoveryCheck implements Check {
     );
 
     const found = results.filter((r) => r.found);
-    const hasGraphQL = found.some(
-      (r) => r.name === "graphql" || r.name === "graphiql",
-    );
+    const hasGraphQL = found.some((r) => r.name === "graphql" || r.name === "graphiql");
     const hasOpenAPI = found.some(
       (r) => r.name.startsWith("openapi") || r.name.startsWith("swagger"),
     );

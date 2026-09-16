@@ -49,8 +49,7 @@ describe("PermissionsPolicyCheck", () => {
   it("identifies dangerous grants when sensitive features use wildcard", async () => {
     const result = await check.run(
       makeEndpoint({
-        "permissions-policy":
-          "camera=*, microphone=(self), geolocation=*, payment=()",
+        "permissions-policy": "camera=*, microphone=(self), geolocation=*, payment=()",
       }),
       "example.com",
     );
@@ -87,8 +86,7 @@ describe("PermissionsPolicyCheck", () => {
   it("parses mixed blocked and allowed features", async () => {
     const result = await check.run(
       makeEndpoint({
-        "permissions-policy":
-          "camera=(), geolocation=(self), microphone=*",
+        "permissions-policy": "camera=(), geolocation=(self), microphone=*",
       }),
       "example.com",
     );
@@ -106,8 +104,7 @@ describe("PermissionsPolicyCheck", () => {
   it("handles whitespace and case-insensitivity in feature names", async () => {
     const result = await check.run(
       makeEndpoint({
-        "permissions-policy":
-          "  Camera = * , MICROPHONE = (self) , GeOlocation = () ",
+        "permissions-policy": "  Camera = * , MICROPHONE = (self) , GeOlocation = () ",
       }),
       "example.com",
     );
@@ -149,11 +146,7 @@ describe("PermissionsPolicyCheck", () => {
       "example.com",
     );
     expect(result.data.dangerousGrants).toEqual([]);
-    expect(result.data.allowed).toEqual([
-      "accelerometer",
-      "gyroscope",
-      "magnetometer",
-    ]);
+    expect(result.data.allowed).toEqual(["accelerometer", "gyroscope", "magnetometer"]);
   });
 
   it("returns rawHeader with the original header value", async () => {

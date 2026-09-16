@@ -6,7 +6,7 @@ const STRICTNESS: Record<string, "strict" | "moderate" | "loose"> = {
   "same-origin": "strict",
   "strict-origin": "strict",
   "strict-origin-when-cross-origin": "moderate",
-  "origin": "moderate",
+  origin: "moderate",
   "origin-when-cross-origin": "moderate",
   "no-referrer-when-downgrade": "loose",
   "unsafe-url": "loose",

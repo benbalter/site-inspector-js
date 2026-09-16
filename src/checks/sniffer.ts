@@ -12,16 +12,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(__dirname, "../../data");
 
 // Load categories and technologies once at module level
-const categories = JSON.parse(
-  readFileSync(resolve(dataDir, "categories.json"), "utf-8"),
-);
+const categories = JSON.parse(readFileSync(resolve(dataDir, "categories.json"), "utf-8"));
 Wappalyzer.setCategories(categories);
 
 const techDir = resolve(dataDir, "technologies");
 const allTechs: Record<string, unknown> = {};
-for (const file of readdirSync(techDir).filter((f: string) =>
-  f.endsWith(".json"),
-)) {
+for (const file of readdirSync(techDir).filter((f: string) => f.endsWith(".json"))) {
   Object.assign(allTechs, JSON.parse(readFileSync(resolve(techDir, file), "utf-8")));
 }
 Wappalyzer.setTechnologies(allTechs);

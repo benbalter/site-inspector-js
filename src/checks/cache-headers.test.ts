@@ -29,9 +29,9 @@ describe("CacheHeadersCheck", () => {
   it("returns grade A with full caching headers", async () => {
     const endpoint = makeEndpoint({
       "cache-control": "public, max-age=3600, immutable",
-      "etag": '"abc123"',
+      etag: '"abc123"',
       "last-modified": "Wed, 21 Oct 2023 07:28:00 GMT",
-      "vary": "Accept-Encoding",
+      vary: "Accept-Encoding",
     });
     const result = await check.run(endpoint, "example.com");
     expect(result.data.grade).toBe("A");
@@ -49,7 +49,7 @@ describe("CacheHeadersCheck", () => {
 
   it("returns etag as boolean true when present", async () => {
     const endpoint = makeEndpoint({
-      "etag": '"strong-etag"',
+      etag: '"strong-etag"',
     });
     const result = await check.run(endpoint, "example.com");
     expect(result.data.etag).toBe(true);
@@ -145,7 +145,7 @@ describe("CacheHeadersCheck", () => {
 
     it("adds score for etag header", async () => {
       const endpoint = makeEndpoint({
-        "etag": '"abc123"',
+        etag: '"abc123"',
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.score).toBe(2);
@@ -166,14 +166,14 @@ describe("CacheHeadersCheck", () => {
       expect(result.data.grade).toBe("F");
 
       // Grade D: score >= 1
-      endpoint = makeEndpoint({ "etag": '"abc"' });
+      endpoint = makeEndpoint({ etag: '"abc"' });
       result = await check.run(endpoint, "example.com");
       expect(result.data.grade).toBe("D");
 
       // Grade C: score >= 3
       endpoint = makeEndpoint({
         "cache-control": "public",
-        "etag": '"abc"',
+        etag: '"abc"',
       });
       result = await check.run(endpoint, "example.com");
       expect(result.data.grade).toBe("C");
@@ -181,7 +181,7 @@ describe("CacheHeadersCheck", () => {
       // Grade B: score >= 5 (cache-control=2, etag=2, last-modified=1)
       endpoint = makeEndpoint({
         "cache-control": "public, max-age=3600",
-        "etag": '"abc"',
+        etag: '"abc"',
       });
       result = await check.run(endpoint, "example.com");
       expect(result.data.grade).toBe("B");
@@ -189,10 +189,10 @@ describe("CacheHeadersCheck", () => {
       // Grade A: score >= 7
       endpoint = makeEndpoint({
         "cache-control": "public, max-age=3600",
-        "etag": '"abc"',
+        etag: '"abc"',
         "last-modified": "Wed, 21 Oct 2023 07:28:00 GMT",
-        "vary": "Accept-Encoding",
-        "pragma": "no-cache",
+        vary: "Accept-Encoding",
+        pragma: "no-cache",
       });
       result = await check.run(endpoint, "example.com");
       expect(result.data.grade).toBe("A");
@@ -202,7 +202,7 @@ describe("CacheHeadersCheck", () => {
   describe("vary header parsing", () => {
     it("splits vary header into array", async () => {
       const endpoint = makeEndpoint({
-        "vary": "Accept-Encoding, Accept-Language",
+        vary: "Accept-Encoding, Accept-Language",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.vary).toEqual(["Accept-Encoding", "Accept-Language"]);
@@ -210,7 +210,7 @@ describe("CacheHeadersCheck", () => {
 
     it("trims whitespace from vary values", async () => {
       const endpoint = makeEndpoint({
-        "vary": "  Accept-Encoding  ,  Accept-Language  ",
+        vary: "  Accept-Encoding  ,  Accept-Language  ",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.vary).toEqual(["Accept-Encoding", "Accept-Language"]);
@@ -226,7 +226,7 @@ describe("CacheHeadersCheck", () => {
   describe("other headers", () => {
     it("captures age header as number", async () => {
       const endpoint = makeEndpoint({
-        "age": "3600",
+        age: "3600",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.age).toBe(3600);
@@ -240,7 +240,7 @@ describe("CacheHeadersCheck", () => {
 
     it("captures expires header", async () => {
       const endpoint = makeEndpoint({
-        "expires": "Wed, 21 Oct 2025 07:28:00 GMT",
+        expires: "Wed, 21 Oct 2025 07:28:00 GMT",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.expires).toBe("Wed, 21 Oct 2025 07:28:00 GMT");
@@ -248,7 +248,7 @@ describe("CacheHeadersCheck", () => {
 
     it("captures pragma header", async () => {
       const endpoint = makeEndpoint({
-        "pragma": "no-cache",
+        pragma: "no-cache",
       });
       const result = await check.run(endpoint, "example.com");
       expect(result.data.pragma).toBe("no-cache");

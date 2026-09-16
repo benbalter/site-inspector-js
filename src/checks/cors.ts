@@ -7,8 +7,7 @@ export class CorsCheck implements Check {
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const headers = endpoint.headers;
     const allowOrigin = headers["access-control-allow-origin"] ?? null;
-    const allowCredentials =
-      headers["access-control-allow-credentials"]?.toLowerCase() === "true";
+    const allowCredentials = headers["access-control-allow-credentials"]?.toLowerCase() === "true";
     const allowMethods =
       headers["access-control-allow-methods"]
         ?.split(",")

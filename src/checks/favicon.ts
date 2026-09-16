@@ -32,12 +32,8 @@ export class FaviconCheck implements Check {
       });
     });
 
-    const hasAppleTouchIcon = icons.some((i) =>
-      i.rel.includes("apple-touch-icon"),
-    );
-    const hasSvgIcon = icons.some(
-      (i) => i.type === "image/svg+xml" || i.href.endsWith(".svg"),
-    );
+    const hasAppleTouchIcon = icons.some((i) => i.rel.includes("apple-touch-icon"));
+    const hasSvgIcon = icons.some((i) => i.type === "image/svg+xml" || i.href.endsWith(".svg"));
     const sizes = icons.map((i) => i.sizes).filter(Boolean) as string[];
 
     // Probe /favicon.ico

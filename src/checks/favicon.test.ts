@@ -2,10 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { EndpointData } from "../types.js";
 import { FaviconCheck } from "./favicon.js";
 
-function makeEndpoint(
-  body: string,
-  url: string = "https://example.com/page",
-): EndpointData {
+function makeEndpoint(body: string, url: string = "https://example.com/page"): EndpointData {
   return {
     url,
     statusCode: 200,
@@ -78,8 +75,7 @@ describe("FaviconCheck", () => {
   });
 
   it("detects SVG icon", async () => {
-    const body =
-      '<link rel="icon" href="/favicon.svg" type="image/svg+xml">';
+    const body = '<link rel="icon" href="/favicon.svg" type="image/svg+xml">';
     fetchSpy.mockResolvedValue({ status: 404 });
 
     const result = await check.run(makeEndpoint(body), "example.com");
@@ -156,8 +152,7 @@ describe("FaviconCheck", () => {
   });
 
   it("ignores link tags without rel=icon", async () => {
-    const body =
-      '<link rel="stylesheet" href="/style.css"><link rel="icon" href="/favicon.png">';
+    const body = '<link rel="stylesheet" href="/style.css"><link rel="icon" href="/favicon.png">';
     fetchSpy.mockResolvedValue({ status: 404 });
 
     const result = await check.run(makeEndpoint(body), "example.com");

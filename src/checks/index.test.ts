@@ -319,115 +319,226 @@ describe("Check Registry", () => {
       },
     }));
     vi.doMock("./headers.js", () => ({
-      HeadersCheck: class { name = "headers"; run = vi.fn().mockResolvedValue({ name: "headers", data: {} }); },
+      HeadersCheck: class {
+        name = "headers";
+        run = vi.fn().mockResolvedValue({ name: "headers", data: {} });
+      },
     }));
     vi.doMock("./https.js", () => ({
-      HttpsCheck: class { name = "https"; run = vi.fn().mockResolvedValue({ name: "https", data: {} }); },
+      HttpsCheck: class {
+        name = "https";
+        run = vi.fn().mockResolvedValue({ name: "https", data: {} });
+      },
     }));
     vi.doMock("./hsts.js", () => ({
-      HstsCheck: class { name = "hsts"; run = vi.fn().mockResolvedValue({ name: "hsts", data: {} }); },
+      HstsCheck: class {
+        name = "hsts";
+        run = vi.fn().mockResolvedValue({ name: "hsts", data: {} });
+      },
     }));
     vi.doMock("./content.js", () => ({
-      ContentCheck: class { name = "content"; run = vi.fn().mockResolvedValue({ name: "content", data: {} }); },
+      ContentCheck: class {
+        name = "content";
+        run = vi.fn().mockResolvedValue({ name: "content", data: {} });
+      },
     }));
     vi.doMock("./cookies.js", () => ({
-      CookiesCheck: class { name = "cookies"; run = vi.fn().mockResolvedValue({ name: "cookies", data: {} }); },
+      CookiesCheck: class {
+        name = "cookies";
+        run = vi.fn().mockResolvedValue({ name: "cookies", data: {} });
+      },
     }));
     vi.doMock("./sniffer.js", () => ({
-      SnifferCheck: class { name = "sniffer"; run = vi.fn().mockResolvedValue({ name: "sniffer", data: {} }); },
+      SnifferCheck: class {
+        name = "sniffer";
+        run = vi.fn().mockResolvedValue({ name: "sniffer", data: {} });
+      },
     }));
     vi.doMock("./accessibility.js", () => ({
-      AccessibilityCheck: class { name = "accessibility"; run = vi.fn().mockResolvedValue({ name: "accessibility", data: {} }); },
+      AccessibilityCheck: class {
+        name = "accessibility";
+        run = vi.fn().mockResolvedValue({ name: "accessibility", data: {} });
+      },
     }));
     vi.doMock("./well-known.js", () => ({
-      WellKnownCheck: class { name = "well-known"; run = vi.fn().mockResolvedValue({ name: "well-known", data: {} }); },
+      WellKnownCheck: class {
+        name = "well-known";
+        run = vi.fn().mockResolvedValue({ name: "well-known", data: {} });
+      },
     }));
     vi.doMock("./sri.js", () => ({
-      SriCheck: class { name = "sri"; run = vi.fn().mockResolvedValue({ name: "sri", data: {} }); },
+      SriCheck: class {
+        name = "sri";
+        run = vi.fn().mockResolvedValue({ name: "sri", data: {} });
+      },
     }));
     vi.doMock("./mixed-content.js", () => ({
-      MixedContentCheck: class { name = "mixed-content"; run = vi.fn().mockResolvedValue({ name: "mixed-content", data: {} }); },
+      MixedContentCheck: class {
+        name = "mixed-content";
+        run = vi.fn().mockResolvedValue({ name: "mixed-content", data: {} });
+      },
     }));
     vi.doMock("./carbon.js", () => ({
-      CarbonCheck: class { name = "carbon"; run = vi.fn().mockResolvedValue({ name: "carbon", data: {} }); },
+      CarbonCheck: class {
+        name = "carbon";
+        run = vi.fn().mockResolvedValue({ name: "carbon", data: {} });
+      },
     }));
     vi.doMock("./whois.js", () => ({
-      WhoisCheck: class { name = "whois"; run = vi.fn().mockResolvedValue({ name: "whois", data: {} }); },
+      WhoisCheck: class {
+        name = "whois";
+        run = vi.fn().mockResolvedValue({ name: "whois", data: {} });
+      },
     }));
     vi.doMock("./lighthouse.js", () => ({
-      LighthouseCheck: class { name = "lighthouse"; run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} }); },
+      LighthouseCheck: class {
+        name = "lighthouse";
+        run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} });
+      },
     }));
     vi.doMock("./csp.js", () => ({
-      CspCheck: class { name = "csp"; run = vi.fn().mockResolvedValue({ name: "csp", data: {} }); },
+      CspCheck: class {
+        name = "csp";
+        run = vi.fn().mockResolvedValue({ name: "csp", data: {} });
+      },
     }));
     vi.doMock("./robots.js", () => ({
-      RobotsCheck: class { name = "robots"; run = vi.fn().mockResolvedValue({ name: "robots", data: {} }); },
+      RobotsCheck: class {
+        name = "robots";
+        run = vi.fn().mockResolvedValue({ name: "robots", data: {} });
+      },
     }));
     vi.doMock("./opengraph.js", () => ({
-      OpenGraphCheck: class { name = "opengraph"; run = vi.fn().mockResolvedValue({ name: "opengraph", data: {} }); },
+      OpenGraphCheck: class {
+        name = "opengraph";
+        run = vi.fn().mockResolvedValue({ name: "opengraph", data: {} });
+      },
     }));
     vi.doMock("./dns-security.js", () => ({
-      DnsSecurityCheck: class { name = "dns-security"; run = vi.fn().mockResolvedValue({ name: "dns-security", data: {} }); },
+      DnsSecurityCheck: class {
+        name = "dns-security";
+        run = vi.fn().mockResolvedValue({ name: "dns-security", data: {} });
+      },
     }));
     vi.doMock("./performance.js", () => ({
-      PerformanceCheck: class { name = "performance"; run = vi.fn().mockResolvedValue({ name: "performance", data: {} }); },
+      PerformanceCheck: class {
+        name = "performance";
+        run = vi.fn().mockResolvedValue({ name: "performance", data: {} });
+      },
     }));
     vi.doMock("./structured-data.js", () => ({
-      StructuredDataCheck: class { name = "structured-data"; run = vi.fn().mockResolvedValue({ name: "structured-data", data: {} }); },
+      StructuredDataCheck: class {
+        name = "structured-data";
+        run = vi.fn().mockResolvedValue({ name: "structured-data", data: {} });
+      },
     }));
     vi.doMock("./hsts-preload.js", () => ({
-      HstsPreloadCheck: class { name = "hsts-preload"; run = vi.fn().mockResolvedValue({ name: "hsts-preload", data: {} }); },
+      HstsPreloadCheck: class {
+        name = "hsts-preload";
+        run = vi.fn().mockResolvedValue({ name: "hsts-preload", data: {} });
+      },
     }));
     vi.doMock("./cors.js", () => ({
-      CorsCheck: class { name = "cors"; run = vi.fn().mockResolvedValue({ name: "cors", data: {} }); },
+      CorsCheck: class {
+        name = "cors";
+        run = vi.fn().mockResolvedValue({ name: "cors", data: {} });
+      },
     }));
     vi.doMock("./referrer-policy.js", () => ({
-      ReferrerPolicyCheck: class { name = "referrer-policy"; run = vi.fn().mockResolvedValue({ name: "referrer-policy", data: {} }); },
+      ReferrerPolicyCheck: class {
+        name = "referrer-policy";
+        run = vi.fn().mockResolvedValue({ name: "referrer-policy", data: {} });
+      },
     }));
     vi.doMock("./permissions-policy.js", () => ({
-      PermissionsPolicyCheck: class { name = "permissions-policy"; run = vi.fn().mockResolvedValue({ name: "permissions-policy", data: {} }); },
+      PermissionsPolicyCheck: class {
+        name = "permissions-policy";
+        run = vi.fn().mockResolvedValue({ name: "permissions-policy", data: {} });
+      },
     }));
     vi.doMock("./cache-headers.js", () => ({
-      CacheHeadersCheck: class { name = "cache-headers"; run = vi.fn().mockResolvedValue({ name: "cache-headers", data: {} }); },
+      CacheHeadersCheck: class {
+        name = "cache-headers";
+        run = vi.fn().mockResolvedValue({ name: "cache-headers", data: {} });
+      },
     }));
     vi.doMock("./tls-versions.js", () => ({
-      TlsVersionsCheck: class { name = "tls-versions"; run = vi.fn().mockResolvedValue({ name: "tls-versions", data: {} }); },
+      TlsVersionsCheck: class {
+        name = "tls-versions";
+        run = vi.fn().mockResolvedValue({ name: "tls-versions", data: {} });
+      },
     }));
     vi.doMock("./email-security.js", () => ({
-      EmailSecurityCheck: class { name = "email-security"; run = vi.fn().mockResolvedValue({ name: "email-security", data: {} }); },
+      EmailSecurityCheck: class {
+        name = "email-security";
+        run = vi.fn().mockResolvedValue({ name: "email-security", data: {} });
+      },
     }));
     vi.doMock("./dnssec.js", () => ({
-      DnssecCheck: class { name = "dnssec"; run = vi.fn().mockResolvedValue({ name: "dnssec", data: {} }); },
+      DnssecCheck: class {
+        name = "dnssec";
+        run = vi.fn().mockResolvedValue({ name: "dnssec", data: {} });
+      },
     }));
     vi.doMock("./ipv6.js", () => ({
-      Ipv6Check: class { name = "ipv6"; run = vi.fn().mockResolvedValue({ name: "ipv6", data: {} }); },
+      Ipv6Check: class {
+        name = "ipv6";
+        run = vi.fn().mockResolvedValue({ name: "ipv6", data: {} });
+      },
     }));
     vi.doMock("./geo.js", () => ({
-      GeoCheck: class { name = "geo"; run = vi.fn().mockResolvedValue({ name: "geo", data: {} }); },
+      GeoCheck: class {
+        name = "geo";
+        run = vi.fn().mockResolvedValue({ name: "geo", data: {} });
+      },
     }));
     vi.doMock("./canonical.js", () => ({
-      CanonicalCheck: class { name = "canonical"; run = vi.fn().mockResolvedValue({ name: "canonical", data: {} }); },
+      CanonicalCheck: class {
+        name = "canonical";
+        run = vi.fn().mockResolvedValue({ name: "canonical", data: {} });
+      },
     }));
     vi.doMock("./i18n.js", () => ({
-      I18nCheck: class { name = "i18n"; run = vi.fn().mockResolvedValue({ name: "i18n", data: {} }); },
+      I18nCheck: class {
+        name = "i18n";
+        run = vi.fn().mockResolvedValue({ name: "i18n", data: {} });
+      },
     }));
     vi.doMock("./mobile.js", () => ({
-      MobileCheck: class { name = "mobile"; run = vi.fn().mockResolvedValue({ name: "mobile", data: {} }); },
+      MobileCheck: class {
+        name = "mobile";
+        run = vi.fn().mockResolvedValue({ name: "mobile", data: {} });
+      },
     }));
     vi.doMock("./favicon.js", () => ({
-      FaviconCheck: class { name = "favicon"; run = vi.fn().mockResolvedValue({ name: "favicon", data: {} }); },
+      FaviconCheck: class {
+        name = "favicon";
+        run = vi.fn().mockResolvedValue({ name: "favicon", data: {} });
+      },
     }));
     vi.doMock("./privacy.js", () => ({
-      PrivacyCheck: class { name = "privacy"; run = vi.fn().mockResolvedValue({ name: "privacy", data: {} }); },
+      PrivacyCheck: class {
+        name = "privacy";
+        run = vi.fn().mockResolvedValue({ name: "privacy", data: {} });
+      },
     }));
     vi.doMock("./a11y-axe.js", () => ({
-      A11yAxeCheck: class { name = "a11y-axe"; run = vi.fn().mockResolvedValue({ name: "a11y-axe", data: {} }); },
+      A11yAxeCheck: class {
+        name = "a11y-axe";
+        run = vi.fn().mockResolvedValue({ name: "a11y-axe", data: {} });
+      },
     }));
     vi.doMock("./api-discovery.js", () => ({
-      ApiDiscoveryCheck: class { name = "api-discovery"; run = vi.fn().mockResolvedValue({ name: "api-discovery", data: {} }); },
+      ApiDiscoveryCheck: class {
+        name = "api-discovery";
+        run = vi.fn().mockResolvedValue({ name: "api-discovery", data: {} });
+      },
     }));
     vi.doMock("./pwa.js", () => ({
-      PwaCheck: class { name = "pwa"; run = vi.fn().mockResolvedValue({ name: "pwa", data: {} }); },
+      PwaCheck: class {
+        name = "pwa";
+        run = vi.fn().mockResolvedValue({ name: "pwa", data: {} });
+      },
     }));
 
     const freshModule = await import("./index.js");

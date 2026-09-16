@@ -12,9 +12,7 @@ export class CacheHeadersCheck implements Check {
     const etag = endpoint.headers["etag"] ?? null;
     const lastModified = endpoint.headers["last-modified"] ?? null;
     const vary = endpoint.headers["vary"] ?? null;
-    const age = endpoint.headers["age"]
-      ? Number(endpoint.headers["age"])
-      : null;
+    const age = endpoint.headers["age"] ? Number(endpoint.headers["age"]) : null;
     const expires = endpoint.headers["expires"] ?? null;
     const pragma = endpoint.headers["pragma"] ?? null;
 
@@ -48,8 +46,7 @@ export class CacheHeadersCheck implements Check {
     if (maxAge !== null && maxAge > 0) score += 2;
     if (immutable) score += 1;
     if (noStore) score -= 1; // not necessarily bad, but no caching
-    const grade =
-      score >= 7 ? "A" : score >= 5 ? "B" : score >= 3 ? "C" : score >= 1 ? "D" : "F";
+    const grade = score >= 7 ? "A" : score >= 5 ? "B" : score >= 3 ? "C" : score >= 1 ? "D" : "F";
 
     return {
       name: this.name,

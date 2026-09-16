@@ -33,14 +33,12 @@ export class DnsCheck implements Check {
     let caaRecords: object[] = [];
 
     // Resolve records in parallel
-    const [aResult, aaaaResult, mxResult, caaResult] = await Promise.allSettled(
-      [
-        resolver.resolve4(domain),
-        resolver.resolve6(domain),
-        resolver.resolveMx(domain),
-        resolver.resolveCaa(domain),
-      ],
-    );
+    const [aResult, aaaaResult, mxResult, caaResult] = await Promise.allSettled([
+      resolver.resolve4(domain),
+      resolver.resolve6(domain),
+      resolver.resolveMx(domain),
+      resolver.resolveCaa(domain),
+    ]);
 
     if (aResult.status === "fulfilled") aRecords = aResult.value;
     if (aaaaResult.status === "fulfilled") aaaaRecords = aaaaResult.value;

@@ -42,9 +42,7 @@ describe("GeoCheck", () => {
 
   it("should return null values when DNS resolution fails", async () => {
     const dns = await import("node:dns/promises");
-    vi.mocked(dns.default.resolve4).mockRejectedValueOnce(
-      new Error("ENOTFOUND")
-    );
+    vi.mocked(dns.default.resolve4).mockRejectedValueOnce(new Error("ENOTFOUND"));
 
     const result = await check.run(mockEndpoint, "invalid-domain.test");
 

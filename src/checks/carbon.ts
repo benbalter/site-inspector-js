@@ -16,8 +16,7 @@ export class CarbonCheck implements Check {
     const externalStylesheets = $("link[rel='stylesheet'][href]").length;
     const images = $("img").length;
     const iframes = $("iframe").length;
-    const totalExternalResources =
-      externalScripts + externalStylesheets + images + iframes;
+    const totalExternalResources = externalScripts + externalStylesheets + images + iframes;
 
     const inlineScriptEls = $("script").not("[src]");
     const inlineScripts = inlineScriptEls.length;

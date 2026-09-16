@@ -3,10 +3,7 @@ import type { EndpointData } from "../types.js";
 
 const { PwaCheck } = await import("./pwa.js");
 
-function makeEndpoint(
-  url = "https://example.com/page",
-  body = "<html></html>",
-): EndpointData {
+function makeEndpoint(url = "https://example.com/page", body = "<html></html>"): EndpointData {
   return {
     url,
     statusCode: 200,
@@ -109,8 +106,7 @@ describe("PwaCheck", () => {
   });
 
   it("detects manifest without service worker", async () => {
-    const htmlBody =
-      '<html><link rel="manifest" href="/manifest.webmanifest"></html>';
+    const htmlBody = '<html><link rel="manifest" href="/manifest.webmanifest"></html>';
 
     fetchSpy.mockImplementation((url: string) => {
       if (url.includes("manifest")) {
@@ -334,8 +330,7 @@ describe("PwaCheck", () => {
   });
 
   it("resolves relative manifest URLs correctly", async () => {
-    const htmlBody =
-      '<html><link rel="manifest" href="./manifest.json"></html>';
+    const htmlBody = '<html><link rel="manifest" href="./manifest.json"></html>';
 
     fetchSpy.mockImplementation((url: string) => {
       if (url === "https://example.com/manifest.json") {

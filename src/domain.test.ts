@@ -67,10 +67,18 @@ function makeMockEndpoint(opts: {
         error: opts.up ? undefined : "Connection refused",
       };
     },
-    get isUp() { return opts.up; },
-    get isRedirect() { return opts.redirect ?? false; },
-    get redirectTarget() { return opts.redirectTarget; },
-    get isExternalRedirect() { return opts.externalRedirect ?? false; },
+    get isUp() {
+      return opts.up;
+    },
+    get isRedirect() {
+      return opts.redirect ?? false;
+    },
+    get redirectTarget() {
+      return opts.redirectTarget;
+    },
+    get isExternalRedirect() {
+      return opts.externalRedirect ?? false;
+    },
   };
 }
 
@@ -163,8 +171,18 @@ describe("Domain", () => {
       setupEndpoints([
         { url: "https://example.com", up: true },
         { url: "https://www.example.com", up: true },
-        { url: "http://example.com", up: true, redirect: true, redirectTarget: "https://example.com" },
-        { url: "http://www.example.com", up: true, redirect: true, redirectTarget: "https://www.example.com" },
+        {
+          url: "http://example.com",
+          up: true,
+          redirect: true,
+          redirectTarget: "https://example.com",
+        },
+        {
+          url: "http://www.example.com",
+          up: true,
+          redirect: true,
+          redirectTarget: "https://www.example.com",
+        },
       ]);
 
       const domain = new Domain("example.com");

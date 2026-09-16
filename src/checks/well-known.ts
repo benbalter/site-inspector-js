@@ -44,8 +44,7 @@ function parseSecurityTxt(body: string): Omit<SecurityTxtResult, "present"> {
     if (key === "contact") fields.contact = value;
     else if (key === "expires") fields.expires = value;
     else if (key === "encryption") fields.encryption = value;
-    else if (key === "policy" || key === "acknowledgments")
-      fields.policy = value;
+    else if (key === "policy" || key === "acknowledgments") fields.policy = value;
   }
 
   return fields as Omit<SecurityTxtResult, "present">;

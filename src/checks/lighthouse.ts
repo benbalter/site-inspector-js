@@ -19,12 +19,7 @@ export class LighthouseCheck implements Check {
         const result = await lighthouse(endpoint.url, {
           port: chrome.port,
           output: "json",
-          onlyCategories: [
-            "performance",
-            "accessibility",
-            "best-practices",
-            "seo",
-          ],
+          onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
         });
 
         if (!result || !result.lhr) {
@@ -52,22 +47,10 @@ export class LighthouseCheck implements Check {
               seo: scoreOrNull(categories.seo),
             },
             metrics: {
-              firstContentfulPaint: metricOrNull(
-                audits,
-                "first-contentful-paint",
-              ),
-              largestContentfulPaint: metricOrNull(
-                audits,
-                "largest-contentful-paint",
-              ),
-              cumulativeLayoutShift: metricOrNull(
-                audits,
-                "cumulative-layout-shift",
-              ),
-              totalBlockingTime: metricOrNull(
-                audits,
-                "total-blocking-time",
-              ),
+              firstContentfulPaint: metricOrNull(audits, "first-contentful-paint"),
+              largestContentfulPaint: metricOrNull(audits, "largest-contentful-paint"),
+              cumulativeLayoutShift: metricOrNull(audits, "cumulative-layout-shift"),
+              totalBlockingTime: metricOrNull(audits, "total-blocking-time"),
               speedIndex: metricOrNull(audits, "speed-index"),
               timeToInteractive: metricOrNull(audits, "interactive"),
             },
@@ -87,20 +70,15 @@ export class LighthouseCheck implements Check {
         name: this.name,
         data: {
           available: false,
-          reason: isUnavailable
-            ? "Chrome or Lighthouse not available"
-            : message,
+          reason: isUnavailable ? "Chrome or Lighthouse not available" : message,
         },
       };
     }
   }
 }
 
-function scoreOrNull(
-  category: { score: number | null } | undefined,
-): number | null {
-  if (!category || category.score === null || category.score === undefined)
-    return null;
+function scoreOrNull(category: { score: number | null } | undefined): number | null {
+  if (!category || category.score === null || category.score === undefined) return null;
   return Math.round(category.score * 100);
 }
 

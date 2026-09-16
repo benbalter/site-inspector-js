@@ -12,9 +12,7 @@ function makeEndpoint(url = "https://example.com/"): EndpointData {
   };
 }
 
-function mockFetch(
-  handler: (url: string) => boolean,
-) {
+function mockFetch(handler: (url: string) => boolean) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: string | URL | Request) => {

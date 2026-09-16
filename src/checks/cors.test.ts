@@ -77,8 +77,7 @@ describe("CorsCheck", () => {
         "access-control-allow-origin": "https://api.example.com",
         "access-control-allow-credentials": "true",
         "access-control-allow-methods": "GET, POST, OPTIONS",
-        "access-control-allow-headers":
-          "Content-Type, Authorization, X-Custom-Header",
+        "access-control-allow-headers": "Content-Type, Authorization, X-Custom-Header",
         "access-control-expose-headers": "X-Total-Count",
         "access-control-max-age": "86400",
       }),
@@ -88,11 +87,7 @@ describe("CorsCheck", () => {
     expect(result.data.allowOrigin).toBe("https://api.example.com");
     expect(result.data.allowCredentials).toBe(true);
     expect(result.data.allowMethods).toEqual(["GET", "POST", "OPTIONS"]);
-    expect(result.data.allowHeaders).toEqual([
-      "Content-Type",
-      "Authorization",
-      "X-Custom-Header",
-    ]);
+    expect(result.data.allowHeaders).toEqual(["Content-Type", "Authorization", "X-Custom-Header"]);
     expect(result.data.exposeHeaders).toEqual(["X-Total-Count"]);
     expect(result.data.maxAge).toBe(86400);
     expect(result.data.misconfigured).toBe(false);

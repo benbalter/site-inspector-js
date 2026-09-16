@@ -17,8 +17,7 @@ export class I18nCheck implements Check {
       $('meta[http-equiv="Content-Type"]')
         .attr("content")
         ?.match(/charset=([^\s;]+)/i)?.[1] ?? null;
-    const httpCharset =
-      headers["content-type"]?.match(/charset=([^\s;]+)/i)?.[1] ?? null;
+    const httpCharset = headers["content-type"]?.match(/charset=([^\s;]+)/i)?.[1] ?? null;
     const charset = charsetMeta ?? httpEquivCharset ?? httpCharset ?? null;
 
     const contentLanguage = headers["content-language"] ?? null;
@@ -33,9 +32,8 @@ export class I18nCheck implements Check {
     });
 
     const hasXDefault = hreflangs.some((h) => h.lang === "x-default");
-    const languageCount = new Set(
-      hreflangs.map((h) => h.lang).filter((l) => l !== "x-default"),
-    ).size;
+    const languageCount = new Set(hreflangs.map((h) => h.lang).filter((l) => l !== "x-default"))
+      .size;
 
     const dir = $("html").attr("dir")?.toLowerCase() ?? null;
 

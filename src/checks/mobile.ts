@@ -31,8 +31,7 @@ export class MobileCheck implements Check {
     if (appleTouchIcon) score += 2;
     if (manifestLink) score += 2;
     if (mobileWebAppCapable) score += 1;
-    const grade =
-      score >= 7 ? "A" : score >= 5 ? "B" : score >= 3 ? "C" : score >= 1 ? "D" : "F";
+    const grade = score >= 7 ? "A" : score >= 5 ? "B" : score >= 3 ? "C" : score >= 1 ? "D" : "F";
 
     return {
       name: this.name,

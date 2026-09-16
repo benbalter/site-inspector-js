@@ -44,13 +44,8 @@ describe("CookiesCheck", () => {
   });
 
   it("handles multiple cookies with mixed security flags", async () => {
-    const header =
-      "sid=abc; Secure; HttpOnly; SameSite=Lax, " +
-      "tracker=xyz; SameSite=None";
-    const result = await check.run(
-      makeEndpoint({ "set-cookie": header }),
-      "example.com",
-    );
+    const header = "sid=abc; Secure; HttpOnly; SameSite=Lax, " + "tracker=xyz; SameSite=None";
+    const result = await check.run(makeEndpoint({ "set-cookie": header }), "example.com");
 
     expect(result.data.hasCookies).toBe(true);
     expect(result.data.count).toBe(2);

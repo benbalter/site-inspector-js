@@ -47,10 +47,7 @@ export class SriCheck implements Check {
 
     const totalExternal = totalExternalScripts + totalExternalStylesheets;
     const totalWithSri = scriptsWithSri + stylesheetsWithSri;
-    const coverage =
-      totalExternal === 0
-        ? 100
-        : Math.round((totalWithSri / totalExternal) * 100);
+    const coverage = totalExternal === 0 ? 100 : Math.round((totalWithSri / totalExternal) * 100);
 
     return {
       name: this.name,

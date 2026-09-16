@@ -40,8 +40,7 @@ export class HstsCheck implements Check {
       }
     }
 
-    const preloadReady =
-      maxAge !== null && maxAge >= 31536000 && includeSubDomains && preload;
+    const preloadReady = maxAge !== null && maxAge >= 31536000 && includeSubDomains && preload;
 
     return {
       name: this.name,

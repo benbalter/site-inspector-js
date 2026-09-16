@@ -28,8 +28,7 @@ export class WhoisCheck implements Check {
       const expirationDate: string | null = result?.expirationDate ?? null;
       const updatedDate: string | null = result?.updatedDate ?? null;
       const nameServers = parseNameServers(result?.nameServer);
-      const registrantOrganization: string | null =
-        result?.registrantOrganization ?? null;
+      const registrantOrganization: string | null = result?.registrantOrganization ?? null;
 
       const now = new Date();
       let domainAge: number | null = null;

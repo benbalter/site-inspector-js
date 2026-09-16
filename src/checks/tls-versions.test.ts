@@ -11,40 +11,35 @@ describe("TlsVersionsCheck", () => {
   });
 
   function mockTlsConnect(supportedVersions: string[] = []) {
-    const connectMock = vi.fn(
-      (
-        opts: Record<string, unknown>,
-        cb?: () => void,
-      ) => {
-        const handlers: Record<string, Array<() => void>> = {};
-        const socket = {
-          on: vi.fn((event: string, handler: () => void) => {
-            if (!handlers[event]) {
-              handlers[event] = [];
-            }
-            handlers[event].push(handler);
-            return socket;
-          }),
-          destroy: vi.fn(),
-        };
-
-        const version = (opts.minVersion as string) || (opts.maxVersion as string) || "";
-        const isSupported = supportedVersions.includes(version);
-
-        // Simulate async behavior
-        setImmediate(() => {
-          if (isSupported) {
-            if (cb) cb();
-          } else {
-            if (handlers["error"]) {
-              handlers["error"].forEach((h) => h());
-            }
+    const connectMock = vi.fn((opts: Record<string, unknown>, cb?: () => void) => {
+      const handlers: Record<string, Array<() => void>> = {};
+      const socket = {
+        on: vi.fn((event: string, handler: () => void) => {
+          if (!handlers[event]) {
+            handlers[event] = [];
           }
-        });
+          handlers[event].push(handler);
+          return socket;
+        }),
+        destroy: vi.fn(),
+      };
 
-        return socket;
-      }
-    );
+      const version = (opts.minVersion as string) || (opts.maxVersion as string) || "";
+      const isSupported = supportedVersions.includes(version);
+
+      // Simulate async behavior
+      setImmediate(() => {
+        if (isSupported) {
+          if (cb) cb();
+        } else {
+          if (handlers["error"]) {
+            handlers["error"].forEach((h) => h());
+          }
+        }
+      });
+
+      return socket;
+    });
 
     vi.mocked(tls.connect).mockImplementation(connectMock);
   }
