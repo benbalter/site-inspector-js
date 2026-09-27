@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import type { Check } from "./check.js";
+import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
 const require = createRequire(import.meta.url);
@@ -22,8 +22,9 @@ interface AxeResults {
 
 export class A11yAxeCheck implements Check {
   name = "a11y-axe";
+  heavy = true;
 
-  async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
+  async run(endpoint: EndpointData, _domain: string, ctx?: CheckContext): Promise<CheckResult> {
     const body = endpoint.body ?? "";
 
     if (!body.trim()) {
@@ -42,8 +43,13 @@ export class A11yAxeCheck implements Check {
       };
     }
 
+    // Closing the window stops jsdom's timers and subresource loads.
+    let dom: InstanceType<typeof JSDOM> | undefined;
+    const closeWindow = () => dom?.window.close();
+    ctx?.signal.addEventListener("abort", closeWindow, { once: true });
+
     try {
-      const dom = new JSDOM(body, {
+      dom = new JSDOM(body, {
         runScripts: "dangerously",
         resources: "usable",
         pretendToBeVisual: true,
@@ -129,8 +135,6 @@ export class A11yAxeCheck implements Check {
         );
       });
 
-      dom.window.close();
-
       const violations = results.violations || [];
       const bySeverity = { critical: 0, serious: 0, moderate: 0, minor: 0 };
       for (const v of violations) {
@@ -173,6 +177,9 @@ export class A11yAxeCheck implements Check {
           error: error instanceof Error ? error.message : String(error),
         },
       };
+    } finally {
+      ctx?.signal.removeEventListener("abort", closeWindow);
+      closeWindow();
     }
   }
 }

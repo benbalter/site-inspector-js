@@ -15,7 +15,9 @@ export class Domain {
   private httpRoot: Endpoint;
   private httpWww: Endpoint;
 
+  private _resolving: Promise<void> | null = null;
   private _resolved = false;
+  private _properties: { props: DomainProperties; canonical: Endpoint } | null = null;
 
   constructor(domain: string, timeoutMs = 10_000) {
     this.domain = normalizeDomain(domain);
@@ -28,36 +30,39 @@ export class Domain {
     this.httpWww = new Endpoint(`http://www.${d}`, this.timeoutMs);
   }
 
-  /** Fetch all 4 endpoints in parallel. */
-  async resolve(): Promise<void> {
-    if (this._resolved) return;
-
-    await Promise.allSettled([
+  /** Fetch all 4 endpoints in parallel. Concurrent calls share one run. */
+  resolve(): Promise<void> {
+    this._resolving ??= Promise.allSettled([
       this.httpsRoot.fetch(),
       this.httpsWww.fetch(),
       this.httpRoot.fetch(),
       this.httpWww.fetch(),
-    ]);
-
-    this._resolved = true;
+    ]).then(() => {
+      this._resolved = true;
+    });
+    return this._resolving;
   }
 
   /** The canonical (best) endpoint: prefer https over http, www if canonicallyWww. */
   get canonicalEndpoint(): Endpoint {
-    const { https, canonicallyWww } = this.computeProperties();
-    if (https && canonicallyWww) return this.httpsWww;
-    if (https) return this.httpsRoot;
-    if (canonicallyWww) return this.httpWww;
-    return this.httpRoot;
+    return this.compute().canonical;
   }
 
   /** Domain-level properties derived from endpoint probing. */
   get properties(): DomainProperties {
-    return this.computeProperties();
+    return this.compute().props;
   }
 
-  /** Core computation, avoids circular calls between properties and canonicalEndpoint. */
-  private computeProperties(): DomainProperties {
+  /** Compute properties once the endpoints have resolved, then memoize them. */
+  private compute(): { props: DomainProperties; canonical: Endpoint } {
+    if (this._properties) return this._properties;
+    const result = this.computeProperties();
+    // Before resolve() finishes the endpoints are still empty, so don't cache.
+    if (this._resolved) this._properties = result;
+    return result;
+  }
+
+  private computeProperties(): { props: DomainProperties; canonical: Endpoint } {
     const httpsRootUp = this.httpsRoot.isUp;
     const httpsWwwUp = this.httpsWww.isUp;
     const httpRootUp = this.httpRoot.isUp;
@@ -69,23 +74,16 @@ export class Domain {
     const https = httpsRootUp || httpsWwwUp;
 
     // HTTP endpoints redirect to HTTPS or are down
-    const httpRootEnforces =
-      !httpRootUp || (this.httpRoot.isRedirect && redirectsToHttps(this.httpRoot));
-    const httpWwwEnforces =
-      !httpWwwUp || (this.httpWww.isRedirect && redirectsToHttps(this.httpWww));
+    const httpRootEnforces = !httpRootUp || redirectsToProtocol(this.httpRoot, "https:");
+    const httpWwwEnforces = !httpWwwUp || redirectsToProtocol(this.httpWww, "https:");
     const enforcesHttps = https && httpRootEnforces && httpWwwEnforces;
-
-    // HTTPS canonical endpoint redirects to HTTP
-    const canonical = this.canonicalEndpointFor(https, root);
-    const downgradesHttps =
-      https && canonical !== null && canonical.isRedirect && redirectsToHttp(canonical);
 
     // Non-www redirects to www, or all non-www endpoints are down
     const canonicallyWww =
       www && !root
         ? true
         : www && root
-          ? redirectsToWww(this.httpsRoot) || redirectsToWww(this.httpRoot)
+          ? this.redirectsToWww(this.httpsRoot) || this.redirectsToWww(this.httpRoot)
           : false;
 
     // HTTP redirects to HTTPS, or all HTTP endpoints are down
@@ -96,67 +94,59 @@ export class Domain {
           ? httpRootEnforces && httpWwwEnforces
           : false;
 
-    // Determine canonical endpoint inline to avoid recursion
-    let canonicalEp: Endpoint;
-    if (https && canonicallyWww) canonicalEp = this.httpsWww;
-    else if (https) canonicalEp = this.httpsRoot;
-    else if (canonicallyWww) canonicalEp = this.httpWww;
-    else canonicalEp = this.httpRoot;
+    let canonical: Endpoint;
+    if (https && canonicallyWww) canonical = this.httpsWww;
+    else if (https) canonical = this.httpsRoot;
+    else if (canonicallyWww) canonical = this.httpWww;
+    else canonical = this.httpRoot;
 
-    const redirect = canonicalEp.isExternalRedirect;
-    const redirectTarget = redirect ? canonicalEp.redirectTarget : undefined;
+    // The canonical HTTPS endpoint redirects back to HTTP
+    const downgradesHttps = https && redirectsToProtocol(canonical, "http:");
+
+    const redirect = canonical.isExternalRedirect;
+    const redirectTarget = redirect ? canonical.redirectTarget : undefined;
 
     return {
-      up,
-      www,
-      root,
-      https,
-      enforcesHttps,
-      downgradesHttps,
-      canonicallyWww,
-      canonicallyHttps,
-      redirect,
-      redirectTarget,
+      canonical,
+      props: {
+        up,
+        www,
+        root,
+        https,
+        enforcesHttps,
+        downgradesHttps,
+        canonicallyWww,
+        canonicallyHttps,
+        serverError: up && canonical.isServerError,
+        redirect,
+        redirectTarget,
+      },
     };
+  }
+
+  /** Whether `ep` redirects to exactly the www variant of this domain. */
+  private redirectsToWww(ep: Endpoint): boolean {
+    const target = ep.redirectTarget;
+    if (!ep.isRedirect || !target) return false;
+    try {
+      return new URL(target).hostname === `www.${this.domain}`;
+    } catch {
+      return false;
+    }
   }
 
   /** EndpointInfo for all 4 endpoints. */
   get endpoints(): EndpointInfo[] {
     return [this.httpsRoot.info, this.httpsWww.info, this.httpRoot.info, this.httpWww.info];
   }
-
-  /** Helper to pick the canonical HTTPS endpoint without triggering recursion. */
-  private canonicalEndpointFor(https: boolean, root: boolean): Endpoint | null {
-    if (!https) return null;
-    return root ? this.httpsRoot : this.httpsWww;
-  }
 }
 
-function redirectsToHttps(ep: Endpoint): boolean {
+/** Whether `ep` redirects, ending up on the given protocol ("https:" or "http:"). */
+function redirectsToProtocol(ep: Endpoint, protocol: string): boolean {
   const target = ep.redirectTarget;
-  if (!target) return false;
+  if (!ep.isRedirect || !target) return false;
   try {
-    return new URL(target).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function redirectsToHttp(ep: Endpoint): boolean {
-  const target = ep.redirectTarget;
-  if (!target) return false;
-  try {
-    return new URL(target).protocol === "http:";
-  } catch {
-    return false;
-  }
-}
-
-function redirectsToWww(ep: Endpoint): boolean {
-  const target = ep.redirectTarget;
-  if (!target) return false;
-  try {
-    return new URL(target).hostname.startsWith("www.");
+    return new URL(target).protocol === protocol;
   } catch {
     return false;
   }

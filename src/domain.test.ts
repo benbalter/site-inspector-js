@@ -24,6 +24,7 @@ vi.mock("./endpoint.js", () => {
         isRedirect: { get: () => this._mock.isRedirect },
         redirectTarget: { get: () => this._mock.redirectTarget },
         isExternalRedirect: { get: () => this._mock.isExternalRedirect },
+        isServerError: { get: () => false },
         info: { get: () => this._mock.info },
       });
       this.fetch = this._mock.fetch;

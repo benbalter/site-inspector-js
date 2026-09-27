@@ -1,5 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { USER_AGENT } from "../utils.js";
 
 interface DohResponse {
   Status: number;
@@ -14,7 +15,7 @@ async function queryDoh(name: string, type: number): Promise<DohResponse> {
   const res = await fetch(url, {
     signal: controller.signal,
     headers: {
-      "User-Agent": "site-inspector/0.1 (https://github.com/benbalter/site-inspector-js)",
+      "User-Agent": USER_AGENT,
     },
   });
   clearTimeout(timer);

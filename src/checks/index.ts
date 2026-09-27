@@ -1,4 +1,4 @@
-import type { Check } from "./check.js";
+import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 import { DnsCheck } from "./dns.js";
 import { HeadersCheck } from "./headers.js";
@@ -86,37 +86,103 @@ export function availableChecks(): string[] {
   return ALL_CHECKS.map((c) => c.name);
 }
 
+/** Throw if any of `names` isn't a known check. */
+export function assertKnownChecks(names: string[]): void {
+  const valid = availableChecks();
+  const unknown = names.filter((name) => !valid.includes(name));
+  if (unknown.length > 0) throw new Error(`Unknown checks: ${unknown.join(", ")}`);
+}
+
+/** Default time budget for a single check, in milliseconds. */
+export const DEFAULT_CHECK_TIMEOUT = 60_000;
+
+/** Default time budget for a heavy check (Lighthouse, axe), in milliseconds. */
+export const DEFAULT_HEAVY_CHECK_TIMEOUT = 180_000;
+
+/** Options for {@link runChecks}. */
+export interface RunChecksOptions {
+  /** Request timeout passed to checks via their context (default 10s). */
+  timeoutMs?: number;
+  /** Maximum time any single check may run (default 60s, or 180s for heavy checks). */
+  checkTimeoutMs?: number;
+}
+
 /**
- * Run selected checks against an endpoint.
+ * Run one check, failing it with a timeout error if it exceeds its budget.
+ * The check's signal is aborted so it can stop any work still in flight.
+ */
+async function runOne(
+  check: Check,
+  endpoint: EndpointData,
+  domain: string,
+  timeoutMs: number,
+  checkTimeoutMs: number,
+): Promise<CheckResult> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Timed out after ${checkTimeoutMs}ms`));
+    }, checkTimeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      check.run(endpoint, domain, { timeoutMs, signal: controller.signal }),
+      deadline,
+    ]);
+  } catch (err) {
+    return {
+      name: check.name,
+      data: { error: err instanceof Error ? err.message : String(err) },
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Run selected checks against an endpoint. Light checks run in parallel;
+ * heavy ones (Chrome, jsdom) then run one at a time so they don't compete
+ * for CPU and memory.
  * @param endpoint - The fetched endpoint data.
  * @param domain - The domain being inspected.
  * @param filter - Optional list of check names to run (default: all).
+ * @param options - Timeouts.
+ * @throws If `filter` names a check that doesn't exist.
  */
 export async function runChecks(
   endpoint: EndpointData,
   domain: string,
   filter?: string[],
+  options: RunChecksOptions = {},
 ): Promise<Record<string, CheckResult>> {
+  const { timeoutMs = 10_000, checkTimeoutMs } = options;
+
+  if (filter) assertKnownChecks(filter);
+
   const checks = filter ? ALL_CHECKS.filter((c) => filter.includes(c.name)) : ALL_CHECKS;
+  const run = (c: Check) =>
+    runOne(
+      c,
+      endpoint,
+      domain,
+      timeoutMs,
+      checkTimeoutMs ?? (c.heavy ? DEFAULT_HEAVY_CHECK_TIMEOUT : DEFAULT_CHECK_TIMEOUT),
+    );
 
-  const results = await Promise.allSettled(checks.map((c) => c.run(endpoint, domain)));
-
-  const output: Record<string, CheckResult> = {};
-  for (let i = 0; i < checks.length; i++) {
-    const result = results[i];
-    if (result.status === "fulfilled") {
-      output[checks[i].name] = result.value;
-    } else {
-      output[checks[i].name] = {
-        name: checks[i].name,
-        data: {
-          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
-        },
-      };
-    }
+  // Results are stored by registry position so the output keeps that order.
+  const results: CheckResult[] = [];
+  const indexed = checks.map((c, i) => ({ c, i }));
+  await Promise.all(
+    indexed.filter(({ c }) => !c.heavy).map(async ({ c, i }) => (results[i] = await run(c))),
+  );
+  for (const { c, i } of indexed.filter(({ c }) => c.heavy)) {
+    results[i] = await run(c);
   }
 
-  return output;
+  return Object.fromEntries(checks.map((c, i) => [c.name, results[i]]));
 }
 
-export type { Check };
+export type { Check, CheckContext };

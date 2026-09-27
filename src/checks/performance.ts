@@ -1,5 +1,6 @@
 import type { EndpointData, CheckResult } from "../types.js";
 import type { Check } from "./check.js";
+import { USER_AGENT } from "../utils.js";
 
 interface ServerTimingEntry {
   name: string;
@@ -56,7 +57,7 @@ export class PerformanceCheck implements Check {
       const response = await fetch(endpoint.url, {
         signal: AbortSignal.timeout(10000),
         headers: {
-          "User-Agent": "site-inspector/0.1 (https://github.com/benbalter/site-inspector-js)",
+          "User-Agent": USER_AGENT,
         },
       });
       await response.text();

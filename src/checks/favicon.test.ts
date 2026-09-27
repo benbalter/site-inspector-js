@@ -42,11 +42,10 @@ describe("FaviconCheck", () => {
     expect(result.data.present).toBe(true);
     expect(result.data.hasAppleTouchIcon).toBe(true);
     expect(result.data.hasSvgIcon).toBe(false);
-    expect(fetchSpy).toHaveBeenCalledWith("https://example.com/favicon.ico", {
-      method: "HEAD",
-      signal: expect.any(AbortSignal),
-      redirect: "follow",
-    });
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "https://example.com/favicon.ico",
+      expect.objectContaining({ method: "HEAD", redirect: "follow" }),
+    );
   });
 
   it("detects only HTML icons (no /favicon.ico)", async () => {
