@@ -102,6 +102,13 @@
   .chip-neutral .glyph {
     color: var(--color-ink-faint);
   }
+  /* Doesn't apply to this site (e.g. HSTS without HTTPS): dashed and receded. */
+  .chip-not-applicable {
+    color: var(--color-ink-muted);
+    background: transparent;
+    border-color: var(--color-hairline-strong);
+    border-style: dashed;
+  }
 
   /* ── Detected technologies ───────────────────────────────────────────── */
   .tech {
@@ -207,6 +214,7 @@
    flagged. Reinforced by glyph + label, so this never hides the only signal. */
 .filter-issues [data-sev="neutral"],
 .filter-issues [data-sev="pass"],
+.filter-issues [data-sev="not-applicable"],
 .filter-issues [data-attention="0"] {
   display: none !important;
 }

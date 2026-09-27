@@ -1,7 +1,7 @@
 ---
 import { availableChecks } from "site-inspector";
 import Layout from "../layouts/Layout.astro";
-import { checkLabel } from "../lib/checkGroups";
+import { checkLabel } from "site-inspector/assess";
 import { publicMode } from "../lib/network";
 
 // The engine says which checks are heavy (launch Chrome or jsdom). Those are
@@ -80,7 +80,7 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
 
 <script>
   import { renderResult } from "../lib/render";
-  import { checkLabel } from "../lib/checkGroups";
+  import { checkLabel } from "site-inspector/assess";
   import { NDJSON, readEvents, type StreamEvent } from "../lib/stream";
 
   const form = document.getElementById("inspect-form") as HTMLFormElement;

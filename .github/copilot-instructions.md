@@ -23,11 +23,11 @@ The project follows a **Domain → Endpoint → Check → Assess** pipeline:
 1. **Domain** (`src/domain.ts`) probes 4 endpoint variants (http/https × www/non-www), determines which are up, and identifies the canonical endpoint
 2. **Endpoint** (`src/endpoint.ts`) fetches a URL, following redirects by hand so each hop is recorded, and caches the response (status, headers, `setCookies`, body, `finalUrl`, redirect chain, timing)
 3. **Checks** (`src/checks/*.ts`) are independent modules that analyze the endpoint data and return structured facts
-4. **Assess** (`src/assess.ts`) grades those facts: pass, needs attention, or neutral
+4. **Assess** (`src/assess.ts`) grades those facts: pass, needs attention, neutral, or not applicable
 
 ### Verdicts live in the library
 
-Checks report facts; `src/assess.ts` decides what's good or bad (`POLARITY` for booleans, `VALUE_RULES` for other values). The CLI (`src/program.ts`) and web UI (`web/`) only render and filter those verdicts. Never hardcode a judgment, label list, or check list in a front end; add it to the library and import it (the web UI imports the dependency-free `site-inspector/assess` subpath).
+Checks report facts; `src/assess.ts` decides what's good or bad (`POLARITY` for booleans, `VALUE_RULES` for other values, `CONTEXT_RULES` for verdicts that depend on other checks, `INSIGHT_RULES` for conclusions across checks). Front ends read verdicts with `severityOf(assessment, …)`, not `assessField`, so context applies. The CLI (`src/program.ts`) and web UI (`web/`) only render and filter those verdicts. Never hardcode a judgment, label list, or check list in a front end; add it to the library and import it (the web UI imports the dependency-free `site-inspector/assess` subpath).
 
 ### Check Interface
 
@@ -56,7 +56,7 @@ interface Check {
 3. Import and register the class in `src/checks/index.ts` (add to `ALL_CHECKS` array)
 4. Update the `src/checks/index.test.ts` registry tests (add vi.mock, update counts)
 5. Grade its fields in `src/assess.ts` (`POLARITY` / `VALUE_RULES`) and cover them in `src/assess.test.ts`. Ungraded fields render as neutral facts
-6. Add it to a group and give it a label in `web/src/lib/checkGroups.ts`
+6. Add it to a category and give it a label in `src/categories.ts`
 7. Update README.md with the check description
 
 ### CJS Libraries in ESM

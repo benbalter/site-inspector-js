@@ -114,23 +114,42 @@ const partial = await inspect("example.com", {
 ### Assessment (what's good / what needs attention)
 
 The raw `data` is the readout; `assess()` layers the engine's opinion on top —
-a per-field verdict of `pass`, `attention`, or `neutral`. Verdicts come from a
-curated table (never guessed from field names), so a `neutral` fact like "no
-IPv6" or "no tracker present" is never mistaken for a failing. This is the single
-source of truth shared by the CLI (`--only-issues`) and the web UI.
+a per-field verdict of `pass`, `attention`, `neutral`, or `not-applicable`.
+Verdicts come from a curated table (never guessed from field names), so a
+`neutral` fact like "no IPv6" or "no tracker present" is never mistaken for a
+failing. This is the single source of truth shared by the CLI (`--only-issues`)
+and the web UI.
+
+Verdicts also take the rest of the result into account:
+
+- **Applicability:** findings that can't apply are `not-applicable`, such as HSTS
+  on a site without HTTPS, cookie flags when no cookies are set, or MTA-STS for
+  a domain with no (or a null) MX record. If the prerequisite is unknown, say
+  because the DNS check failed, the verdict is left alone.
+- **One signal, one count:** a signal reported by two checks (the viewport, for
+  example) is graded once; `DUPLICATE_OF` names the owner.
+- **Insights:** conclusions that span fields or checks, like "email from this
+  domain can be spoofed" (SPF plus DMARC) or "HSTS preload requested but
+  blocked". Each lists the fields it rests on in `because`, and those that need
+  attention count toward `attentionCount`.
 
 ```typescript
-import { inspect, assess, assessField } from "site-inspector";
+import { inspect, assess, assessField, severityOf } from "site-inspector";
 
 const result = await inspect("example.com");
-const { attentionCount, attention } = assess(result);
+const assessment = assess(result);
+const { attentionCount, attention, insights } = assessment;
 
 console.log(`${attentionCount} items need attention`);
+for (const insight of insights) console.log(`- ${insight.title}`);
 for (const finding of attention) {
   console.log(`- ${finding.check}: ${finding.label}`);
 }
 
-// Verdict for a single field
+// A field's verdict in context (e.g. "not-applicable" without HTTPS)
+severityOf(assessment, "hsts", "enabled", false);
+
+// Context-free verdict for a single field
 assessField("hsts", "enabled", false);          // "attention"
 assessField("ipv6", "hasIpv6", false);           // "neutral" (absence isn't bad)
 assessField("mixed-content", "hasMixedContent", true); // "attention"
@@ -144,7 +163,10 @@ import {
   availableChecks,   // List check names; { heavy: true/false } filters by speed
   runChecks,         // Run checks against EndpointData you already have
   assess,            // Verdicts + "needs attention" rollup for a result
-  assessField,       // Verdict for a single field
+  assessField,       // Context-free verdict for a single field
+  severityOf,        // A field's verdict in the context of an assessment
+  CHECK_CATEGORIES,  // Checks grouped into display categories
+  checkLabel,        // "dns-security" -> "SPF & DMARC"
   PROPERTY_LABELS,   // Display labels for the domain properties
   titleCase,         // "dns-security" -> "Dns Security"
   Domain,            // Domain class (4-endpoint probing)
@@ -167,8 +189,9 @@ import type {
   DomainProperties,
   Check,             // Interface for writing your own checks
   CheckContext,      // { timeoutMs, signal } passed to each check
-  Severity,          // "pass" | "attention" | "neutral"
+  Severity,          // "pass" | "attention" | "neutral" | "not-applicable"
   Finding,
+  Insight,           // A conclusion drawn across fields or checks
   Assessment,
 } from "site-inspector";
 ```

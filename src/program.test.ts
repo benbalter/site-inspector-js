@@ -124,6 +124,7 @@ describe("CLI", () => {
       canonicalUrl: "https://example.com",
       attentionCount: 1,
       attention: [expect.objectContaining({ check: "hsts", path: "enabled" })],
+      insights: [],
     });
   });
 
@@ -131,7 +132,27 @@ describe("CLI", () => {
     await run("inspect", "example.com", "--only-issues");
     const out = stdout.join("\n");
     expect(out).toMatch(/1 item needs attention/);
-    expect(out).toMatch(/Hsts/);
+    expect(out).toMatch(/HSTS/);
+  });
+
+  it("lists cross-check insights with --only-issues", async () => {
+    inspectMock.mockResolvedValue(
+      makeResult({
+        checks: {
+          "dns-security": {
+            name: "dns-security",
+            data: {
+              spf: { exists: false, error: null },
+              dmarc: { exists: false, error: null },
+            },
+          },
+        },
+      }),
+    );
+    await run("inspect", "example.com", "--only-issues");
+    const out = stdout.join("\n");
+    expect(out).toMatch(/SPF & DMARC/);
+    expect(out).toMatch(/Email from this domain can be spoofed/);
   });
 
   it("exits 0 when issues exist without --fail-on-issues", async () => {
@@ -161,12 +182,12 @@ describe("CLI", () => {
     expect(stderr.join("")).toMatch(/Error: boom/);
   });
 
-  it("titles check sections readably", async () => {
+  it("titles check sections with the shared check labels", async () => {
     inspectMock.mockResolvedValue(
       makeResult({ checks: { "dns-security": { name: "dns-security", data: {} } } }),
     );
     await run("inspect", "example.com");
-    expect(stdout.join("\n")).toMatch(/Dns Security Check/);
+    expect(stdout.join("\n")).toMatch(/SPF & DMARC/);
   });
 
   it("formats numeric fields in their units", async () => {

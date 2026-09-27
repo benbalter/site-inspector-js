@@ -16,13 +16,18 @@ export type { Check, CheckContext, RunChecksOptions } from "./checks/index.js";
 export {
   assess,
   assessField,
+  severityOf,
+  DUPLICATE_OF,
+  CHECK_CATEGORIES,
+  CHECK_LABELS,
+  checkLabel,
   titleCase,
   fieldLabel,
   formatFieldValue,
   FIELD_UNITS,
   PROPERTY_LABELS,
 } from "./assess.js";
-export type { Severity, Finding, Assessment, Unit } from "./assess.js";
+export type { Severity, Finding, Insight, Assessment, CheckCategory, Unit } from "./assess.js";
 export { Domain } from "./domain.js";
 export { Endpoint } from "./endpoint.js";
 export { normalizeDomain, USER_AGENT, VERSION } from "./utils.js";

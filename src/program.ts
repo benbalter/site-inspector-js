@@ -1,11 +1,11 @@
 import { Command, InvalidArgumentError } from "commander";
 import chalk from "chalk";
 import { inspect } from "./index.js";
-import { PROPERTY_LABELS, assess, assessField, formatFieldValue, titleCase } from "./assess.js";
+import { PROPERTY_LABELS, assess, checkLabel, formatFieldValue, severityOf } from "./assess.js";
 import { availableChecks } from "./checks/index.js";
 import { VERSION } from "./utils.js";
 import type { InspectionResult } from "./types.js";
-import type { Severity } from "./assess.js";
+import type { Assessment, Severity } from "./assess.js";
 
 /** Exit codes the CLI can return. */
 export const EXIT = {
@@ -83,22 +83,23 @@ export function buildProgram(): Command {
         const assessment = assess(result);
 
         if (opts.json) {
-          const { attention, attentionCount } = assessment;
+          const { attention, attentionCount, insights } = assessment;
           const output = opts.onlyIssues
             ? {
                 domain: result.domain,
                 canonicalUrl: result.canonicalUrl,
                 attentionCount,
                 attention,
+                insights: insights.filter((i) => i.severity === "attention"),
               }
-            : { ...result, assessment: { attentionCount, attention } };
+            : { ...result, assessment: { attentionCount, attention, insights } };
           console.log(JSON.stringify(output, null, 2));
         } else if (!result.properties.up) {
           printDown(result);
         } else if (opts.onlyIssues) {
-          printIssues(result);
+          printIssues(result, assessment);
         } else {
-          printResult(result);
+          printResult(result, assessment);
         }
 
         if (!result.properties.up) {
@@ -136,12 +137,12 @@ function printDown(result: InspectionResult): void {
   console.log();
 }
 
-function printResult(result: InspectionResult): void {
+function printResult(result: InspectionResult, assessment: Assessment): void {
   console.log();
   console.log(chalk.bold.underline(`Site Inspector: ${result.domain}`));
   console.log(chalk.gray(`Canonical URL: ${result.canonicalUrl || "(none)"}`));
   console.log(chalk.gray(`Inspected at:  ${result.inspectedAt}`));
-  printSummary(result);
+  printSummary(assessment);
   console.log();
 
   // Domain properties
@@ -149,7 +150,11 @@ function printResult(result: InspectionResult): void {
   const props = result.properties;
   for (const [key, label] of Object.entries(PROPERTY_LABELS)) {
     const value = props[key as keyof typeof props];
-    if (typeof value === "boolean") printProp(label, key, value);
+    if (typeof value === "boolean") {
+      console.log(
+        `  ${severityGlyph(value, severityOf(assessment, "properties", key, value))} ${label}`,
+      );
+    }
   }
   if (props.redirectTarget) {
     console.log(`  ${chalk.gray("Redirect Target:")} ${props.redirectTarget}`);
@@ -158,8 +163,12 @@ function printResult(result: InspectionResult): void {
 
   // Check results
   for (const [name, check] of Object.entries(result.checks)) {
-    console.log(chalk.bold(`${titleCase(name)} Check`));
-    printData(check.data, 1, name, "");
+    console.log(chalk.bold(checkLabel(name)));
+    for (const insight of assessment.insights.filter((i) => i.check === name)) {
+      const glyph = insight.severity === "pass" ? chalk.green("✓") : chalk.yellow("!");
+      console.log(`  ${glyph} ${insight.title}${chalk.gray(` — ${insight.detail}`)}`);
+    }
+    printData(check.data, 1, name, "", assessment);
     console.log();
   }
 
@@ -178,8 +187,7 @@ function printResult(result: InspectionResult): void {
 }
 
 /** Print the "N items need attention" rollup line. */
-function printSummary(result: InspectionResult): void {
-  const { attentionCount } = assess(result);
+function printSummary({ attentionCount }: Assessment): void {
   if (attentionCount === 0) {
     console.log(chalk.green("✓ No issues found"));
   } else {
@@ -189,10 +197,10 @@ function printSummary(result: InspectionResult): void {
 }
 
 /** Compact view: only the fields that need attention, grouped by check. */
-function printIssues(result: InspectionResult): void {
+function printIssues(result: InspectionResult, assessment: Assessment): void {
   console.log();
   console.log(chalk.bold.underline(`Site Inspector: ${result.domain}`));
-  const { attention, attentionCount } = assess(result);
+  const { attention, attentionCount, insights } = assessment;
   if (attentionCount === 0) {
     console.log(chalk.green("✓ No issues found"));
     console.log();
@@ -201,28 +209,33 @@ function printIssues(result: InspectionResult): void {
   const noun = attentionCount === 1 ? "item needs" : "items need";
   console.log(chalk.yellow.bold(`${attentionCount} ${noun} attention:`));
   console.log();
-  let currentCheck = "";
-  for (const finding of attention) {
-    if (finding.check !== currentCheck) {
-      currentCheck = finding.check;
-      console.log(chalk.bold(titleCase(currentCheck)));
+  const items = [
+    ...insights
+      .filter((i) => i.severity === "attention")
+      .map((i) => ({ check: i.check, text: `${i.title}${chalk.gray(` — ${i.detail}`)}` })),
+    ...attention.map((f) => ({ check: f.check, text: f.label })),
+  ];
+  // Group by check, keeping each check's first appearance order.
+  const order = [...new Set(items.map((i) => i.check))];
+  for (const check of order) {
+    console.log(chalk.bold(check === "properties" ? "Domain Properties" : checkLabel(check)));
+    for (const item of items.filter((i) => i.check === check)) {
+      console.log(`  ${chalk.yellow("✗")} ${item.text}`);
     }
-    console.log(`  ${chalk.yellow("✗")} ${finding.label}`);
   }
   console.log();
 }
 
-/** Color a ✓/✗ glyph by verdict: pass=green, attention=yellow, neutral=dim. */
+/**
+ * Color a ✓/✗ glyph by verdict: pass=green, attention=yellow, neutral=dim.
+ * Fields that don't apply show a dim dash.
+ */
 function severityGlyph(value: boolean, severity: Severity): string {
+  if (severity === "not-applicable") return chalk.dim("–");
   const icon = value ? "✓" : "✗";
   if (severity === "pass") return chalk.green(icon);
   if (severity === "attention") return chalk.yellow(icon);
   return chalk.dim(icon);
-}
-
-/** Print a domain property, colored by its assessed verdict. */
-function printProp(label: string, key: string, value: boolean): void {
-  console.log(`  ${severityGlyph(value, assessField("properties", key, value))} ${label}`);
 }
 
 function printData(
@@ -230,6 +243,7 @@ function printData(
   indent: number,
   checkName: string,
   prefix: string,
+  assessment: Assessment,
 ): void {
   const pad = "  ".repeat(indent);
   for (const [key, value] of Object.entries(data)) {
@@ -237,14 +251,16 @@ function printData(
     if (value === null || value === undefined) {
       console.log(`${pad}${chalk.gray(key + ":")} ${chalk.dim("—")}`);
     } else if (typeof value === "boolean") {
-      console.log(`${pad}${severityGlyph(value, assessField(checkName, path, value))} ${key}`);
+      console.log(
+        `${pad}${severityGlyph(value, severityOf(assessment, checkName, path, value))} ${key}`,
+      );
     } else if (Array.isArray(value)) {
       if (value.length === 0) {
         console.log(`${pad}${chalk.gray(key + ":")} ${chalk.dim("(none)")}`);
       } else if (typeof value[0] === "object") {
         console.log(`${pad}${chalk.gray(key + ":")}`);
         for (const item of value) {
-          printData(item as Record<string, unknown>, indent + 1, checkName, path);
+          printData(item as Record<string, unknown>, indent + 1, checkName, path, assessment);
           console.log(`${pad}  ${chalk.dim("---")}`);
         }
       } else {
@@ -252,7 +268,7 @@ function printData(
       }
     } else if (typeof value === "object") {
       console.log(`${pad}${chalk.gray(key + ":")}`);
-      printData(value as Record<string, unknown>, indent + 1, checkName, path);
+      printData(value as Record<string, unknown>, indent + 1, checkName, path, assessment);
     } else {
       const text = formatFieldValue(checkName, path, value) ?? String(value);
       console.log(`${pad}${chalk.gray(key + ":")} ${text}`);

@@ -2,19 +2,20 @@
 // DOM. Framework-free to keep the front end lightweight.
 //
 // The good/bad opinion is NOT decided here — it comes from the library's
-// assess() / assessField() (single source of truth, shared with the CLI). This
+// assess() / severityOf() (single source of truth, shared with the CLI). This
 // renderer only *exposes* those verdicts (green pass · red attention · neutral)
 // and *filters* to them via the "just show me what's wrong" toggle.
 import {
+  CHECK_CATEGORIES,
   PROPERTY_LABELS,
   assess,
-  assessField,
+  checkLabel,
   fieldLabel,
   formatFieldValue,
+  severityOf,
 } from "site-inspector/assess";
-import type { Severity } from "site-inspector/assess";
+import type { Assessment, Insight, Severity } from "site-inspector/assess";
 import type { InspectionResult, CheckResult, DomainProperties } from "site-inspector";
-import { CHECK_GROUPS, checkLabel } from "./checkGroups";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -39,12 +40,25 @@ function slug(s: string): string {
  * shows the verdict, as in the CLI, so "✗ Downgrades HTTPS" in green reads as
  * "doesn't downgrade, which is good".
  */
-function chip(label: string, severity: Severity, value: boolean): HTMLElement {
+const VERDICT_TEXT: Record<Severity, string> = {
+  pass: " (good)",
+  attention: " (needs attention)",
+  neutral: "",
+  "not-applicable": " (not applicable)",
+};
+
+function chip(label: string, severity: Severity, value: boolean, note?: string): HTMLElement {
   const span = el("span", `chip chip-${severity}`);
   span.dataset.sev = severity;
-  span.append(el("span", "glyph", value ? "✓" : "✗"), document.createTextNode(label));
-  span.title = `${value ? "Yes" : "No"}${severity === "neutral" ? "" : severity === "pass" ? " (good)" : " (needs attention)"}`;
+  const glyph = severity === "not-applicable" ? "–" : value ? "✓" : "✗";
+  span.append(el("span", "glyph", glyph), document.createTextNode(label));
+  span.title = `${value ? "Yes" : "No"}${VERDICT_TEXT[severity]}${note ? ` — ${note}` : ""}`;
   return span;
+}
+
+/** A finding's note (e.g. why it doesn't apply), if assess() recorded one. */
+function noteFor(a: Assessment, check: string, path: string): string | undefined {
+  return a.findings.find((f) => f.check === check && f.path === path)?.note;
 }
 
 /** Lists longer than this show the first few and a "+ N more" toggle. */
@@ -102,7 +116,7 @@ function labelValueRow(
   return row;
 }
 
-function renderValue(check: string, keys: string[], value: unknown): HTMLElement {
+function renderValue(a: Assessment, check: string, keys: string[], value: unknown): HTMLElement {
   const label = fieldLabel(keys[keys.length - 1]);
 
   if (value === null || value === undefined || value === "") {
@@ -110,10 +124,11 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
   }
 
   if (typeof value === "boolean") {
-    const severity = assessField(check, keys.join("."), value);
+    const path = keys.join(".");
+    const severity = severityOf(a, check, path, value);
     const wrap = el("div", "py-0.5");
     wrap.dataset.sev = severity;
-    wrap.append(chip(label, severity, value));
+    wrap.append(chip(label, severity, value, noteFor(a, check, path)));
     return wrap;
   }
 
@@ -143,7 +158,7 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
     const items = value.map((item) => {
       const li = el("li");
       if (item && typeof item === "object") {
-        li.append(renderObject(check, keys, item as Record<string, unknown>));
+        li.append(renderObject(a, check, keys, item as Record<string, unknown>));
       } else {
         li.className = "val break-all";
         li.textContent = formatScalar(item as string | number);
@@ -159,7 +174,7 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
     // verdicts (a nested attention field must survive the "issues" filter).
     const wrap = el("div", "py-0.5");
     wrap.append(el("div", "field-label mb-1", label));
-    const nested = renderObject(check, keys, value as Record<string, unknown>);
+    const nested = renderObject(a, check, keys, value as Record<string, unknown>);
     nested.className = "border-l border-hairline pl-3";
     wrap.append(nested);
     return wrap;
@@ -186,7 +201,7 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
 
   // Graded scalars (letter grades, severity counts) show a colored chip.
   const path = keys.join(".");
-  const severity = assessField(check, path, value);
+  const severity = severityOf(a, check, path, value);
   // Numbers with a known unit read as "1 year" or "562.8 KB"; hover for the raw value.
   const formatted = formatFieldValue(check, path, value);
   const text = formatted ?? formatScalar(value as string | number);
@@ -197,6 +212,7 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
 }
 
 function renderObject(
+  a: Assessment,
   check: string,
   parentKeys: string[],
   data: Record<string, unknown>,
@@ -208,7 +224,7 @@ function renderObject(
     return wrap;
   }
   for (const [key, value] of entries) {
-    wrap.append(renderValue(check, [...parentKeys, key], value));
+    wrap.append(renderValue(a, check, [...parentKeys, key], value));
   }
   return wrap;
 }
@@ -333,7 +349,22 @@ function addShowEmptyToggle(card: HTMLElement): void {
   card.append(btn);
 }
 
-function checkCard(check: CheckResult, attention: number, index: number): HTMLElement {
+/** A cross-check conclusion, shown at the top of the card it belongs to. */
+function insightRow(insight: Insight): HTMLElement {
+  const row = el("div", "py-0.5");
+  row.dataset.sev = insight.severity;
+  const c = el("span", `chip chip-${insight.severity}`);
+  c.append(el("span", "glyph", insight.severity === "pass" ? "✓" : "!"), insight.title);
+  row.append(c, el("p", "field-label mt-1", insight.detail));
+  return row;
+}
+
+function checkCard(
+  a: Assessment,
+  check: CheckResult,
+  attention: number,
+  index: number,
+): HTMLElement {
   const card = el("div", "card reveal mb-4 break-inside-avoid p-4");
   card.dataset.attention = String(attention);
   card.style.animationDelay = `${Math.min(index * 40, 320)}ms`;
@@ -350,13 +381,19 @@ function checkCard(check: CheckResult, attention: number, index: number): HTMLEl
   } else if (check.name === "sniffer") {
     card.append(renderTechnologies(data));
   } else {
-    card.append(renderObject(check.name, [], data));
+    const insights = a.insights.filter((i) => i.check === check.name);
+    if (insights.length) {
+      const list = el("div", "mb-2 space-y-1 border-b border-hairline pb-2");
+      list.append(...insights.map(insightRow));
+      card.append(list);
+    }
+    card.append(renderObject(a, check.name, [], data));
     addShowEmptyToggle(card);
   }
   return card;
 }
 
-function propertiesCard(props: DomainProperties, attention: number): HTMLElement {
+function propertiesCard(a: Assessment, props: DomainProperties, attention: number): HTMLElement {
   const card = el("div", "card reveal p-5");
   card.dataset.attention = String(attention);
 
@@ -369,8 +406,8 @@ function propertiesCard(props: DomainProperties, attention: number): HTMLElement
   for (const [key, label] of Object.entries(PROPERTY_LABELS)) {
     const value = (props as unknown as Record<string, unknown>)[key];
     if (typeof value !== "boolean") continue;
-    const severity = assessField("properties", key, value);
-    const c = chip(label, severity, value);
+    const severity = severityOf(a, "properties", key, value);
+    const c = chip(label, severity, value, noteFor(a, "properties", key));
     const holder = el("span", "");
     holder.dataset.sev = severity;
     holder.append(c);
@@ -483,7 +520,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
 
   // Down state
   if (!result.properties.up || Object.keys(result.checks).length === 0) {
-    container.append(propertiesCard(result.properties, byCheck["properties"] ?? 0));
+    container.append(propertiesCard(assessment, result.properties, byCheck["properties"] ?? 0));
     const down = el("div", "card reveal mt-6 border-dashed p-8 text-center");
     down.append(
       el("div", "kicker mb-2 text-[#bd2f26]", "No signal"),
@@ -507,7 +544,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
   navItems.push({ title: "Properties", id: "properties", attention: byCheck["properties"] ?? 0 });
 
   let cardIndex = 0;
-  for (const group of CHECK_GROUPS) {
+  for (const group of CHECK_CATEGORIES) {
     const cards: HTMLElement[] = [];
     let secAttention = 0;
     for (const name of group.checks) {
@@ -516,7 +553,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
       remaining.delete(name);
       const a = byCheck[name] ?? 0;
       secAttention += a;
-      cards.push(checkCard(c, a, cardIndex++));
+      cards.push(checkCard(assessment, c, a, cardIndex++));
     }
     if (cards.length) {
       const id = slug(group.title);
@@ -530,7 +567,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
     for (const c of remaining.values()) {
       const a = byCheck[c.name] ?? 0;
       secAttention += a;
-      cards.push(checkCard(c, a, cardIndex++));
+      cards.push(checkCard(assessment, c, a, cardIndex++));
     }
     sections.push(section("Other", "other", cards, secAttention));
     navItems.push({ title: "Other", id: "other", attention: secAttention });
@@ -543,7 +580,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
   const propsWrap = el("div", "mb-8");
   propsWrap.id = "properties";
   propsWrap.dataset.attention = String(byCheck["properties"] ?? 0);
-  propsWrap.append(propertiesCard(result.properties, byCheck["properties"] ?? 0));
+  propsWrap.append(propertiesCard(assessment, result.properties, byCheck["properties"] ?? 0));
   container.append(propsWrap);
 
   for (const s of sections) container.append(s);
