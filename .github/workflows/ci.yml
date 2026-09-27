@@ -30,6 +30,7 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm run build
       - if: matrix.node-version == 22
         run: npm run test:coverage

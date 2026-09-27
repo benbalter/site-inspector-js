@@ -17,6 +17,9 @@ export interface Check {
    * Heavy checks run one at a time, after the others finish.
    */
   heavy?: boolean;
-  /** Run the check against the endpoint data and return results. */
-  run(endpoint: EndpointData, domain: string, ctx: CheckContext): Promise<CheckResult>;
+  /**
+   * Run the check against the endpoint data and return results. `runChecks`
+   * always passes a context; direct callers may omit it.
+   */
+  run(endpoint: EndpointData, domain: string, ctx?: CheckContext): Promise<CheckResult>;
 }

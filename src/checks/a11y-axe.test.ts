@@ -3,7 +3,15 @@ import { A11yAxeCheck } from "./a11y-axe.js";
 import type { EndpointData } from "../types.js";
 
 function makeEndpoint(body: string): EndpointData {
-  return { url: "https://example.com", statusCode: 200, headers: {}, body, redirectChain: [] };
+  return {
+    url: "https://example.com",
+    statusCode: 200,
+    headers: {},
+    body,
+    finalUrl: "https://example.com",
+    setCookies: [],
+    redirectChain: [],
+  };
 }
 
 describe("A11yAxeCheck", () => {

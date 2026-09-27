@@ -9,6 +9,8 @@ function makeEndpoint(body: string, headers: Record<string, string> = {}): Endpo
     statusCode: 200,
     headers,
     body,
+    finalUrl: "https://example.com",
+    setCookies: [],
     redirectChain: [],
   };
 }
@@ -54,8 +56,8 @@ describe("PrivacyCheck", () => {
     const result = await check.run(makeEndpoint(body), "example.com");
 
     expect(result.data.hasConsentBanner).toBe(false);
-    expect(result.data.trackers.googleAnalytics).toBe(true);
-    expect(result.data.trackers.facebookPixel).toBe(true);
+    expect((result.data.trackers as Record<string, boolean>).googleAnalytics).toBe(true);
+    expect((result.data.trackers as Record<string, boolean>).facebookPixel).toBe(true);
   });
 
   it("reports clean page with no trackers or consent", async () => {
@@ -71,8 +73,8 @@ describe("PrivacyCheck", () => {
 
     expect(result.data.hasConsentBanner).toBe(false);
     expect(result.data.consentLibraries).toEqual([]);
-    expect(result.data.trackers.googleAnalytics).toBe(false);
-    expect(result.data.trackers.facebookPixel).toBe(false);
+    expect((result.data.trackers as Record<string, boolean>).googleAnalytics).toBe(false);
+    expect((result.data.trackers as Record<string, boolean>).facebookPixel).toBe(false);
   });
 
   it("detects multiple consent libraries", async () => {
@@ -91,7 +93,7 @@ describe("PrivacyCheck", () => {
     expect(result.data.consentLibraries).toContain("OneTrust");
     expect(result.data.consentLibraries).toContain("CookieBot");
     expect(result.data.consentLibraries).toContain("Didomi");
-    expect(result.data.consentLibraries.length).toBe(3);
+    expect((result.data.consentLibraries as string[]).length).toBe(3);
   });
 
   it("detects cookie policy link", async () => {
@@ -198,7 +200,7 @@ describe("PrivacyCheck", () => {
     `;
     const result = await check.run(makeEndpoint(body), "example.com");
 
-    expect(result.data.trackers.googleAnalytics).toBe(true);
+    expect((result.data.trackers as Record<string, boolean>).googleAnalytics).toBe(true);
   });
 
   it("detects Facebook pixel patterns", async () => {
@@ -210,7 +212,7 @@ describe("PrivacyCheck", () => {
     `;
     const result = await check.run(makeEndpoint(body), "example.com");
 
-    expect(result.data.trackers.facebookPixel).toBe(true);
+    expect((result.data.trackers as Record<string, boolean>).facebookPixel).toBe(true);
   });
 
   it("returns null for missing headers", async () => {

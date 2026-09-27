@@ -10,6 +10,8 @@ function makeEndpoint(url = "https://example.com/page", body = "<html></html>"):
     statusCode: 200,
     headers: {},
     body,
+    finalUrl: url,
+    setCookies: [],
     redirectChain: [],
   };
 }

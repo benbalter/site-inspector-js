@@ -8,6 +8,8 @@ function makeEndpoint(url = "https://example.com/"): EndpointData {
     statusCode: 200,
     headers: {},
     body: "",
+    finalUrl: url,
+    setCookies: [],
     redirectChain: [],
   };
 }
@@ -62,7 +64,7 @@ describe("ApiDiscoveryCheck", () => {
     expect(result.data.hasOpenAPI).toBe(true);
     expect(result.data.endpoints).toContain("/graphql");
     expect(result.data.endpoints).toContain("/swagger.json");
-    expect(result.data.endpoints.length).toBe(2);
+    expect((result.data.endpoints as string[]).length).toBe(2);
     expect(result.data.probed).toBe(10);
   });
 
@@ -77,7 +79,7 @@ describe("ApiDiscoveryCheck", () => {
     expect(result.data.hasGraphQL).toBe(false);
     expect(result.data.hasOpenAPI).toBe(false);
     expect(result.data.endpoints).toContain("/api");
-    expect(result.data.endpoints.length).toBe(1);
+    expect((result.data.endpoints as string[]).length).toBe(1);
   });
 
   it("handles network errors gracefully", async () => {
@@ -126,7 +128,7 @@ describe("ApiDiscoveryCheck", () => {
     expect(result.data.hasApi).toBe(true);
     expect(result.data.hasGraphQL).toBe(true);
     expect(result.data.hasOpenAPI).toBe(true);
-    expect(result.data.endpoints.length).toBe(10);
+    expect((result.data.endpoints as string[]).length).toBe(10);
     expect(result.data.probed).toBe(10);
   });
 

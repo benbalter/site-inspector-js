@@ -1,11 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import {
-  guardedLookup,
-  isLoopbackClient,
-  isPublicAddress,
-  isValidHostname,
-} from "./network.ts";
+import { guardedLookup, isLoopbackClient, isPublicAddress, isValidHostname } from "./network.ts";
 
 describe("isPublicAddress", () => {
   it("allows public addresses", () => {

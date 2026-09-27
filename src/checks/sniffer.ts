@@ -99,7 +99,7 @@ export interface SnifferTechnology {
 export class SnifferCheck implements Check {
   name = "sniffer";
 
-  async run(endpoint: EndpointData): Promise<CheckResult> {
+  async run(endpoint: EndpointData, _domain?: string): Promise<CheckResult> {
     loadFingerprints();
     const { body, headers, setCookies, url } = endpoint;
 

@@ -51,6 +51,8 @@ function makeMockEndpoint(opts: {
     statusCode: opts.up ? 200 : 0,
     headers: {},
     body: "",
+    finalUrl: opts.url,
+    setCookies: [],
     redirectChain: opts.redirectTarget ? [opts.redirectTarget] : [],
     error: opts.up ? undefined : "Connection refused",
   };

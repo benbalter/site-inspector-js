@@ -12,6 +12,8 @@ function makeEndpoint(
     statusCode: 200,
     headers,
     body,
+    finalUrl: url,
+    setCookies: [],
     redirectChain: [],
   };
 }

@@ -22,7 +22,10 @@ function el<K extends keyof HTMLElementTagNameMap>(
 }
 
 function slug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 /** A severity chip: glyph + label, colored by verdict, tagged for filtering. */
@@ -150,11 +153,7 @@ function renderObject(
 }
 
 function countBadge(count: number): HTMLElement {
-  const badge = el(
-    "span",
-    "chip chip-attention text-[0.6875rem]",
-    `${count}`,
-  );
+  const badge = el("span", "chip chip-attention text-[0.6875rem]", `${count}`);
   return badge;
 }
 
@@ -490,14 +489,15 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
 
   // "All clear" banner shown only when the issues filter is on and nothing flagged.
   if (assessment.attentionCount === 0) container.classList.add("no-issues");
-  const clear = el(
-    "div",
-    "issues-clear card reveal hidden p-8 text-center",
-  );
+  const clear = el("div", "issues-clear card reveal hidden p-8 text-center");
   clear.append(
     el("div", "kicker mb-2 text-[#0a7c46]", "All clear"),
     el("p", "text-lg font-semibold text-ink", "Nothing needs attention"),
-    el("p", "val mt-1 text-ink-muted", "Every graded check passed. Toggle off to see the full report."),
+    el(
+      "p",
+      "val mt-1 text-ink-muted",
+      "Every graded check passed. Toggle off to see the full report.",
+    ),
   );
   container.append(clear);
 }

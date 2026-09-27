@@ -111,7 +111,9 @@
     padding: 0.5rem;
     border-radius: 6px;
     border: 1px solid transparent;
-    transition: background-color 0.15s, border-color 0.15s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s;
   }
   a.tech:hover {
     background: var(--color-paper);
@@ -166,7 +168,9 @@
     border-radius: 999px;
     padding: 0.1875rem 0.625rem;
     background: var(--color-surface);
-    transition: border-color 0.15s, color 0.15s;
+    transition:
+      border-color 0.15s,
+      color 0.15s;
   }
   .navpill:hover {
     color: var(--color-accent);

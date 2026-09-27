@@ -141,16 +141,21 @@ assessField("mixed-content", "hasMixedContent", true); // "attention"
 ```typescript
 import {
   inspect,           // Main inspection function
-  availableChecks,   // List all check names
+  availableChecks,   // List check names; { heavy: true/false } filters by speed
+  runChecks,         // Run checks against EndpointData you already have
   assess,            // Verdicts + "needs attention" rollup for a result
   assessField,       // Verdict for a single field
+  PROPERTY_LABELS,   // Display labels for the domain properties
+  titleCase,         // "dns-security" -> "Dns Security"
   Domain,            // Domain class (4-endpoint probing)
   Endpoint,          // Single endpoint class
+  normalizeDomain,   // "https://www.Example.com/x" -> "example.com"
+  USER_AGENT,        // The User-Agent sent with every request
 } from "site-inspector";
 
 // The assessment logic is also available on its own dependency-free subpath,
 // handy for client bundles that shouldn't pull in the full engine:
-import { assess, assessField } from "site-inspector/assess";
+import { assess, assessField, PROPERTY_LABELS, titleCase } from "site-inspector/assess";
 
 // Types
 import type {
@@ -160,6 +165,8 @@ import type {
   EndpointData,
   EndpointInfo,
   DomainProperties,
+  Check,             // Interface for writing your own checks
+  CheckContext,      // { timeoutMs, signal } passed to each check
   Severity,          // "pass" | "attention" | "neutral"
   Finding,
   Assessment,
@@ -227,7 +234,7 @@ Site Inspector runs 38 checks organized into six categories. All checks run in p
 
 | Check | Description | Library |
 |-------|-------------|---------|
-| **sniffer** | Technology detection — CMS, frameworks, analytics, CDNs, and thousands more via Wappalyzer engine | [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/AliasIO/wappalyzer) |
+| **sniffer** | Technology detection — CMS, frameworks, analytics, CDNs, and thousands more via Wappalyzer engine | [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/enthec/webappanalyzer) |
 
 ### 📱 Mobile & PWA
 
@@ -244,7 +251,7 @@ Before running checks, Site Inspector probes four endpoint variants of the domai
 
 | Property | Description |
 |----------|-------------|
-| `up` | Whether any endpoint responds |
+| `up` | Whether any endpoint returns an HTTP response |
 | `https` | Whether HTTPS is supported |
 | `enforcesHttps` | Whether HTTP redirects to HTTPS |
 | `downgradesHttps` | Whether HTTPS redirects to HTTP |
@@ -252,11 +259,14 @@ Before running checks, Site Inspector probes four endpoint variants of the domai
 | `root` | Whether non-`www.` endpoints respond |
 | `canonicallyWww` | Whether non-`www.` redirects to `www.` |
 | `canonicallyHttps` | Whether HTTP redirects to HTTPS |
-| `redirect` | Whether the domain redirects to an external site |
+| `serverError` | Whether the canonical endpoint returns a 5xx error |
+| `redirect` | Whether the domain redirects to an external site (apex ↔ `www.` doesn't count) |
+
+Input like `www.example.com` or `https://example.com/path` is normalized to `example.com` first.
 
 ## Updating Wappalyzer Fingerprints
 
-The technology detection fingerprints are vendored in the `data/` directory from the [AliasIO/wappalyzer](https://github.com/AliasIO/wappalyzer) project. To update them:
+The technology detection fingerprints are vendored in the `data/` directory from the [enthec/webappanalyzer](https://github.com/enthec/webappanalyzer) project. To update them:
 
 ```bash
 ./scripts/update-fingerprints.sh
@@ -265,29 +275,48 @@ The technology detection fingerprints are vendored in the `data/` directory from
 ## Development
 
 ```bash
-npm install          # Install dependencies
-npm test             # Run tests (vitest)
-npm run build        # Compile TypeScript
-npx tsc --noEmit     # Type-check without emitting
-npm run lint         # Lint (eslint)
-npm run format       # Format (prettier)
+npm install           # Install dependencies
+npm test              # Run tests (vitest)
+npm run build         # Compile TypeScript
+npm run typecheck     # Type-check everything, including tests
+npm run lint          # Lint (eslint)
+npm run format        # Format (prettier)
+npm run format:check  # Check formatting
 npm run test:coverage # Run tests with coverage
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a check.
+
+## Web UI
+
+`web/` holds a small Astro app that renders a report in the browser, with the
+same verdicts as the CLI. It's meant to run on your own machine:
+
+```bash
+npm run build          # the web app imports the built library
+cd web && npm install && npm run dev
+```
+
+See [web/README.md](web/README.md) for details, including its SSRF protections.
 
 ### Project Structure
 
 ```
 src/
 ├── index.ts           # Public API — inspect(), re-exports
-├── cli.ts             # CLI entry point (commander)
+├── cli.ts             # CLI entry point
+├── program.ts         # CLI commands and output (commander)
+├── assess.ts          # Verdicts: what's good, bad, or neutral
 ├── domain.ts          # Domain class — 4-endpoint probing
-├── endpoint.ts        # Endpoint class — fetch, cache, redirect detection
+├── endpoint.ts        # Endpoint class — fetch, follow redirects, cache
 ├── types.ts           # Shared TypeScript interfaces
-├── utils.ts           # Helpers — normalizeDomain, fetchWithTimeout
+├── utils.ts           # Helpers — fetching, HTML parsing, DNS TXT lookups
+├── testing/           # Test helpers (not published)
 └── checks/
     ├── check.ts       # Check interface
     ├── index.ts       # Registry — runChecks(), availableChecks()
     └── *.ts           # Individual check implementations + tests
+web/                   # Astro web UI (see web/README.md)
 data/
 ├── categories.json    # Wappalyzer technology categories
 └── technologies/      # Wappalyzer fingerprint files (a-z)

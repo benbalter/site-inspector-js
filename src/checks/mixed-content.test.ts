@@ -3,7 +3,15 @@ import { MixedContentCheck } from "./mixed-content.js";
 import type { EndpointData } from "../types.js";
 
 function makeEndpoint(body: string, url = "https://example.com/"): EndpointData {
-  return { url, statusCode: 200, headers: {}, body, redirectChain: [] };
+  return {
+    url,
+    statusCode: 200,
+    headers: {},
+    body,
+    finalUrl: url,
+    setCookies: [],
+    redirectChain: [],
+  };
 }
 
 describe("MixedContentCheck", () => {

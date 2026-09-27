@@ -36,7 +36,7 @@ function parseCookie(raw: string): CookieInfo {
 export class CookiesCheck implements Check {
   name = "cookies";
 
-  async run(endpoint: EndpointData): Promise<CheckResult> {
+  async run(endpoint: EndpointData, _domain?: string): Promise<CheckResult> {
     if (endpoint.setCookies.length === 0) {
       return {
         name: this.name,

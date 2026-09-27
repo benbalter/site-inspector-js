@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import type { EndpointData } from "../types.js";
 
 vi.mock("node:dns/promises");
@@ -10,13 +10,18 @@ import { Ipv6Check } from "./ipv6.js";
 
 const mockResolve4 = vi.mocked(dns.resolve4);
 const mockResolve6 = vi.mocked(dns.resolve6);
-const mockCreateConnection = vi.mocked(net.createConnection);
+// Loosely typed: the tests hand back minimal fake sockets.
+const mockCreateConnection = vi.mocked(net.createConnection) as unknown as Mock<
+  (options: unknown, callback?: () => void) => unknown
+>;
 
 const dummyEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
   body: "",
+  finalUrl: "https://example.com",
+  setCookies: [],
   redirectChain: [],
 };
 
@@ -119,6 +124,8 @@ describe("Ipv6Check", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "http://example.com",
+      setCookies: [],
       redirectChain: [],
     };
 
