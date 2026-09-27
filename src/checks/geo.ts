@@ -4,7 +4,24 @@ import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
 const require = createRequire(import.meta.url);
-const geoip = require("geoip-lite");
+
+interface GeoIp {
+  lookup(ip: string): {
+    country: string;
+    region: string;
+    city: string;
+    ll: [number, number];
+    timezone: string;
+  } | null;
+}
+
+// geoip-lite loads its ~100 MB database when required, so defer that until
+// the check actually runs.
+let geoip: GeoIp | undefined;
+function loadGeoip(): GeoIp {
+  geoip ??= require("geoip-lite") as GeoIp;
+  return geoip;
+}
 
 export class GeoCheck implements Check {
   name = "geo";
@@ -33,7 +50,7 @@ export class GeoCheck implements Check {
       };
     }
 
-    const geo = geoip.lookup(ip);
+    const geo = loadGeoip().lookup(ip);
 
     return {
       name: this.name,

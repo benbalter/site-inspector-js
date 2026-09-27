@@ -1,14 +1,13 @@
 ---
 import { availableChecks } from "site-inspector";
 import Layout from "../layouts/Layout.astro";
-import { HEAVY_CHECKS, checkLabel } from "../lib/checkGroups";
+import { checkLabel } from "../lib/checkGroups";
 import { publicMode } from "../lib/network";
 
-// Fast checks = everything except the heavy, Chrome-launching ones. Heavy
-// checks aren't offered in public mode (the API rejects them there).
-const all = availableChecks();
-const heavy: string[] = publicMode() ? [] : HEAVY_CHECKS.filter((c) => all.includes(c));
-const fastChecks = all.filter((c) => !heavy.includes(c));
+// The engine says which checks are heavy (launch Chrome or jsdom). Those are
+// opt-in, and not offered at all in public mode (the API rejects them there).
+const fastChecks = availableChecks({ heavy: false });
+const heavy = publicMode() ? [] : availableChecks({ heavy: true });
 ---
 
 <Layout>

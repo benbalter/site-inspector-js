@@ -1,13 +1,12 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 export class AccessibilityCheck implements Check {
   name = "accessibility";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const langAttr = $("html").attr("lang");
     const htmlLang = langAttr !== undefined;
@@ -44,7 +43,8 @@ export class AccessibilityCheck implements Check {
       }
     });
     const withoutAlt = total - withAlt;
-    const altCoverage = total > 0 ? Math.round((withAlt / total) * 100) : 0;
+    // null when there are no images: nothing to measure.
+    const altCoverage = total > 0 ? Math.round((withAlt / total) * 100) : null;
     const images = { total, withAlt, withoutAlt, altCoverage };
 
     return {

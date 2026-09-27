@@ -1,6 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 const EXTERNAL_URL_RE = /^(?:https?:)?\/\//i;
 
@@ -12,8 +12,7 @@ export class SriCheck implements Check {
   name = "sri";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const scriptsWithoutSri: string[] = [];
     let totalExternalScripts = 0;
@@ -47,7 +46,8 @@ export class SriCheck implements Check {
 
     const totalExternal = totalExternalScripts + totalExternalStylesheets;
     const totalWithSri = scriptsWithSri + stylesheetsWithSri;
-    const coverage = totalExternal === 0 ? 100 : Math.round((totalWithSri / totalExternal) * 100);
+    // null when there are no external resources: nothing to measure.
+    const coverage = totalExternal === 0 ? null : Math.round((totalWithSri / totalExternal) * 100);
 
     return {
       name: this.name,

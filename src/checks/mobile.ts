@@ -1,13 +1,12 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml, letterGrade } from "../utils.js";
 
 export class MobileCheck implements Check {
   name = "mobile";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const viewport = $('meta[name="viewport"]').attr("content") ?? null;
     const hasViewport = viewport !== null;
@@ -31,7 +30,7 @@ export class MobileCheck implements Check {
     if (appleTouchIcon) score += 2;
     if (manifestLink) score += 2;
     if (mobileWebAppCapable) score += 1;
-    const grade = score >= 7 ? "A" : score >= 5 ? "B" : score >= 3 ? "C" : score >= 1 ? "D" : "F";
+    const grade = letterGrade(score);
 
     return {
       name: this.name,

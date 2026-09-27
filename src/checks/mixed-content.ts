@@ -1,6 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 interface MixedContentItem {
   url: string;
@@ -50,8 +50,7 @@ export class MixedContentCheck implements Check {
       return { name: this.name, data: { ...emptyResult } };
     }
 
-    const body = endpoint.body ?? "";
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
     const mixedContent: MixedContentItem[] = [];
 
     for (const { selector, attr, type, severity } of selectors) {

@@ -5,10 +5,10 @@
 // assess() / assessField() (single source of truth, shared with the CLI). This
 // renderer only *exposes* those verdicts (green pass · red attention · neutral)
 // and *filters* to them via the "just show me what's wrong" toggle.
-import { assess, assessField } from "site-inspector/assess";
+import { PROPERTY_LABELS, assess, assessField, titleCase } from "site-inspector/assess";
 import type { Severity } from "site-inspector/assess";
 import type { InspectionResult, CheckResult, DomainProperties } from "site-inspector";
-import { CHECK_GROUPS, PROPERTY_LABELS, checkLabel, titleCase } from "./checkGroups";
+import { CHECK_GROUPS, checkLabel } from "./checkGroups";
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,

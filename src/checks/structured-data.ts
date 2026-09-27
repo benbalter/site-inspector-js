@@ -1,16 +1,16 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import type { CheerioAPI } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 interface SchemaInfo {
   type: string | string[];
   name?: string;
 }
 
-function extractJsonLdBlocks(body: string): { schemas: SchemaInfo[]; parseErrors: number } {
+function extractJsonLdBlocks($: CheerioAPI): { schemas: SchemaInfo[]; parseErrors: number } {
   const schemas: SchemaInfo[] = [];
   let parseErrors = 0;
-  const $ = load(body);
 
   $('script[type="application/ld+json"]').each((_i, el) => {
     try {
@@ -33,9 +33,8 @@ export class StructuredDataCheck implements Check {
   name = "structured-data";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
-    const $ = load(body);
-    const { schemas, parseErrors } = extractJsonLdBlocks(body);
+    const $ = parseHtml(endpoint);
+    const { schemas, parseErrors } = extractJsonLdBlocks($);
 
     const hasOpenSearch =
       $('link[rel="search"][type="application/opensearchdescription+xml"]').length > 0;

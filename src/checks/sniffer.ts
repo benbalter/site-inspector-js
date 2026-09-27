@@ -11,16 +11,22 @@ const Wappalyzer = require("wappalyzer-core/wappalyzer.js");
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const dataDir = resolve(__dirname, "../../data");
 
-// Load categories and technologies once at module level
-const categories = JSON.parse(readFileSync(resolve(dataDir, "categories.json"), "utf-8"));
-Wappalyzer.setCategories(categories);
+// Load the fingerprint data on first use rather than at import, so callers
+// that never run this check don't pay to parse it.
+let fingerprintsLoaded = false;
+function loadFingerprints(): void {
+  if (fingerprintsLoaded) return;
+  const categories = JSON.parse(readFileSync(resolve(dataDir, "categories.json"), "utf-8"));
+  Wappalyzer.setCategories(categories);
 
-const techDir = resolve(dataDir, "technologies");
-const allTechs: Record<string, unknown> = {};
-for (const file of readdirSync(techDir).filter((f: string) => f.endsWith(".json"))) {
-  Object.assign(allTechs, JSON.parse(readFileSync(resolve(techDir, file), "utf-8")));
+  const techDir = resolve(dataDir, "technologies");
+  const allTechs: Record<string, unknown> = {};
+  for (const file of readdirSync(techDir).filter((f: string) => f.endsWith(".json"))) {
+    Object.assign(allTechs, JSON.parse(readFileSync(resolve(techDir, file), "utf-8")));
+  }
+  Wappalyzer.setTechnologies(allTechs);
+  fingerprintsLoaded = true;
 }
-Wappalyzer.setTechnologies(allTechs);
 
 /** Parse `Set-Cookie` headers into `{ name: [value] }` format. */
 function parseCookies(setCookies: string[]): Record<string, string[]> {
@@ -94,6 +100,7 @@ export class SnifferCheck implements Check {
   name = "sniffer";
 
   async run(endpoint: EndpointData): Promise<CheckResult> {
+    loadFingerprints();
     const { body, headers, setCookies, url } = endpoint;
 
     // Convert headers to array-valued format

@@ -145,7 +145,8 @@ describe("AccessibilityCheck", () => {
       altCoverage: number;
     };
     expect(images.total).toBe(0);
-    expect(images.altCoverage).toBe(0);
+    // Nothing to measure, so no coverage figure (rather than a misleading 0%).
+    expect(images.altCoverage).toBeNull();
   });
 
   it("detects viewport with content before name", async () => {

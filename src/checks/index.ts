@@ -81,9 +81,16 @@ const ALL_CHECKS: Check[] = [
   new PwaCheck(),
 ];
 
-/** Get the list of all available check names. */
-export function availableChecks(): string[] {
-  return ALL_CHECKS.map((c) => c.name);
+/**
+ * Get the list of available check names.
+ * @param filter - Pass `{ heavy: true }` for only the slow checks that launch
+ *   Chrome or jsdom, or `{ heavy: false }` for only the fast ones.
+ */
+export function availableChecks(filter: { heavy?: boolean } = {}): string[] {
+  const { heavy } = filter;
+  return ALL_CHECKS.filter((c) => heavy === undefined || Boolean(c.heavy) === heavy).map(
+    (c) => c.name,
+  );
 }
 
 /** Throw if any of `names` isn't a known check. */

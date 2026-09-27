@@ -1,7 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
-import { probeUrl } from "../utils.js";
+import { parseHtml, probeUrl } from "../utils.js";
 
 export class ContentCheck implements Check {
   name = "content";
@@ -9,7 +8,7 @@ export class ContentCheck implements Check {
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
     const baseUrl = endpoint.url;
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const doctypeMatch = body.match(/<!doctype\s+([^>]+)>/i);
     const doctype = doctypeMatch ? doctypeMatch[1].trim() : null;
