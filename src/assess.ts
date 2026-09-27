@@ -1,5 +1,6 @@
 import type { InspectionResult } from "./types.js";
 import { fieldLabel } from "./labels.js";
+import { CHECK_CATEGORIES } from "./categories.js";
 
 /**
  * A verdict for a single field: whether it is good, needs attention, is a
@@ -527,6 +528,33 @@ export function severityOf(
   return assessment.severities[`${check}.${path}`] ?? assessField(check, path, value);
 }
 
+/** How one category of checks fared. */
+export interface CategoryScore {
+  title: string;
+  /** Graded findings and insights that pass. */
+  pass: number;
+  /** Graded findings and insights that need attention. */
+  attention: number;
+  /** Percent passing (0–100), or `null` when nothing in the category was graded. */
+  score: number | null;
+}
+
+/**
+ * Score each category as the share of its graded items (findings and
+ * insights) that pass. Neutral and not-applicable items don't count, so a
+ * category is judged only on what applies to the site.
+ */
+export function scoreCategories(assessment: Assessment): CategoryScore[] {
+  const items = [...assessment.findings, ...assessment.insights];
+  return CHECK_CATEGORIES.map(({ title, checks }) => {
+    const inCategory = items.filter((i) => checks.includes(i.check));
+    const pass = inCategory.filter((i) => i.severity === "pass").length;
+    const attention = inCategory.filter((i) => i.severity === "attention").length;
+    const graded = pass + attention;
+    return { title, pass, attention, score: graded ? Math.round((pass / graded) * 100) : null };
+  });
+}
+
 // Labels and units live in labels.ts; re-exported so front ends get all
 // presentation metadata from the dependency-free `site-inspector/assess`.
 export {
@@ -535,6 +563,8 @@ export {
   fieldLabel,
   formatFieldValue,
   titleCase,
+  verdictGlyph,
+  booleanText,
   type Unit,
 } from "./labels.js";
 export { CHECK_CATEGORIES, CHECK_LABELS, checkLabel, type CheckCategory } from "./categories.js";

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fieldLabel, formatFieldValue, titleCase } from "./labels.js";
+import { booleanText, fieldLabel, formatFieldValue, titleCase, verdictGlyph } from "./labels.js";
 
 describe("titleCase", () => {
   it("splits dashes, camelCase, and digit boundaries", () => {
@@ -56,5 +56,21 @@ describe("formatFieldValue", () => {
   it("returns null for fields without a unit, or non-numbers", () => {
     expect(formatFieldValue("performance", "redirectCount", 3)).toBeNull();
     expect(formatFieldValue("hsts", "maxAge", "31536000")).toBeNull();
+  });
+});
+
+describe("verdictGlyph", () => {
+  it("shows the verdict, not the value", () => {
+    expect(verdictGlyph("pass")).toBe("✓");
+    expect(verdictGlyph("attention")).toBe("✗");
+    expect(verdictGlyph("neutral")).toBe("·");
+    expect(verdictGlyph("not-applicable")).toBe("–");
+  });
+});
+
+describe("booleanText", () => {
+  it("reads a true field as its label and a false one as a plain 'no'", () => {
+    expect(booleanText("Valid", true)).toBe("Valid");
+    expect(booleanText("Downgrades HTTPS", false)).toBe("Downgrades HTTPS: no");
   });
 });

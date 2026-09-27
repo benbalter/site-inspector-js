@@ -1,7 +1,15 @@
 import { Command, InvalidArgumentError } from "commander";
 import chalk from "chalk";
 import { inspect } from "./index.js";
-import { PROPERTY_LABELS, assess, checkLabel, formatFieldValue, severityOf } from "./assess.js";
+import {
+  PROPERTY_LABELS,
+  assess,
+  booleanText,
+  checkLabel,
+  formatFieldValue,
+  severityOf,
+  verdictGlyph,
+} from "./assess.js";
 import { availableChecks } from "./checks/index.js";
 import { VERSION } from "./utils.js";
 import type { InspectionResult } from "./types.js";
@@ -152,7 +160,7 @@ function printResult(result: InspectionResult, assessment: Assessment): void {
     const value = props[key as keyof typeof props];
     if (typeof value === "boolean") {
       console.log(
-        `  ${severityGlyph(value, severityOf(assessment, "properties", key, value))} ${label}`,
+        `  ${booleanLine(label, value, severityOf(assessment, "properties", key, value))}`,
       );
     }
   }
@@ -226,16 +234,16 @@ function printIssues(result: InspectionResult, assessment: Assessment): void {
   console.log();
 }
 
-/**
- * Color a ✓/✗ glyph by verdict: pass=green, attention=yellow, neutral=dim.
- * Fields that don't apply show a dim dash.
- */
-function severityGlyph(value: boolean, severity: Severity): string {
-  if (severity === "not-applicable") return chalk.dim("–");
-  const icon = value ? "✓" : "✗";
-  if (severity === "pass") return chalk.green(icon);
-  if (severity === "attention") return chalk.yellow(icon);
-  return chalk.dim(icon);
+/** A boolean field: a glyph and color for its verdict, then its value as text. */
+function booleanLine(label: string, value: boolean, severity: Severity): string {
+  const glyph = verdictGlyph(severity);
+  const colored =
+    severity === "pass"
+      ? chalk.green(glyph)
+      : severity === "attention"
+        ? chalk.yellow(glyph)
+        : chalk.dim(glyph);
+  return `${colored} ${booleanText(label, value)}`;
 }
 
 function printData(
@@ -257,7 +265,7 @@ function printData(
       console.log(`${pad}${chalk.gray(key + ":")} ${missing}`);
     } else if (typeof value === "boolean") {
       console.log(
-        `${pad}${severityGlyph(value, severityOf(assessment, checkName, path, value))} ${key}`,
+        `${pad}${booleanLine(key, value, severityOf(assessment, checkName, path, value))}`,
       );
     } else if (Array.isArray(value)) {
       if (value.length === 0) {

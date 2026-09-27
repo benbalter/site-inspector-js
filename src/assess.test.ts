@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { DUPLICATE_OF, PROPERTY_LABELS, assess, assessField, severityOf } from "./assess.js";
+import {
+  DUPLICATE_OF,
+  PROPERTY_LABELS,
+  assess,
+  assessField,
+  scoreCategories,
+  severityOf,
+} from "./assess.js";
 import type { DomainProperties, InspectionResult } from "./types.js";
 
 describe("assessField", () => {
@@ -347,5 +354,36 @@ describe("assess — insights", () => {
     const insight = a.insights.find((i) => i.id === "hsts-preload-blocked");
     expect(insight?.severity).toBe("attention");
     expect(insight?.detail).toContain("Max-age too low");
+  });
+});
+
+describe("scoreCategories", () => {
+  it("scores each category as the share of graded items that pass, ignoring n/a", () => {
+    const r = makeResult(
+      {
+        hsts: { enabled: false }, // not applicable (no HTTPS)
+        https: { valid: true, chainComplete: false }, // 1 pass, 1 attention
+        csp: { hasCsp: true }, // pass
+        "dns-security": {
+          spf: { exists: false, error: null },
+          dmarc: { exists: false, error: null },
+        }, // spoofing insight: attention
+      },
+      { https: false },
+    );
+    const scores = scoreCategories(assess(r));
+    const transport = scores.find((s) => s.title === "Transport Security");
+    expect(transport).toMatchObject({ pass: 1, attention: 1, score: 50 });
+    expect(scores.find((s) => s.title === "Browser Hardening & Privacy")).toMatchObject({
+      pass: 1,
+      attention: 0,
+      score: 100,
+    });
+    expect(scores.find((s) => s.title === "Email & Domain Trust")).toMatchObject({
+      attention: 1,
+      score: 0,
+    });
+    // Nothing graded: no score rather than a misleading 0 or 100.
+    expect(scores.find((s) => s.title === "Performance")?.score).toBeNull();
   });
 });

@@ -2,6 +2,8 @@
 // check fields and domain properties, and units for numeric fields. Kept
 // dependency-free so browser bundles can import it via `site-inspector/assess`.
 
+import type { Severity } from "./assess.js";
+
 /** Display labels for the domain properties, in display order. */
 export const PROPERTY_LABELS: Record<string, string> = {
   up: "Up",
@@ -15,6 +17,28 @@ export const PROPERTY_LABELS: Record<string, string> = {
   serverError: "Server Error",
   redirect: "External Redirect",
 };
+
+/**
+ * The glyph for a verdict. It shows the verdict, not the field's value, so
+ * "Downgrades HTTPS: no" gets a ✓: the glyph always answers "is this good?".
+ */
+export function verdictGlyph(severity: Severity): string {
+  switch (severity) {
+    case "pass":
+      return "✓";
+    case "attention":
+      return "✗";
+    case "not-applicable":
+      return "–";
+    default:
+      return "·";
+  }
+}
+
+/** A boolean field as text: its label when true, "<label>: no" when false. */
+export function booleanText(label: string, value: boolean): string {
+  return value ? label : `${label}: no`;
+}
 
 /** Turn a field or check name like `dns-security` or `allSecure` into a label. */
 export function titleCase(s: string): string {

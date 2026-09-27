@@ -17,6 +17,9 @@ export {
   assess,
   assessField,
   severityOf,
+  scoreCategories,
+  verdictGlyph,
+  booleanText,
   DUPLICATE_OF,
   CHECK_CATEGORIES,
   CHECK_LABELS,
@@ -27,7 +30,15 @@ export {
   FIELD_UNITS,
   PROPERTY_LABELS,
 } from "./assess.js";
-export type { Severity, Finding, Insight, Assessment, CheckCategory, Unit } from "./assess.js";
+export type {
+  Severity,
+  Finding,
+  Insight,
+  Assessment,
+  CategoryScore,
+  CheckCategory,
+  Unit,
+} from "./assess.js";
 export { Domain } from "./domain.js";
 export { Endpoint } from "./endpoint.js";
 export { normalizeDomain, USER_AGENT, VERSION } from "./utils.js";
