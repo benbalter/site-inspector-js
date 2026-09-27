@@ -48,7 +48,10 @@ domain such as `example.com`.
   renders the result. No client framework.
 - `src/pages/api/inspect.ts` — a POST endpoint that validates input, calls
   `inspect(domain, { checks, timeout })`, and returns the `InspectionResult` as
-  JSON.
+  JSON. With `Accept: application/x-ndjson` it streams progress instead: a
+  `resolved` event, `check-start`/`check-done` for each check, then a `result`
+  (or `error`) event. The page uses this to show a live progress bar and which
+  checks are still running. `src/lib/stream.ts` holds the event types and reader.
 - `src/lib/render.ts` — framework-free renderer that turns the result JSON into
   DOM: a domain-property summary strip, grouped check sections, and a graceful
   "site appears to be down" state.

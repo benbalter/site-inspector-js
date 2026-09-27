@@ -132,4 +132,12 @@ describe("ContentCheck", () => {
       expect.objectContaining({ signal: expect.any(AbortSignal), redirect: "follow" }),
     );
   });
+
+  it("reads the document title, not <title> elements inside inline SVGs", async () => {
+    const html = `<html><head><title>GitHub</title></head><body>
+      <svg><title>American Airlines</title></svg><svg><title>Duolingo</title></svg>
+    </body></html>`;
+    const result = await check.run(makeEndpoint(html), "example.com");
+    expect(result.data.title).toBe("GitHub");
+  });
 });

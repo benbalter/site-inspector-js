@@ -13,7 +13,10 @@ export class ContentCheck implements Check {
     const doctypeMatch = body.match(/<!doctype\s+([^>]+)>/i);
     const doctype = doctypeMatch ? doctypeMatch[1].trim() : null;
 
-    const titleEl = $("title");
+    // The document title, not <title> elements inside inline SVGs.
+    const titleEl = $("title")
+      .filter((_i, el) => $(el).closest("svg").length === 0)
+      .first();
     const title = titleEl.length > 0 ? titleEl.text().trim() || null : null;
 
     const description = $('meta[name="description"]').attr("content") ?? null;

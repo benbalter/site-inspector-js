@@ -1,4 +1,5 @@
 import type { InspectionResult } from "./types.js";
+import { fieldLabel } from "./labels.js";
 
 /**
  * A verdict for a single field: whether it is good, needs attention, or is a
@@ -204,28 +205,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** Display labels for the domain properties, in display order. */
-export const PROPERTY_LABELS: Record<string, string> = {
-  up: "Up",
-  https: "HTTPS",
-  enforcesHttps: "Enforces HTTPS",
-  downgradesHttps: "Downgrades HTTPS",
-  www: "WWW",
-  root: "Root",
-  canonicallyWww: "Canonically WWW",
-  canonicallyHttps: "Canonically HTTPS",
-  serverError: "Server Error",
-  redirect: "External Redirect",
-};
-
-/** Turn a field or check name like `dns-security` or `allSecure` into a label. */
-export function titleCase(s: string): string {
-  return s
-    .replace(/[-_]/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 function walk(check: string, keys: string[], value: unknown, out: Finding[]): void {
   // Recurse into plain nested objects only; array items are left ungraded to
   // avoid path explosion (their aggregates, e.g. cookies.allSecure, are graded).
@@ -243,7 +222,7 @@ function walk(check: string, keys: string[], value: unknown, out: Finding[]): vo
       out.push({
         check,
         path,
-        label: keys.map(titleCase).join(" · "),
+        label: keys.map(fieldLabel).join(" · "),
         value,
         severity,
       });
@@ -277,3 +256,14 @@ export function assess(result: InspectionResult): Assessment {
     attentionByCheck,
   };
 }
+
+// Labels and units live in labels.ts; re-exported so front ends get all
+// presentation metadata from the dependency-free `site-inspector/assess`.
+export {
+  PROPERTY_LABELS,
+  FIELD_UNITS,
+  fieldLabel,
+  formatFieldValue,
+  titleCase,
+  type Unit,
+} from "./labels.js";

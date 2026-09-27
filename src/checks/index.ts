@@ -1,5 +1,5 @@
 import type { Check, CheckContext } from "./check.js";
-import type { EndpointData, CheckResult } from "../types.js";
+import type { EndpointData, CheckResult, InspectionProgress } from "../types.js";
 import { DnsCheck } from "./dns.js";
 import { HeadersCheck } from "./headers.js";
 import { HttpsCheck } from "./https.js";
@@ -112,6 +112,8 @@ export interface RunChecksOptions {
   timeoutMs?: number;
   /** Maximum time any single check may run (default 60s, or 180s for heavy checks). */
   checkTimeoutMs?: number;
+  /** Called when each check starts and finishes. Errors it throws are ignored. */
+  onProgress?: (event: Extract<InspectionProgress, { type: "check-start" | "check-done" }>) => void;
 }
 
 /**
@@ -156,7 +158,7 @@ async function runOne(
  * @param endpoint - The fetched endpoint data.
  * @param domain - The domain being inspected.
  * @param filter - Optional list of check names to run (default: all).
- * @param options - Timeouts.
+ * @param options - Timeouts and a progress callback.
  * @throws If `filter` names a check that doesn't exist.
  */
 export async function runChecks(
@@ -165,19 +167,32 @@ export async function runChecks(
   filter?: string[],
   options: RunChecksOptions = {},
 ): Promise<Record<string, CheckResult>> {
-  const { timeoutMs = 10_000, checkTimeoutMs } = options;
+  const { timeoutMs = 10_000, checkTimeoutMs, onProgress } = options;
+  const emit: NonNullable<RunChecksOptions["onProgress"]> = (event) => {
+    try {
+      onProgress?.(event);
+    } catch {
+      // A broken progress listener must not break the inspection.
+    }
+  };
 
   if (filter) assertKnownChecks(filter);
 
   const checks = filter ? ALL_CHECKS.filter((c) => filter.includes(c.name)) : ALL_CHECKS;
-  const run = (c: Check) =>
-    runOne(
+  let completed = 0;
+  const run = async (c: Check) => {
+    emit({ type: "check-start", check: c.name });
+    const result = await runOne(
       c,
       endpoint,
       domain,
       timeoutMs,
       checkTimeoutMs ?? (c.heavy ? DEFAULT_HEAVY_CHECK_TIMEOUT : DEFAULT_CHECK_TIMEOUT),
     );
+    completed++;
+    emit({ type: "check-done", check: c.name, result, completed, total: checks.length });
+    return result;
+  };
 
   // Results are stored by registry position so the output keeps that order.
   const results: CheckResult[] = [];

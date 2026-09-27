@@ -11,7 +11,25 @@ export interface InspectOptions {
    * are always probed, since the domain properties are derived from them.
    */
   allEndpoints?: boolean;
+  /**
+   * Called as the inspection progresses, for live progress displays. Errors
+   * thrown by the callback are ignored.
+   */
+  onProgress?: (event: InspectionProgress) => void;
 }
+
+/** A progress event emitted during {@link InspectOptions.onProgress}. */
+export type InspectionProgress =
+  | {
+      /** The endpoints were probed; `checks` are about to run (none if the domain is down). */
+      type: "resolved";
+      domain: string;
+      canonicalUrl: string;
+      properties: DomainProperties;
+      checks: string[];
+    }
+  | { type: "check-start"; check: string }
+  | { type: "check-done"; check: string; result: CheckResult; completed: number; total: number };
 
 /** The full result of inspecting a domain. */
 export interface InspectionResult {

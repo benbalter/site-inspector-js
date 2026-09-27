@@ -6,6 +6,7 @@ import {
   publicMode,
   resolvesToPublicAddresses,
 } from "../../lib/network";
+import { NDJSON, encodeEvent, type StreamEvent } from "../../lib/stream";
 
 export const prerender = false;
 
@@ -95,12 +96,78 @@ export const POST: APIRoute = async ({ request }) => {
       : DEFAULT_TIMEOUT;
 
   if (heavy.length > 0) heavyJobRunning = true;
+  const release = () => {
+    if (heavy.length > 0) heavyJobRunning = false;
+  };
+
+  // Clients that accept NDJSON get live progress, then the result.
+  if (request.headers.get("accept")?.includes(NDJSON)) {
+    return streamInspection(domain, { checks, timeout }, release);
+  }
+
   try {
     const result = await inspect(domain, { checks, timeout });
     return json(result);
   } catch (err) {
-    return json({ error: err instanceof Error ? err.message : String(err) }, 500);
+    return json({ error: errorMessage(err) }, 500);
   } finally {
-    if (heavy.length > 0) heavyJobRunning = false;
+    release();
   }
 };
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/** Run the inspection, streaming progress events and then the result as NDJSON. */
+function streamInspection(
+  domain: string,
+  options: { checks?: string[]; timeout: number },
+  release: () => void,
+): Response {
+  const encoder = new TextEncoder();
+  let open = true;
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (event: StreamEvent) => {
+        if (open) controller.enqueue(encoder.encode(encodeEvent(event)));
+      };
+      try {
+        const result = await inspect(domain, {
+          ...options,
+          onProgress: (e) => {
+            if (e.type === "resolved") {
+              send({
+                type: "resolved",
+                domain: e.domain,
+                properties: e.properties,
+                checks: e.checks,
+              });
+            } else if (e.type === "check-start") {
+              send(e);
+            } else {
+              // The full results arrive with the final event; skip them here.
+              send({ type: "check-done", check: e.check, completed: e.completed, total: e.total });
+            }
+          },
+        });
+        send({ type: "result", result });
+      } catch (err) {
+        send({ type: "error", error: errorMessage(err) });
+      } finally {
+        release();
+        if (open) controller.close();
+        open = false;
+      }
+    },
+    cancel() {
+      // The client went away; stop writing. The inspection finishes on its own.
+      open = false;
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "content-type": NDJSON, "cache-control": "no-store" },
+  });
+}

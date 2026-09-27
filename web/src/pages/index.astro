@@ -74,7 +74,8 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
 
 <script>
   import { renderResult } from "../lib/render";
-  import type { InspectionResult } from "site-inspector";
+  import { checkLabel } from "../lib/checkGroups";
+  import { NDJSON, readEvents, type StreamEvent } from "../lib/stream";
 
   const form = document.getElementById("inspect-form") as HTMLFormElement;
   const domainInput = document.getElementById("domain") as HTMLInputElement;
@@ -97,16 +98,57 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
     statusEl.replaceChildren(...nodes);
   }
 
-  function loadingStatus(text: string): HTMLElement {
-    const card = el("div", "card flex items-center gap-3 p-4");
-    card.append(
-      el(
-        "span",
-        "inline-block h-4 w-4 animate-spin rounded-full border-2 border-hairline-strong border-t-accent",
-      ),
-      el("span", "kicker", text),
+  /**
+   * Live progress while an inspection runs: a bar for completed checks and a
+   * list of the ones still in flight (useful when Lighthouse takes a while).
+   */
+  function progressStatus(domain: string) {
+    const card = el("div", "card p-4");
+    const head = el("div", "flex items-center gap-3");
+    const spinner = el(
+      "span",
+      "inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-hairline-strong border-t-accent",
     );
-    return card;
+    const title = el("span", "kicker", `Inspecting ${domain}…`);
+    const count = el("span", "val ml-auto text-ink-muted");
+    head.append(spinner, title, count);
+
+    const track = el("div", "mt-3 h-1.5 overflow-hidden rounded-full bg-hairline");
+    const fill = el("div", "h-full w-0 rounded-full bg-accent transition-[width] duration-300");
+    track.append(fill);
+    track.setAttribute("role", "progressbar");
+    track.setAttribute("aria-valuemin", "0");
+
+    const detail = el("p", "val mt-2 text-ink-muted", "Probing http/https and www endpoints…");
+    card.append(head, track, detail);
+
+    const running = new Set<string>();
+    const showRunning = () => {
+      const names = [...running].map(checkLabel);
+      detail.textContent = names.length
+        ? `Running: ${names.slice(0, 4).join(", ")}${names.length > 4 ? ` +${names.length - 4} more` : ""}`
+        : "Finishing up…";
+    };
+
+    return {
+      card,
+      update(event: StreamEvent): void {
+        if (event.type === "resolved") {
+          if (event.checks.length === 0) detail.textContent = "The domain didn't respond.";
+          count.textContent = `0 / ${event.checks.length}`;
+          track.setAttribute("aria-valuemax", String(event.checks.length));
+        } else if (event.type === "check-start") {
+          running.add(event.check);
+          showRunning();
+        } else if (event.type === "check-done") {
+          running.delete(event.check);
+          count.textContent = `${event.completed} / ${event.total}`;
+          fill.style.width = `${(event.completed / event.total) * 100}%`;
+          track.setAttribute("aria-valuenow", String(event.completed));
+          showRunning();
+        }
+      },
+    };
   }
 
   function errorStatus(message: string): HTMLElement {
@@ -131,23 +173,34 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
 
     submitBtn.disabled = true;
     resultsEl.replaceChildren();
-    const heavyNote = heavy.length
-      ? " Running headless Chrome checks — this can take a while."
-      : "";
-    setStatus(loadingStatus(`Inspecting ${domain}…${heavyNote}`));
+    const progress = progressStatus(domain);
+    setStatus(progress.card);
 
     try {
       const res = await fetch("/api/inspect", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", accept: NDJSON },
         body: JSON.stringify({ domain, checks }),
       });
-      const body = await res.json();
-      if (!res.ok) {
+      // Validation errors come back as plain JSON before any streaming starts.
+      if (!res.ok || !res.body) {
+        const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? `Request failed (${res.status})`);
       }
-      setStatus();
-      renderResult(body as InspectionResult, resultsEl);
+
+      let finished = false;
+      await readEvents(res.body, (event) => {
+        if (event.type === "result") {
+          finished = true;
+          setStatus();
+          renderResult(event.result, resultsEl);
+        } else if (event.type === "error") {
+          throw new Error(event.error);
+        } else {
+          progress.update(event);
+        }
+      });
+      if (!finished) throw new Error("The inspection ended unexpectedly.");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setStatus(errorStatus(msg));
