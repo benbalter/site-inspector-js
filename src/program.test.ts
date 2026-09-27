@@ -168,4 +168,12 @@ describe("CLI", () => {
     await run("inspect", "example.com");
     expect(stdout.join("\n")).toMatch(/Dns Security Check/);
   });
+
+  it("formats numeric fields in their units", async () => {
+    inspectMock.mockResolvedValue(
+      makeResult({ checks: { hsts: { name: "hsts", data: { enabled: true, maxAge: 31536000 } } } }),
+    );
+    await run("inspect", "example.com");
+    expect(stdout.join("\n")).toMatch(/maxAge:.*1 year/);
+  });
 });

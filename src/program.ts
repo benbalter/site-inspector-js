@@ -1,7 +1,7 @@
 import { Command, InvalidArgumentError } from "commander";
 import chalk from "chalk";
 import { inspect } from "./index.js";
-import { PROPERTY_LABELS, assess, assessField, titleCase } from "./assess.js";
+import { PROPERTY_LABELS, assess, assessField, formatFieldValue, titleCase } from "./assess.js";
 import { availableChecks } from "./checks/index.js";
 import { VERSION } from "./utils.js";
 import type { InspectionResult } from "./types.js";
@@ -254,7 +254,8 @@ function printData(
       console.log(`${pad}${chalk.gray(key + ":")}`);
       printData(value as Record<string, unknown>, indent + 1, checkName, path);
     } else {
-      console.log(`${pad}${chalk.gray(key + ":")} ${String(value)}`);
+      const text = formatFieldValue(checkName, path, value) ?? String(value);
+      console.log(`${pad}${chalk.gray(key + ":")} ${text}`);
     }
   }
 }

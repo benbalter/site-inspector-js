@@ -1,6 +1,6 @@
 import type { InspectOptions, InspectionResult } from "./types.js";
 import { Domain } from "./domain.js";
-import { assertKnownChecks, runChecks } from "./checks/index.js";
+import { assertKnownChecks, availableChecks, runChecks } from "./checks/index.js";
 
 export type {
   InspectOptions,
@@ -9,11 +9,20 @@ export type {
   EndpointData,
   EndpointInfo,
   DomainProperties,
+  InspectionProgress,
 } from "./types.js";
 export { availableChecks, runChecks, DEFAULT_CHECK_TIMEOUT } from "./checks/index.js";
 export type { Check, CheckContext, RunChecksOptions } from "./checks/index.js";
-export { assess, assessField, titleCase, PROPERTY_LABELS } from "./assess.js";
-export type { Severity, Finding, Assessment } from "./assess.js";
+export {
+  assess,
+  assessField,
+  titleCase,
+  fieldLabel,
+  formatFieldValue,
+  FIELD_UNITS,
+  PROPERTY_LABELS,
+} from "./assess.js";
+export type { Severity, Finding, Assessment, Unit } from "./assess.js";
 export { Domain } from "./domain.js";
 export { Endpoint } from "./endpoint.js";
 export { normalizeDomain, USER_AGENT, VERSION } from "./utils.js";
@@ -39,7 +48,13 @@ export async function inspect(
   domainInput: string,
   options: InspectOptions = {},
 ): Promise<InspectionResult> {
-  const { timeout = 10_000, checkTimeout, checks: checkFilter, allEndpoints = false } = options;
+  const {
+    timeout = 10_000,
+    checkTimeout,
+    checks: checkFilter,
+    allEndpoints = false,
+    onProgress,
+  } = options;
 
   // Fail fast on bad input, before any network requests.
   if (checkFilter) assertKnownChecks(checkFilter);
@@ -48,7 +63,20 @@ export async function inspect(
   await domain.resolve();
 
   const canonical = domain.canonicalEndpoint;
-  if (!domain.properties.up) {
+  const up = domain.properties.up;
+  try {
+    onProgress?.({
+      type: "resolved",
+      domain: domain.domain,
+      canonicalUrl: up ? canonical.url : "",
+      properties: domain.properties,
+      checks: up ? (checkFilter ?? availableChecks()) : [],
+    });
+  } catch {
+    // A broken progress listener must not break the inspection.
+  }
+
+  if (!up) {
     return {
       domain: domain.domain,
       canonicalUrl: "",
@@ -64,6 +92,7 @@ export async function inspect(
   const checkResults = await runChecks(endpointData, domain.domain, checkFilter, {
     timeoutMs: timeout,
     checkTimeoutMs: checkTimeout,
+    onProgress,
   });
 
   return {

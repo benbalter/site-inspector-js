@@ -94,7 +94,7 @@ describe("assess", () => {
     expect(a.attentionByCheck).toEqual({ hsts: 1, csp: 1 });
     // Nested field was reached and labelled.
     const spf = a.findings.find((f) => f.path === "spf.strongPolicy");
-    expect(spf?.label).toBe("Spf · Strong Policy");
+    expect(spf?.label).toBe("SPF · Strong Policy");
     expect(spf?.severity).toBe("neutral");
     // The tracker fact is present as a finding but not attention.
     expect(a.findings.some((f) => f.path === "trackers.googleAnalytics")).toBe(true);

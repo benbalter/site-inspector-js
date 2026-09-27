@@ -135,4 +135,48 @@ describe("inspect()", () => {
     );
     expect(spy).not.toHaveBeenCalled();
   });
+
+  it("reports progress: resolved, then each check starting and finishing", async () => {
+    stubFetch(canonicalApex);
+    const events: string[] = [];
+
+    await inspect("example.com", {
+      checks: ["content", "headers"],
+      onProgress: (e) => {
+        if (e.type === "resolved") events.push(`resolved:${e.checks.join(",")}`);
+        else if (e.type === "check-start") events.push(`start:${e.check}`);
+        else events.push(`done:${e.check}:${e.completed}/${e.total}`);
+      },
+    });
+
+    expect(events[0]).toBe("resolved:content,headers");
+    expect(events.filter((e) => e.startsWith("start:"))).toHaveLength(2);
+    expect(events.filter((e) => e.startsWith("done:")).map((e) => e.split(":")[2])).toEqual([
+      "1/2",
+      "2/2",
+    ]);
+  });
+
+  it("reports a down domain as resolved with no checks", async () => {
+    stubFetch({});
+    const onProgress = vi.fn();
+
+    await inspect("down.invalid", { onProgress });
+
+    expect(onProgress).toHaveBeenCalledTimes(1);
+    expect(onProgress.mock.calls[0][0]).toMatchObject({ type: "resolved", checks: [] });
+  });
+
+  it("ignores errors thrown by the progress callback", async () => {
+    stubFetch(canonicalApex);
+
+    const result = await inspect("example.com", {
+      checks: ["content"],
+      onProgress: () => {
+        throw new Error("listener bug");
+      },
+    });
+
+    expect(result.checks.content.data.title).toBe("Hi");
+  });
 });

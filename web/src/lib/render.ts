@@ -5,7 +5,13 @@
 // assess() / assessField() (single source of truth, shared with the CLI). This
 // renderer only *exposes* those verdicts (green pass · red attention · neutral)
 // and *filters* to them via the "just show me what's wrong" toggle.
-import { PROPERTY_LABELS, assess, assessField, titleCase } from "site-inspector/assess";
+import {
+  PROPERTY_LABELS,
+  assess,
+  assessField,
+  fieldLabel,
+  formatFieldValue,
+} from "site-inspector/assess";
 import type { Severity } from "site-inspector/assess";
 import type { InspectionResult, CheckResult, DomainProperties } from "site-inspector";
 import { CHECK_GROUPS, checkLabel } from "./checkGroups";
@@ -28,13 +34,46 @@ function slug(s: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/** A severity chip: glyph + label, colored by verdict, tagged for filtering. */
+/**
+ * A boolean chip. The glyph shows the value (✓ true, ✗ false) and the color
+ * shows the verdict, as in the CLI, so "✗ Downgrades HTTPS" in green reads as
+ * "doesn't downgrade, which is good".
+ */
 function chip(label: string, severity: Severity, value: boolean): HTMLElement {
   const span = el("span", `chip chip-${severity}`);
   span.dataset.sev = severity;
-  const glyph = severity === "pass" ? "✓" : severity === "attention" ? "✗" : value ? "✓" : "✗";
-  span.append(el("span", "glyph", glyph), document.createTextNode(label));
+  span.append(el("span", "glyph", value ? "✓" : "✗"), document.createTextNode(label));
+  span.title = `${value ? "Yes" : "No"}${severity === "neutral" ? "" : severity === "pass" ? " (good)" : " (needs attention)"}`;
   return span;
+}
+
+/** Lists longer than this show the first few and a "+ N more" toggle. */
+const LIST_LIMIT = 8;
+/** Strings longer than this are clamped with a "Show all" toggle. */
+const LONG_TEXT = 160;
+
+/** Append `items` to `list`, hiding those past `limit` behind a toggle button. */
+function appendCollapsible(
+  list: HTMLElement,
+  items: HTMLElement[],
+  limit = LIST_LIMIT,
+): HTMLElement[] {
+  items.forEach((item, i) => {
+    if (i >= limit) item.classList.add("overflow-item", "hidden");
+    list.append(item);
+  });
+  const extra = items.length - limit;
+  if (extra <= 0) return [];
+  const btn = el("button", "field-label mt-1 hover:text-accent", `+ ${extra} more`);
+  btn.type = "button";
+  btn.addEventListener("click", () => {
+    const hidden = list.querySelectorAll(":scope > .overflow-item.hidden").length > 0;
+    for (const item of list.querySelectorAll(":scope > .overflow-item")) {
+      item.classList.toggle("hidden", !hidden);
+    }
+    btn.textContent = hidden ? "− Show fewer" : `+ ${extra} more`;
+  });
+  return [btn];
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
@@ -64,7 +103,7 @@ function labelValueRow(
 }
 
 function renderValue(check: string, keys: string[], value: unknown): HTMLElement {
-  const label = titleCase(keys[keys.length - 1]);
+  const label = fieldLabel(keys[keys.length - 1]);
 
   if (value === null || value === undefined || value === "") {
     return labelValueRow(label, el("span", "val text-ink-faint", "—"), "neutral", true);
@@ -85,18 +124,33 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
     const wrap = el("div", "py-0.5");
     wrap.dataset.sev = "neutral";
     wrap.append(el("div", "field-label mb-1", label));
+
+    // Short scalars (heading levels, header names, versions) read best inline.
+    const inline = value.every(
+      (v) => (typeof v === "string" && v.length <= 32) || typeof v === "number",
+    );
+    if (inline) {
+      const list = el("div", "flex flex-wrap gap-1");
+      // normal-case: values like hostnames and header names keep their case.
+      const items = value.map((v) =>
+        el("span", "tag val normal-case tracking-normal", formatScalar(v as string | number)),
+      );
+      wrap.append(list, ...appendCollapsible(list, items, LIST_LIMIT * 2));
+      return wrap;
+    }
+
     const list = el("ul", "space-y-1 border-l border-hairline pl-3");
-    for (const item of value) {
+    const items = value.map((item) => {
       const li = el("li");
       if (item && typeof item === "object") {
         li.append(renderObject(check, keys, item as Record<string, unknown>));
       } else {
-        li.className = "val";
+        li.className = "val break-all";
         li.textContent = formatScalar(item as string | number);
       }
-      list.append(li);
-    }
-    wrap.append(list);
+      return li;
+    });
+    wrap.append(list, ...appendCollapsible(list, items));
     return wrap;
   }
 
@@ -111,28 +165,35 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
     return wrap;
   }
 
-  // Long strings (raw CSP, fingerprints) get a scrollable readout box.
-  if (typeof value === "string" && value.length > 120) {
+  // Long strings (raw CSP, SPF records) are clamped to a few lines.
+  if (typeof value === "string" && value.length > LONG_TEXT) {
     const wrap = el("div", "py-0.5");
     wrap.dataset.sev = "neutral";
     wrap.append(el("div", "field-label mb-1", label));
-    const box = el(
-      "div",
-      "val max-h-32 overflow-auto rounded border border-hairline bg-paper/60 p-2 whitespace-pre-wrap",
-    );
-    box.textContent = value;
-    wrap.append(box);
+    // Clamp an inner element so the box's padding doesn't show a 4th line.
+    const box = el("div", "rounded border border-hairline bg-paper/60 p-2");
+    const text = el("div", "val line-clamp-3 break-all whitespace-pre-wrap", value);
+    box.append(text);
+    const btn = el("button", "field-label mt-1 hover:text-accent", "+ Show all");
+    btn.type = "button";
+    btn.addEventListener("click", () => {
+      const clamped = text.classList.toggle("line-clamp-3");
+      btn.textContent = clamped ? "+ Show all" : "− Show less";
+    });
+    wrap.append(box, btn);
     return wrap;
   }
 
   // Graded scalars (letter grades, severity counts) show a colored chip.
-  const severity = assessField(check, keys.join("."), value);
-  const text = formatScalar(value as string | number);
-  if (severity !== "neutral") {
-    const c = el("span", `chip chip-${severity}`, text);
-    return labelValueRow(label, c, severity);
-  }
-  return labelValueRow(label, el("span", "val", text));
+  const path = keys.join(".");
+  const severity = assessField(check, path, value);
+  // Numbers with a known unit read as "1 year" or "562.8 KB"; hover for the raw value.
+  const formatted = formatFieldValue(check, path, value);
+  const text = formatted ?? formatScalar(value as string | number);
+  const valueEl =
+    severity !== "neutral" ? el("span", `chip chip-${severity}`, text) : el("span", "val", text);
+  if (formatted) valueEl.title = String(value);
+  return labelValueRow(label, valueEl, severity);
 }
 
 function renderObject(
