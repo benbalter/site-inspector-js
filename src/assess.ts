@@ -343,7 +343,9 @@ function hasMx(result: InspectionResult): boolean | undefined {
 
 const CONTEXT_RULES: ContextRule[] = [
   {
-    keys: ["https.", "tls-versions.", "hsts.", "hsts-preload.", "mixed-content."],
+    // Not the certificate or TLS checks: a broken certificate is often *why*
+    // HTTPS is down, so those findings stay graded.
+    keys: ["hsts.", "hsts-preload.", "mixed-content."],
     when: (r) => !r.properties.https,
     severity: "not-applicable",
     replaces: ["attention", "neutral"],

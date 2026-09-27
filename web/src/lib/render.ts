@@ -120,6 +120,11 @@ function renderValue(a: Assessment, check: string, keys: string[], value: unknow
   const label = fieldLabel(keys[keys.length - 1]);
 
   if (value === null || value === undefined || value === "") {
+    // Some absences are the finding (e.g. no X-Content-Type-Options).
+    const severity = severityOf(a, check, keys.join("."), null);
+    if (severity !== "neutral") {
+      return labelValueRow(label, el("span", `chip chip-${severity}`, "Missing"), severity);
+    }
     return labelValueRow(label, el("span", "val text-ink-faint", "—"), "neutral", true);
   }
 

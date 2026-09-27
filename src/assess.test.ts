@@ -216,9 +216,12 @@ describe("assess — applicability", () => {
     );
     const a = assess(r);
     expect(severityIn(r, "hsts", "enabled")).toBe("not-applicable");
-    expect(severityIn(r, "https", "valid")).toBe("not-applicable");
-    // The missing HTTPS itself is still the one thing flagged.
-    expect(a.attention.map((f) => `${f.check}.${f.path}`)).toEqual(["properties.https"]);
+    // A broken certificate may be why HTTPS is down, so it stays flagged.
+    expect(severityIn(r, "https", "valid")).toBe("attention");
+    expect(a.attention.map((f) => `${f.check}.${f.path}`)).toEqual([
+      "properties.https",
+      "https.valid",
+    ]);
     expect(a.findings.find((f) => f.path === "enabled")?.note).toMatch(/HTTPS/);
   });
 

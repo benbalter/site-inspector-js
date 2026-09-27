@@ -249,7 +249,12 @@ function printData(
   for (const [key, value] of Object.entries(data)) {
     const path = prefix ? `${prefix}.${key}` : key;
     if (value === null || value === undefined) {
-      console.log(`${pad}${chalk.gray(key + ":")} ${chalk.dim("—")}`);
+      // Some absences are the finding (e.g. no X-Content-Type-Options).
+      const missing =
+        severityOf(assessment, checkName, path, null) === "attention"
+          ? chalk.yellow("✗ missing")
+          : chalk.dim("—");
+      console.log(`${pad}${chalk.gray(key + ":")} ${missing}`);
     } else if (typeof value === "boolean") {
       console.log(
         `${pad}${severityGlyph(value, severityOf(assessment, checkName, path, value))} ${key}`,

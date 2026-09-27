@@ -135,6 +135,18 @@ describe("CLI", () => {
     expect(out).toMatch(/HSTS/);
   });
 
+  it("flags a missing value that is itself the finding", async () => {
+    inspectMock.mockResolvedValue(
+      makeResult({
+        checks: { headers: { name: "headers", data: { xContentTypeOptions: null, server: null } } },
+      }),
+    );
+    await run("inspect", "example.com");
+    const out = stdout.join("\n");
+    expect(out).toMatch(/xContentTypeOptions:.*missing/);
+    expect(out).not.toMatch(/server:.*missing/);
+  });
+
   it("lists cross-check insights with --only-issues", async () => {
     inspectMock.mockResolvedValue(
       makeResult({
