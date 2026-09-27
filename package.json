@@ -46,7 +46,7 @@
   "author": "Ben Balter",
   "license": "MIT",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.19"
   },
   "dependencies": {
     "axe-core": "^4.13.0",

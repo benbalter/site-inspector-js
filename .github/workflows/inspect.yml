@@ -12,38 +12,67 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   inspect:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run build
 
-      - name: Inspect domain
-        id: inspect
+      # Inputs are passed via env and validated rather than interpolated into
+      # the script, so they can't inject shell commands.
+      - name: Validate inputs
+        id: validate
+        env:
+          DOMAIN: ${{ inputs.domain }}
+          CHECKS: ${{ inputs.checks }}
         run: |
-          args="--json"
-          if [ -n "${{ inputs.checks }}" ]; then
-            args="$args --checks ${{ inputs.checks }}"
+          if ! [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::Invalid domain: must contain only letters, digits, dots, and hyphens"
+            exit 1
           fi
-          node dist/cli.js inspect "${{ inputs.domain }}" $args | tee result.json
+          if [ -n "$CHECKS" ] && ! [[ "$CHECKS" =~ ^[a-z0-9,-]+$ ]]; then
+            echo "::error::Invalid checks list"
+            exit 1
+          fi
+          echo "domain=$DOMAIN" >> "$GITHUB_OUTPUT"
+
+      - name: Inspect domain
+        env:
+          DOMAIN: ${{ inputs.domain }}
+          CHECKS: ${{ inputs.checks }}
+        run: |
+          args=(--json)
+          if [ -n "$CHECKS" ]; then
+            args+=(--checks "$CHECKS")
+          fi
+          node dist/cli.js inspect "$DOMAIN" "${args[@]}" | tee result.json
 
       - name: Generate summary
+        env:
+          DOMAIN: ${{ inputs.domain }}
         run: |
-          echo "## 🔍 Inspection: \`${{ inputs.domain }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`\`\`json" >> "$GITHUB_STEP_SUMMARY"
-          cat result.json >> "$GITHUB_STEP_SUMMARY"
-          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## 🔍 Inspection: \`$DOMAIN\`"
+            echo ""
+            echo '```json'
+            cat result.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload result
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: inspection-${{ inputs.domain }}
+          name: inspection-${{ steps.validate.outputs.domain }}
           path: result.json
           retention-days: 90

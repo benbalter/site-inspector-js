@@ -8,7 +8,7 @@ A TypeScript CLI tool and library that inspects domains for technology, security
 ## Tech Stack
 
 - **Language:** TypeScript (strict mode, ESM)
-- **Runtime:** Node.js ≥ 20
+- **Runtime:** Node.js ≥ 22.19
 - **Module system:** ESM (`"type": "module"` in package.json, Node16 module resolution)
 - **Test framework:** Vitest
 - **Linter:** ESLint with typescript-eslint (strict config)

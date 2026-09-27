@@ -22,7 +22,7 @@ Or run directly with npx:
 npx site-inspector inspect example.com
 ```
 
-Requires **Node.js ≥ 20**. The optional Lighthouse check requires Google Chrome.
+Requires **Node.js ≥ 22.19**. The optional Lighthouse check requires Google Chrome.
 
 ## Running Locally (from source)
 

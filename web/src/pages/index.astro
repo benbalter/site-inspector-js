@@ -2,10 +2,12 @@
 import { availableChecks } from "site-inspector";
 import Layout from "../layouts/Layout.astro";
 import { HEAVY_CHECKS, checkLabel } from "../lib/checkGroups";
+import { publicMode } from "../lib/network";
 
-// Fast checks = everything except the heavy, Chrome-launching ones.
+// Fast checks = everything except the heavy, Chrome-launching ones. Heavy
+// checks aren't offered in public mode (the API rejects them there).
 const all = availableChecks();
-const heavy = HEAVY_CHECKS.filter((c) => all.includes(c));
+const heavy: string[] = publicMode() ? [] : HEAVY_CHECKS.filter((c) => all.includes(c));
 const fastChecks = all.filter((c) => !heavy.includes(c));
 ---
 
@@ -89,8 +91,39 @@ const fastChecks = all.filter((c) => !heavy.includes(c));
 
   const fastChecks: string[] = JSON.parse(form.dataset.fastChecks ?? "[]");
 
-  function setStatus(html: string): void {
-    statusEl.innerHTML = html;
+  function el(tag: string, className: string, text?: string): HTMLElement {
+    const node = document.createElement(tag);
+    node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  // Status content includes user input and server messages, so it is built
+  // with textContent — never innerHTML.
+  function setStatus(...nodes: Node[]): void {
+    statusEl.replaceChildren(...nodes);
+  }
+
+  function loadingStatus(text: string): HTMLElement {
+    const card = el("div", "card flex items-center gap-3 p-4");
+    card.append(
+      el(
+        "span",
+        "inline-block h-4 w-4 animate-spin rounded-full border-2 border-hairline-strong border-t-accent",
+      ),
+      el("span", "kicker", text),
+    );
+    return card;
+  }
+
+  function errorStatus(message: string): HTMLElement {
+    const card = el("div", "card border-[#f2c6c0] bg-[#fbe9e7] p-4");
+    card.append(
+      el("span", "kicker text-[#bd2f26]", "Error"),
+      document.createTextNode(" "),
+      el("span", "val text-ink", message),
+    );
+    return card;
   }
 
   form.addEventListener("submit", async (e) => {
@@ -108,12 +141,7 @@ const fastChecks = all.filter((c) => !heavy.includes(c));
     const heavyNote = heavy.length
       ? " Running headless Chrome checks — this can take a while."
       : "";
-    setStatus(
-      `<div class="card flex items-center gap-3 p-4">
-        <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-hairline-strong border-t-accent"></span>
-        <span class="kicker">Inspecting ${domain}…${heavyNote}</span>
-      </div>`,
-    );
+    setStatus(loadingStatus(`Inspecting ${domain}…${heavyNote}`));
 
     try {
       const res = await fetch("/api/inspect", {
@@ -125,13 +153,11 @@ const fastChecks = all.filter((c) => !heavy.includes(c));
       if (!res.ok) {
         throw new Error(body?.error ?? `Request failed (${res.status})`);
       }
-      setStatus("");
+      setStatus();
       renderResult(body as InspectionResult, resultsEl);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      setStatus(
-        `<div class="card border-[#f2c6c0] bg-[#fbe9e7] p-4"><span class="kicker text-[#bd2f26]">Error</span> <span class="val text-ink">${msg}</span></div>`,
-      );
+      setStatus(errorStatus(msg));
     } finally {
       submitBtn.disabled = false;
     }
