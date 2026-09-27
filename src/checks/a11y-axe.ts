@@ -49,11 +49,13 @@ export class A11yAxeCheck implements Check {
     ctx?.signal.addEventListener("abort", closeWindow, { once: true });
 
     try {
+      // "outside-only" lets us eval axe in the window without executing the
+      // site's own scripts, and without "resources" jsdom won't fetch the
+      // page's subresources. Axe audits the HTML as served.
       dom = new JSDOM(body, {
-        runScripts: "dangerously",
-        resources: "usable",
+        runScripts: "outside-only",
         pretendToBeVisual: true,
-        url: endpoint.url,
+        url: endpoint.finalUrl ?? endpoint.url,
       });
 
       // axe-core may use canvas APIs; jsdom does not implement getContext by default.

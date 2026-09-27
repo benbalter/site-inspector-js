@@ -44,15 +44,19 @@ describe("DnsSecurityCheck", () => {
       exists: true,
       record: "v=spf1 include:_spf.google.com -all",
       allMechanism: "-all",
+      multipleRecords: false,
       strongPolicy: true,
+      error: null,
     });
     expect(result.data.dmarc).toEqual({
       exists: true,
       record: "v=DMARC1; p=reject; pct=100; rua=mailto:dmarc@example.com",
       policy: "reject",
+      subdomainPolicy: null,
       percentage: 100,
       reportUri: "mailto:dmarc@example.com",
       strongPolicy: true,
+      error: null,
     });
   });
 
@@ -149,5 +153,67 @@ describe("DnsSecurityCheck", () => {
     expect(dmarc.policy).toBe("none");
     expect(dmarc.strongPolicy).toBe(false);
     expect(dmarc.reportUri).toBe("mailto:reports@example.com");
+  });
+
+  describe("record parsing", () => {
+    /** Serve TXT records by name; anything else is NXDOMAIN. */
+    function serve(records: Record<string, string[]>) {
+      mockResolveTxt.mockImplementation((name: string) =>
+        records[name]
+          ? Promise.resolve(records[name].map((r) => [r]))
+          : Promise.reject(Object.assign(new Error("ENOTFOUND"), { code: "ENOTFOUND" })),
+      );
+    }
+    const spf = async () =>
+      (await check.run(dummyEndpoint, "example.com")).data.spf as Record<string, unknown>;
+    const dmarc = async () =>
+      (await check.run(dummyEndpoint, "example.com")).data.dmarc as Record<string, unknown>;
+
+    it("reads a bare 'all' as +all (pass everything)", async () => {
+      serve({ "example.com": ["v=spf1 a mx all"] });
+      expect(await spf()).toMatchObject({ allMechanism: "+all", strongPolicy: false });
+    });
+
+    it("doesn't mistake an include domain ending in -all for the all mechanism", async () => {
+      serve({ "example.com": ["v=spf1 include:mail-all.example.net ~all"] });
+      expect(await spf()).toMatchObject({ allMechanism: "~all" });
+    });
+
+    it("ignores records that only look like SPF", async () => {
+      serve({ "example.com": ["v=spf10 -all"] });
+      expect(await spf()).toMatchObject({ exists: false, record: null });
+    });
+
+    it("flags multiple SPF records, which is a permerror", async () => {
+      serve({ "example.com": ["v=spf1 -all", "v=spf1 include:x.example -all"] });
+      expect(await spf()).toMatchObject({
+        exists: true,
+        multipleRecords: true,
+        strongPolicy: false,
+      });
+    });
+
+    it("reads p= even when sp= comes first", async () => {
+      serve({ "_dmarc.example.com": ["v=DMARC1; sp=none; p=reject"] });
+      expect(await dmarc()).toMatchObject({
+        policy: "reject",
+        subdomainPolicy: "none",
+        strongPolicy: true,
+      });
+    });
+
+    it("reports lookup failures instead of treating them as missing records", async () => {
+      mockResolveTxt.mockRejectedValue(
+        Object.assign(new Error("queryTxt ESERVFAIL example.com"), { code: "ESERVFAIL" }),
+      );
+      const result = await check.run(dummyEndpoint, "example.com");
+      expect(result.data.spf).toMatchObject({ exists: false, error: "ESERVFAIL" });
+      expect(result.data.dmarc).toMatchObject({ exists: false, error: "ESERVFAIL" });
+    });
+
+    it("treats NXDOMAIN and NODATA as simply absent", async () => {
+      serve({});
+      expect(await spf()).toMatchObject({ exists: false, error: null });
+    });
   });
 });

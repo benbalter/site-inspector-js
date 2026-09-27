@@ -7,7 +7,8 @@ export class CanonicalCheck implements Check {
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
-    const url = endpoint.url;
+    // Relative URLs resolve against the page that was served, after redirects.
+    const url = endpoint.finalUrl ?? endpoint.url;
     const $ = load(body);
 
     const canonical = $('link[rel="canonical"]').attr("href") ?? null;

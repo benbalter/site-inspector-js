@@ -11,7 +11,8 @@ vi.mock("node:dns/promises", () => ({
   default: { resolveTxt: mockResolveTxt },
 }));
 
-vi.mock("../utils.js", () => ({
+vi.mock("../utils.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../utils.js")>()),
   safeFetch: (...args: unknown[]) => mockSafeFetch(...args),
 }));
 
@@ -62,15 +63,18 @@ describe("EmailSecurityCheck", () => {
       exists: true,
       record: "v=BIMI1; l=https://example.com/logo.svg",
       logo: "https://example.com/logo.svg",
+      error: null,
     });
     expect(result.data.mtaSts).toEqual({
       exists: true,
       record: "v=STSv1; id=20230101T000000Z",
       mode: "enforce",
+      error: null,
     });
     expect(result.data.tlsRpt).toEqual({
       exists: true,
       record: "v=TLSRPTv1; rua=mailto:tlsrpt@example.com",
+      error: null,
     });
   });
 
@@ -128,6 +132,29 @@ describe("EmailSecurityCheck", () => {
 
     expect(mtaSts.exists).toBe(true);
     expect(mtaSts.mode).toBe("enforce");
+  });
+
+  it("fetches the MTA-STS policy from the mta-sts subdomain (RFC 8461)", async () => {
+    mockResolveTxt.mockRejectedValue(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
+    mockSafeFetch.mockResolvedValue(null);
+
+    await check.run(dummyEndpoint, "example.com");
+
+    expect(mockSafeFetch).toHaveBeenCalledWith(
+      "https://mta-sts.example.com/.well-known/mta-sts.txt",
+      expect.any(Number),
+    );
+  });
+
+  it("reports DNS failures rather than treating them as missing records", async () => {
+    mockResolveTxt.mockRejectedValue(Object.assign(new Error("timeout"), { code: "ETIMEOUT" }));
+    mockSafeFetch.mockResolvedValue(null);
+
+    const result = await check.run(dummyEndpoint, "example.com");
+
+    expect(result.data.bimi).toMatchObject({ exists: false, error: "ETIMEOUT" });
+    expect(result.data.mtaSts).toMatchObject({ exists: false, error: "ETIMEOUT" });
+    expect(result.data.tlsRpt).toMatchObject({ exists: false, error: "ETIMEOUT" });
   });
 
   it("detects MTA-STS with testing mode", async () => {
@@ -228,9 +255,9 @@ describe("EmailSecurityCheck", () => {
 
     const result = await check.run(dummyEndpoint, "example.com");
 
-    expect(result.data.bimi).toEqual({ exists: false, record: null, logo: null });
-    expect(result.data.mtaSts).toEqual({ exists: false, record: null, mode: null });
-    expect(result.data.tlsRpt).toEqual({ exists: false, record: null });
+    expect(result.data.bimi).toEqual({ exists: false, record: null, logo: null, error: null });
+    expect(result.data.mtaSts).toEqual({ exists: false, record: null, mode: null, error: null });
+    expect(result.data.tlsRpt).toEqual({ exists: false, record: null, error: null });
   });
 
   it("handles fetch timeout for MTA-STS policy file", async () => {

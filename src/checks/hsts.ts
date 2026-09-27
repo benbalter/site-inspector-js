@@ -21,18 +21,18 @@ export class HstsCheck implements Check {
       };
     }
 
-    const directives = raw.split(";").map((d) => d.trim().toLowerCase());
+    // If several headers were comma-joined, only the first counts (RFC 6797 §8.1).
+    const first = raw.split(",")[0];
+    const directives = first.split(";").map((d) => d.trim().toLowerCase());
 
     let maxAge: number | null = null;
     let includeSubDomains = false;
     let preload = false;
 
     for (const directive of directives) {
-      if (directive.startsWith("max-age=")) {
-        const parsed = Number(directive.slice("max-age=".length));
-        if (!Number.isNaN(parsed)) {
-          maxAge = parsed;
-        }
+      const maxAgeMatch = /^max-age\s*=\s*"?(\d+)"?$/.exec(directive);
+      if (maxAgeMatch) {
+        maxAge = Number(maxAgeMatch[1]);
       } else if (directive === "includesubdomains") {
         includeSubDomains = true;
       } else if (directive === "preload") {
@@ -45,7 +45,8 @@ export class HstsCheck implements Check {
     return {
       name: this.name,
       data: {
-        enabled: true,
+        // Without a positive max-age, browsers don't apply HSTS.
+        enabled: maxAge !== null && maxAge > 0,
         maxAge,
         includeSubDomains,
         preload,

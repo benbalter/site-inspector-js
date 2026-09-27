@@ -122,15 +122,45 @@ describe("HstsCheck", () => {
       expect(result.data.preload).toBe(true);
       expect(result.data.preloadReady).toBe(true);
     });
+  });
 
-    it("handles max-age=0", async () => {
-      const endpoint = makeEndpoint({
-        "strict-transport-security": "max-age=0",
-      });
-      const result = await check.run(endpoint, "example.com");
+  describe("max-age parsing (RFC 6797)", () => {
+    const run = (value: string) =>
+      check.run(makeEndpoint({ "strict-transport-security": value }), "example.com");
+
+    it("accepts a quoted max-age", async () => {
+      const result = await run('max-age="31536000"; includeSubDomains');
+      expect(result.data.maxAge).toBe(31536000);
       expect(result.data.enabled).toBe(true);
+    });
+
+    it("tolerates whitespace around the equals sign", async () => {
+      const result = await run("max-age = 600");
+      expect(result.data.maxAge).toBe(600);
+    });
+
+    it("treats an empty max-age as missing, so HSTS isn't in effect", async () => {
+      const result = await run("max-age=; includeSubDomains");
+      expect(result.data.maxAge).toBeNull();
+      expect(result.data.enabled).toBe(false);
+    });
+
+    it("treats a header with no max-age as not in effect", async () => {
+      const result = await run("includeSubDomains; preload");
+      expect(result.data.enabled).toBe(false);
+    });
+
+    it("treats max-age=0 as disabling HSTS", async () => {
+      const result = await run("max-age=0");
       expect(result.data.maxAge).toBe(0);
-      expect(result.data.preloadReady).toBe(false);
+      expect(result.data.enabled).toBe(false);
+    });
+
+    it("uses only the first of several comma-joined headers", async () => {
+      const result = await run("max-age=31536000; includeSubDomains; preload, max-age=0");
+      expect(result.data.maxAge).toBe(31536000);
+      expect(result.data.preload).toBe(true);
+      expect(result.data.preloadReady).toBe(true);
     });
   });
 });

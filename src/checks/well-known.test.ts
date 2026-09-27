@@ -63,10 +63,11 @@ describe("WellKnownCheck", () => {
 
     expect(result.data.securityTxt).toEqual({
       present: true,
-      contact: "mailto:security@example.com",
+      contact: ["mailto:security@example.com"],
       expires: "2025-12-31T23:59:59Z",
-      encryption: "https://example.com/pgp-key.txt",
+      encryption: ["https://example.com/pgp-key.txt"],
       policy: "https://example.com/security-policy",
+      acknowledgments: null,
     });
     expect(result.data.changePassword).toBe(false);
     expect(result.data.openidConfiguration).toBe(false);
@@ -85,10 +86,11 @@ describe("WellKnownCheck", () => {
 
     expect(result.data.securityTxt).toEqual({
       present: false,
-      contact: null,
+      contact: [],
       expires: null,
-      encryption: null,
+      encryption: [],
       policy: null,
+      acknowledgments: null,
     });
   });
 
@@ -128,11 +130,9 @@ describe("WellKnownCheck", () => {
     expect(result.data.openidConfiguration).toBe(true);
   });
 
-  it("detects webfinger support", async () => {
+  it("detects webfinger support from a 400 on a bare request (RFC 7033 §4.2)", async () => {
     setupSafeFetch((url) => {
-      if (url.includes("webfinger")) {
-        return { statusCode: 200, body: '{"subject":"acct:test@test"}' };
-      }
+      if (url.endsWith("/.well-known/webfinger")) return { statusCode: 400, body: "" };
       return { statusCode: 404, body: "" };
     });
 
@@ -140,9 +140,37 @@ describe("WellKnownCheck", () => {
     expect(result.data.webfinger).toBe(true);
   });
 
-  it("detects MTA-STS policy", async () => {
+  it("doesn't count a 404 webfinger endpoint as support", async () => {
+    setupSafeFetch(() => ({ statusCode: 404, body: "" }));
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.webfinger).toBe(false);
+  });
+
+  it("keeps every Contact and doesn't let Acknowledgments overwrite Policy", async () => {
+    const securityTxt = [
+      "Contact: mailto:security@example.com",
+      "Contact: https://example.com/report",
+      "Policy: https://example.com/policy",
+      "Acknowledgments: https://example.com/thanks",
+    ].join("\n");
+    setupSafeFetch((url) =>
+      url.includes("security.txt")
+        ? { statusCode: 200, body: securityTxt }
+        : { statusCode: 404, body: "" },
+    );
+
+    const result = await check.run(makeEndpoint(), "example.com");
+
+    expect(result.data.securityTxt).toMatchObject({
+      contact: ["mailto:security@example.com", "https://example.com/report"],
+      policy: "https://example.com/policy",
+      acknowledgments: "https://example.com/thanks",
+    });
+  });
+
+  it("detects the MTA-STS policy on the mta-sts subdomain", async () => {
     setupSafeFetch((url) => {
-      if (url.includes("mta-sts")) {
+      if (url === "https://mta-sts.example.com/.well-known/mta-sts.txt") {
         return {
           statusCode: 200,
           body: "version: STSv1\nmode: enforce\nmx: mail.example.com\nmax_age: 86400",
@@ -223,10 +251,11 @@ describe("WellKnownCheck", () => {
 
     expect(result.data.securityTxt).toEqual({
       present: true,
-      contact: "mailto:admin@example.com",
+      contact: ["mailto:admin@example.com"],
       expires: null,
-      encryption: null,
-      policy: "https://example.com/thanks",
+      encryption: [],
+      policy: null,
+      acknowledgments: "https://example.com/thanks",
     });
   });
 
@@ -237,10 +266,11 @@ describe("WellKnownCheck", () => {
 
     expect(result.data.securityTxt).toEqual({
       present: false,
-      contact: null,
+      contact: [],
       expires: null,
-      encryption: null,
+      encryption: [],
       policy: null,
+      acknowledgments: null,
     });
     expect(result.data.changePassword).toBe(false);
   });

@@ -15,7 +15,14 @@ const selectors: Array<{
   severity: MixedContentItem["severity"];
 }> = [
   { selector: "script[src]", attr: "src", type: "script", severity: "active" },
-  { selector: "link[href]", attr: "href", type: "stylesheet", severity: "active" },
+  // Only links that load a resource; canonical/alternate/preconnect links don't.
+  {
+    selector:
+      'link[rel~="stylesheet" i][href], link[rel~="preload" i][as="style" i][href], link[rel~="preload" i][as="script" i][href], link[rel~="modulepreload" i][href]',
+    attr: "href",
+    type: "stylesheet",
+    severity: "active",
+  },
   { selector: "img[src]", attr: "src", type: "image", severity: "passive" },
   { selector: "iframe[src]", attr: "src", type: "iframe", severity: "active" },
   { selector: "video[src], source[src]", attr: "src", type: "media", severity: "passive" },
@@ -36,7 +43,8 @@ export class MixedContentCheck implements Check {
   name = "mixed-content";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const isHttps = endpoint.url.startsWith("https://");
+    // Judge the page that was actually served, after any redirects.
+    const isHttps = /^https:/i.test(endpoint.finalUrl ?? endpoint.url);
 
     if (!isHttps) {
       return { name: this.name, data: { ...emptyResult } };
@@ -49,7 +57,7 @@ export class MixedContentCheck implements Check {
     for (const { selector, attr, type, severity } of selectors) {
       $(selector).each((_i, el) => {
         const value = $(el).attr(attr);
-        if (value && value.startsWith("http://")) {
+        if (value && /^http:\/\//i.test(value.trim())) {
           mixedContent.push({ url: value, type, severity });
         }
       });

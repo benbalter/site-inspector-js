@@ -93,7 +93,7 @@ describe("MixedContentCheck", () => {
     const html = `<html>
       <head>
         <script src="http://x.com/a.js"></script>
-        <link href="http://x.com/style.css">
+        <link rel="stylesheet" href="http://x.com/style.css">
       </head>
       <body>
         <img src="http://x.com/img.png">
@@ -121,5 +121,28 @@ describe("MixedContentCheck", () => {
     const passiveTypes = items.filter((i) => i.severity === "passive").map((i) => i.type);
     expect(passiveTypes).toContain("image");
     expect(passiveTypes).toContain("media");
+  });
+
+  it("ignores non-loading links like canonical and alternate", async () => {
+    const body = `
+      <link rel="canonical" href="http://example.com/">
+      <link rel="alternate" hreflang="de" href="http://example.com/de/">
+      <link rel="preconnect" href="http://cdn.example.com">`;
+    const result = await check.run(makeEndpoint(body), "example.com");
+    expect(result.data.hasMixedContent).toBe(false);
+  });
+
+  it("still flags insecure stylesheets and preloaded scripts", async () => {
+    const body = `
+      <link rel="stylesheet" href="http://cdn.example.com/a.css">
+      <link rel="preload" as="script" href="http://cdn.example.com/b.js">`;
+    const result = await check.run(makeEndpoint(body), "example.com");
+    expect(result.data.activeCount).toBe(2);
+  });
+
+  it("matches the http scheme case-insensitively", async () => {
+    const body = `<script src="HTTP://cdn.example.com/a.js"></script>`;
+    const result = await check.run(makeEndpoint(body), "example.com");
+    expect(result.data.activeCount).toBe(1);
   });
 });

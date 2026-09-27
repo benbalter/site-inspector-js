@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { EndpointData } from "../types.js";
+import { stubFetch } from "../testing/fetch-stub.js";
 
 const { PwaCheck } = await import("./pwa.js");
 
@@ -375,5 +376,45 @@ describe("PwaCheck", () => {
     // Should detect sw registration in HTML even if probes fail
     expect(result.data.swRegistrationInHtml).toBe(true);
     expect(result.data.hasManifest).toBe(false);
+  });
+
+  it("treats display: minimal-ui as installable", async () => {
+    vi.unstubAllGlobals();
+    stubFetch({
+      "https://example.com/sw.js": {},
+      "https://example.com/manifest.json": {
+        body: JSON.stringify({
+          name: "App",
+          start_url: "/",
+          display: "minimal-ui",
+          icons: [{ src: "/i.png" }],
+        }),
+      },
+    });
+    const result = await check.run(makeEndpoint("https://example.com/"), "example.com");
+    expect(result.data.installable).toBe(true);
+  });
+
+  it("resolves the manifest link against the final URL after redirects", async () => {
+    vi.unstubAllGlobals();
+    const spy = stubFetch({});
+    const endpoint = {
+      ...makeEndpoint("https://example.com", '<link rel="manifest" href="app.webmanifest">'),
+      finalUrl: "https://example.com/app/",
+    };
+    await check.run(endpoint, "example.com");
+    expect(spy).toHaveBeenCalledWith("https://example.com/app/app.webmanifest", expect.anything());
+  });
+
+  it("doesn't infer a service worker from a catch-all 200", async () => {
+    vi.unstubAllGlobals();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("<html>app shell</html>", { status: 200 })),
+    );
+
+    const result = await check.run(makeEndpoint("https://example.com/"), "example.com");
+
+    expect(result.data.hasServiceWorker).toBe(false);
   });
 });

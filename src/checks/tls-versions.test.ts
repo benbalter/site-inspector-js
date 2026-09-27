@@ -183,4 +183,32 @@ describe("TlsVersionsCheck", () => {
     expect(call[0].host).toBe("example.com");
     expect(call[0].port).toBe(8443);
   });
+
+  it("lowers OpenSSL's security level for TLS 1.0/1.1 probes only", async () => {
+    mockTlsConnect(["TLSv1.2", "TLSv1.3"]);
+    const check = new TlsVersionsCheck();
+
+    await check.run(
+      {
+        url: "https://example.com",
+        finalUrl: "https://example.com",
+        statusCode: 200,
+        headers: {},
+        setCookies: [],
+        body: "",
+        redirectChain: [],
+      },
+      "example.com",
+    );
+
+    const byVersion = Object.fromEntries(
+      vi.mocked(tls.connect).mock.calls.map(([opts]) => [opts.maxVersion, opts.ciphers]),
+    );
+    // OpenSSL 3 refuses legacy handshakes at the default level, which made
+    // TLS 1.0/1.1 always look unsupported.
+    expect(byVersion["TLSv1"]).toBe("DEFAULT@SECLEVEL=0");
+    expect(byVersion["TLSv1.1"]).toBe("DEFAULT@SECLEVEL=0");
+    expect(byVersion["TLSv1.2"]).toBeUndefined();
+    expect(byVersion["TLSv1.3"]).toBeUndefined();
+  });
 });

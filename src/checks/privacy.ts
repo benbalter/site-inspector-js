@@ -1,12 +1,13 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { fetchJson } from "../utils.js";
 
 const CONSENT_LIBRARIES = [
   { name: "OneTrust", pattern: /onetrust|optanon/i },
   { name: "CookieBot", pattern: /cookiebot|cookieconsent/i },
   { name: "CookieYes", pattern: /cookie-law-info|cookieyes/i },
   { name: "Quantcast", pattern: /quantcast.*choice|__tcfapi/i },
-  { name: "TrustArc", pattern: /trustarc|truste/i },
+  { name: "TrustArc", pattern: /trustarc|\btruste\b/i },
   { name: "Osano", pattern: /osano/i },
   { name: "Klaro", pattern: /klaro/i },
   { name: "CookieConsent", pattern: /cookieconsent\.js/i },
@@ -39,9 +40,13 @@ export class PrivacyCheck implements Check {
     const hasCookiePolicy =
       /href=["'][^"']*cookie[^"']*polic[^"']*["']/i.test(body) || />cookie\s*policy</i.test(body);
 
-    // Detect Do Not Track / GPC respect
+    // Do Not Track tracking-status header
     const dntHeader = endpoint.headers["tk"] ?? null;
-    const gpcHeader = endpoint.headers["sec-gpc"] ?? null;
+
+    // Sites declare Global Privacy Control support in /.well-known/gpc.json.
+    // (Sec-GPC is a request header browsers send, so it never shows up here.)
+    const gpcJson = await fetchJson(new URL("/.well-known/gpc.json", endpoint.url).href);
+    const gpcSupported = gpcJson?.gpc === true;
 
     // P3P header (legacy)
     const p3p = endpoint.headers["p3p"] ?? null;
@@ -58,7 +63,7 @@ export class PrivacyCheck implements Check {
         hasPrivacyPolicy,
         hasCookiePolicy,
         dntHeader,
-        gpcHeader,
+        gpcSupported,
         p3p: p3p !== null,
         trackers: {
           googleAnalytics: hasGoogleAnalytics,

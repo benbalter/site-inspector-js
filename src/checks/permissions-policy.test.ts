@@ -69,6 +69,21 @@ describe("PermissionsPolicyCheck", () => {
     expect(result.data.present).toBe(true);
     expect(result.data.headerType).toBe("feature-policy");
     expect(result.data.rawHeader).toBe("camera 'none'; microphone 'self'");
+    expect(result.data.features).toEqual({ camera: "'none'", microphone: "'self'" });
+    expect(result.data.blocked).toEqual(["camera"]);
+    expect(result.data.allowed).toEqual(["microphone"]);
+  });
+
+  it("flags wildcard grants in the Feature-Policy syntax", async () => {
+    const result = await check.run(
+      makeEndpoint({ "feature-policy": "geolocation *; fullscreen 'self' https://a.example" }),
+      "example.com",
+    );
+    expect(result.data.features).toEqual({
+      geolocation: "*",
+      fullscreen: "'self' https://a.example",
+    });
+    expect(result.data.dangerousGrants).toEqual(["geolocation"]);
   });
 
   it("prefers permissions-policy over feature-policy when both exist", async () => {

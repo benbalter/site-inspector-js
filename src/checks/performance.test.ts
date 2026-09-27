@@ -1,50 +1,49 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { PerformanceCheck } from "./performance.js";
 import type { EndpointData } from "../types.js";
 
 function makeEndpoint(overrides: Partial<EndpointData> = {}): EndpointData {
   return {
     url: "https://example.com",
+    finalUrl: "https://example.com",
     statusCode: 200,
     headers: {},
+    setCookies: [],
     body: "<html></html>",
     redirectChain: [],
     ...overrides,
   };
 }
 
-function mockFetch(body = "ok", status = 200) {
-  return vi.fn().mockResolvedValue({
-    status,
-    text: () => Promise.resolve(body),
-  });
-}
-
 describe("PerformanceCheck", () => {
   const check = new PerformanceCheck();
-  let originalFetch: typeof globalThis.fetch;
-
-  beforeEach(() => {
-    originalFetch = globalThis.fetch;
-  });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("has the name 'performance'", () => {
     expect(check.name).toBe("performance");
   });
 
-  it("measures a normal page with content-length and gzip encoding", async () => {
-    vi.stubGlobal("fetch", mockFetch());
+  it("uses the endpoint's own timing instead of fetching the page again", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
 
+    const result = await check.run(makeEndpoint({ responseTimeMs: 123 }), "example.com");
+
+    expect(result.data.responseTimeMs).toBe(123);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("reports null timing when the endpoint has none", async () => {
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data.responseTimeMs).toBeNull();
+  });
+
+  it("reports transfer size and compression from the headers", async () => {
     const endpoint = makeEndpoint({
-      headers: {
-        "content-length": "5000",
-        "content-encoding": "gzip",
-      },
+      headers: { "content-length": "5000", "content-encoding": "gzip" },
     });
 
     const result = await check.run(endpoint, "example.com");
@@ -53,28 +52,42 @@ describe("PerformanceCheck", () => {
     expect(result.data.contentLengthBytes).toBe(5000);
     expect(result.data.contentEncoding).toBe("gzip");
     expect(result.data.compressed).toBe(true);
-    expect(result.data.sizeCategory).toBe("tiny");
-    expect(result.data.responseTimeMs).toBeGreaterThanOrEqual(0);
     expect(result.data.redirectCount).toBe(0);
     expect(result.data.serverTiming).toEqual([]);
   });
 
-  it("returns compressed: false when no content-encoding", async () => {
-    vi.stubGlobal("fetch", mockFetch());
+  it("measures the decoded body in bytes, not characters", async () => {
+    // "é" is 2 bytes in UTF-8; "😀" is 4 bytes (and 2 UTF-16 code units).
+    const endpoint = makeEndpoint({ body: "é😀", headers: {} });
 
+    const result = await check.run(endpoint, "example.com");
+
+    expect(result.data.decodedBytes).toBe(6);
+    expect(result.data.contentLengthBytes).toBeNull();
+  });
+
+  it("sizes the page by its decoded body, not the compressed transfer", async () => {
     const endpoint = makeEndpoint({
-      headers: { "content-length": "200" },
+      body: "x".repeat(750_000),
+      headers: { "content-length": "20000", "content-encoding": "gzip" },
     });
 
     const result = await check.run(endpoint, "example.com");
+
+    expect(result.data.sizeCategory).toBe("large");
+  });
+
+  it("returns compressed: false when no content-encoding", async () => {
+    const result = await check.run(
+      makeEndpoint({ headers: { "content-length": "200" } }),
+      "example.com",
+    );
 
     expect(result.data.contentEncoding).toBeNull();
     expect(result.data.compressed).toBe(false);
   });
 
   it("parses server-timing header", async () => {
-    vi.stubGlobal("fetch", mockFetch());
-
     const endpoint = makeEndpoint({
       headers: {
         "server-timing": 'cache;dur=2.5;desc="Cache Read", db;dur=100',
@@ -89,35 +102,7 @@ describe("PerformanceCheck", () => {
     ]);
   });
 
-  it("categorizes a large page correctly", async () => {
-    vi.stubGlobal("fetch", mockFetch());
-
-    const endpoint = makeEndpoint({
-      headers: { "content-length": "750000" },
-    });
-
-    const result = await check.run(endpoint, "example.com");
-
-    expect(result.data.sizeCategory).toBe("large");
-    expect(result.data.contentLengthBytes).toBe(750000);
-  });
-
-  it("handles fetch errors gracefully", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("timeout")));
-
-    const endpoint = makeEndpoint();
-
-    const result = await check.run(endpoint, "example.com");
-
-    expect(result.data.responseTimeMs).toBe(-1);
-    // Other fields should still be populated
-    expect(result.data.contentLengthBytes).toBe(endpoint.body.length);
-    expect(result.data.sizeCategory).toBe("tiny");
-  });
-
   it("counts redirects from redirectChain", async () => {
-    vi.stubGlobal("fetch", mockFetch());
-
     const endpoint = makeEndpoint({
       redirectChain: ["http://example.com", "https://example.com", "https://www.example.com"],
     });
@@ -125,16 +110,5 @@ describe("PerformanceCheck", () => {
     const result = await check.run(endpoint, "example.com");
 
     expect(result.data.redirectCount).toBe(3);
-  });
-
-  it("falls back to body length when content-length is absent", async () => {
-    vi.stubGlobal("fetch", mockFetch());
-
-    const body = "x".repeat(500);
-    const endpoint = makeEndpoint({ body, headers: {} });
-
-    const result = await check.run(endpoint, "example.com");
-
-    expect(result.data.contentLengthBytes).toBe(500);
   });
 });

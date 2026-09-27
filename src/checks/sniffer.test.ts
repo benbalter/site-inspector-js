@@ -45,8 +45,10 @@ const { SnifferCheck } = await import("./sniffer.js");
 function makeEndpoint(overrides: Partial<EndpointData> = {}): EndpointData {
   return {
     url: "https://example.com",
+    finalUrl: "https://example.com",
     statusCode: 200,
     headers: {},
+    setCookies: [],
     body: "",
     redirectChain: [],
     ...overrides,
@@ -119,6 +121,20 @@ describe("SnifferCheck", () => {
     });
     const result = await check.run(endpoint, "example.com");
     expect(result.data.technologies).toEqual([]);
+  });
+
+  it("passes every Set-Cookie to Wappalyzer", async () => {
+    const endpoint = makeEndpoint({
+      setCookies: [
+        "PHPSESSID=abc; Path=/; Expires=Wed, 21 Oct 2026 07:28:00 GMT",
+        "wp-settings-1=x; Path=/",
+      ],
+    });
+    await check.run(endpoint, "example.com");
+
+    const call = mockAnalyze.mock.calls.at(-1)?.[0];
+    expect(call.cookies).toEqual({ PHPSESSID: ["abc"], "wp-settings-1": ["x"] });
+    expect(call.headers["set-cookie"]).toEqual(endpoint.setCookies);
   });
 
   it("detects technology from headers", async () => {
