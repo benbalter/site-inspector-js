@@ -54,6 +54,8 @@ domain such as `example.com`.
   "site appears to be down" state.
 - `src/lib/checkGroups.ts` — the UI-only taxonomy (grouping + labels). This
   grouping is defined here, not in the engine.
+- `src/lib/network.ts` and `src/middleware.ts` — the SSRF guards described
+  under [Security](#security).
 
 ### Fast vs. heavy checks
 
@@ -64,7 +66,27 @@ that launch headless Chrome:
 - `lighthouse` — Lighthouse performance/SEO/accessibility scores
 - `a11y-axe` — automated accessibility testing via axe-core
 
-Enabling these can push a run to 30–60 seconds.
+Enabling these can push a run to 30–60 seconds. Only one heavy run is allowed
+at a time.
+
+## Security
+
+The API makes outbound requests to whatever domain it's given, so it guards
+against being used to reach internal hosts (SSRF):
+
+- **Local-only by default.** `src/middleware.ts` rejects requests that don't
+  come from loopback, so binding to `0.0.0.0` by accident doesn't expose the
+  API. Set `SITE_INSPECTOR_PUBLIC=1` to serve other clients.
+- **Input validation.** The domain must be a public DNS name (no IP literals or
+  single-label hosts), and its resolved addresses must all be public. The
+  timeout is clamped to 1–30 seconds.
+- **Connect-time address check.** `src/lib/network.ts` installs a global
+  `fetch` dispatcher that refuses to connect to loopback, private, link-local,
+  CGNAT, or other reserved addresses. It applies to every redirect hop and
+  isn't fooled by DNS rebinding.
+- **No heavy checks in public mode.** Lighthouse drives Chrome, and axe runs in
+  jsdom, both outside the fetch guard, so they're disabled when
+  `SITE_INSPECTOR_PUBLIC=1`.
 
 ## Building for production
 
@@ -72,6 +94,8 @@ Enabling these can push a run to 30–60 seconds.
 cd web
 npm run build      # SSR build using the @astrojs/node standalone adapter
 npm run preview    # serve the built app
+npm run check      # astro check (type-check .astro and .ts files)
+npm test           # unit tests (node:test)
 ```
 
 ## Notes
@@ -80,4 +104,4 @@ npm run preview    # serve the built app
   so Node loads it natively from `node_modules` rather than letting Vite bundle
   Lighthouse/Chrome. It also uses the passthrough image service (no `sharp`
   needed, since the UI has no images).
-- Requires Node.js 20+.
+- Requires Node.js 22.19+.

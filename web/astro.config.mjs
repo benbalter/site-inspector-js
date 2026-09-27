@@ -13,6 +13,7 @@ export default defineConfig({
   // doesn't require the optional `sharp` native dependency.
   image: { service: passthroughImageService() },
   vite: {
+    // @ts-expect-error -- @tailwindcss/vite is typed against Vite 8, Astro 5 bundles Vite 6.
     plugins: [tailwindcss()],
     ssr: {
       external: ["site-inspector"],
