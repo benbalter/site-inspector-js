@@ -1,101 +1,52 @@
 ---
 import { availableChecks } from "site-inspector";
 import Layout from "../layouts/Layout.astro";
-import { checkLabel } from "site-inspector/assess";
+import SiteHeader from "../components/SiteHeader.astro";
+import InspectForm from "../components/InspectForm.astro";
 import { publicMode } from "../lib/network";
 
 // The engine says which checks are heavy (launch Chrome or jsdom). Those are
 // opt-in, and not offered at all in public mode (the API rejects them there).
 const fastChecks = availableChecks({ heavy: false });
-const heavy = publicMode() ? [] : availableChecks({ heavy: true });
+const heavyChecks = publicMode() ? [] : availableChecks({ heavy: true });
 ---
 
 <Layout>
-  <header class="mb-8">
-    <div class="kicker mb-2">Domain diagnostics</div>
-    <h1 class="text-4xl font-bold tracking-tight text-ink sm:text-5xl">Site Inspector</h1>
-    <p class="mt-3 max-w-2xl text-ink-muted">
-      A read on a domain's technology, security, and capabilities — with a clear call on what's
-      healthy and what needs attention.
-    </p>
-    <a
-      class="val mt-3 inline-block text-accent underline decoration-hairline-strong underline-offset-4 hover:text-ink"
-      href="/api/openapi.json"
-    >
-      Machine-readable API spec (OpenAPI)
-    </a>
-  </header>
+  <SiteHeader />
+  <InspectForm fastChecks={fastChecks} heavyChecks={heavyChecks} />
 
-  <form id="inspect-form" class="card p-2" data-fast-checks={JSON.stringify(fastChecks)}>
-    <div class="flex flex-col gap-2 sm:flex-row">
-      <div class="flex flex-1 items-center gap-2 px-3">
-        <span class="val text-ink-faint select-none">▸</span>
-        <input
-          id="domain"
-          name="domain"
-          type="text"
-          required
-          autofocus
-          placeholder="example.com"
-          autocomplete="off"
-          autocapitalize="off"
-          spellcheck="false"
-          class="val flex-1 bg-transparent py-3 text-base text-ink placeholder:text-ink-faint focus:outline-none"
-        />
-      </div>
-      <button
-        id="submit-btn"
-        type="submit"
-        class="inline-flex items-center justify-center gap-2 rounded-[4px] bg-ink px-6 py-3 text-sm font-semibold tracking-wide text-white transition hover:bg-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        Inspect
-      </button>
-    </div>
-
-    {heavy.length > 0 && (
-      <details class="border-t border-hairline px-3 pb-3 pt-2">
-        <summary class="kicker cursor-pointer list-none hover:text-accent">
-          + Advanced — slower checks (launch headless Chrome)
-        </summary>
-        <div class="mt-3 flex flex-wrap gap-4">
-          {heavy.map((name) => (
-            <label class="flex cursor-pointer items-center gap-2 text-sm text-ink">
-              <input
-                type="checkbox"
-                name="heavy-check"
-                value={name}
-                class="h-4 w-4 rounded border-hairline-strong text-accent focus:ring-accent"
-              />
-              {checkLabel(name)}
-            </label>
-          ))}
-        </div>
-      </details>
-    )}
-  </form>
-
-  <div id="status" class="mt-6" aria-live="polite"></div>
-  <div id="results" class="mt-8"></div>
+  <!-- Screen readers hear start, finish, and errors here, not every progress tick. -->
+  <p id="announcer" class="sr-only" aria-live="polite"></p>
+  <div id="status" class="mt-6"></div>
+  <div id="results" class="mt-8 transition-opacity"></div>
 </Layout>
 
 <script>
   import { renderResult } from "../lib/render";
   import { checkLabel } from "site-inspector/assess";
   import { NDJSON, readEvents, type StreamEvent } from "../lib/stream";
+  import { cx, kicker, val } from "../lib/ui";
 
   const form = document.getElementById("inspect-form") as HTMLFormElement;
   const domainInput = document.getElementById("domain") as HTMLInputElement;
   const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+  const cancelBtn = document.getElementById("cancel-btn") as HTMLButtonElement;
   const statusEl = document.getElementById("status") as HTMLDivElement;
   const resultsEl = document.getElementById("results") as HTMLDivElement;
+  const announcer = document.getElementById("announcer") as HTMLParagraphElement;
 
   const fastChecks: string[] = JSON.parse(form.dataset.fastChecks ?? "[]");
+  let controller: AbortController | null = null;
 
   function el(tag: string, className: string, text?: string): HTMLElement {
     const node = document.createElement(tag);
     node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
+  }
+
+  function announce(message: string): void {
+    announcer.textContent = message;
   }
 
   // Status content includes user input and server messages, so it is built
@@ -113,19 +64,24 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
     const head = el("div", "flex items-center gap-3");
     const spinner = el(
       "span",
-      "inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-hairline-strong border-t-accent",
+      "inline-block h-4 w-4 shrink-0 rounded-full border-2 border-hairline-strong border-t-accent motion-safe:animate-spin",
     );
-    const title = el("span", "kicker", `Inspecting ${domain}…`);
-    const count = el("span", "val ml-auto text-ink-muted");
+    spinner.setAttribute("aria-hidden", "true");
+    const title = el("span", kicker, `Inspecting ${domain}…`);
+    const count = el("span", cx(val, "ml-auto text-ink-muted"));
     head.append(spinner, title, count);
 
     const track = el("div", "mt-3 h-1.5 overflow-hidden rounded-full bg-hairline");
-    const fill = el("div", "h-full w-0 rounded-full bg-accent transition-[width] duration-300");
+    const fill = el(
+      "div",
+      "h-full w-0 rounded-full bg-accent motion-safe:transition-[width] motion-safe:duration-300",
+    );
     track.append(fill);
     track.setAttribute("role", "progressbar");
+    track.setAttribute("aria-label", "Checks completed");
     track.setAttribute("aria-valuemin", "0");
 
-    const detail = el("p", "val mt-2 text-ink-muted", "Probing http/https and www endpoints…");
+    const detail = el("p", cx(val, "mt-2 text-ink-muted"), "Probing http/https and www endpoints…");
     card.append(head, track, detail);
 
     const running = new Set<string>();
@@ -158,14 +114,28 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
   }
 
   function errorStatus(message: string): HTMLElement {
-    const card = el("div", "card border-[#f2c6c0] bg-[#fbe9e7] p-4");
+    const card = el("div", "card border-attention-border bg-attention-bg p-4");
+    card.setAttribute("role", "alert");
     card.append(
-      el("span", "kicker text-[#bd2f26]", "Error"),
+      el("span", cx(kicker, "text-attention"), "Error"),
       document.createTextNode(" "),
-      el("span", "val text-ink", message),
+      el("span", val, message),
     );
     return card;
   }
+
+  /** While a run is in flight, the previous report stays visible but dimmed. */
+  function setBusy(busy: boolean): void {
+    submitBtn.disabled = busy;
+    submitBtn.textContent = busy ? "Inspecting…" : "Inspect";
+    cancelBtn.hidden = !busy;
+    resultsEl.classList.toggle("opacity-40", busy);
+    resultsEl.classList.toggle("pointer-events-none", busy);
+    resultsEl.toggleAttribute("inert", busy);
+    resultsEl.setAttribute("aria-busy", String(busy));
+  }
+
+  cancelBtn.addEventListener("click", () => controller?.abort());
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -177,16 +147,18 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
     ).map((c) => c.value);
     const checks = [...fastChecks, ...heavy];
 
-    submitBtn.disabled = true;
-    resultsEl.replaceChildren();
+    controller = new AbortController();
+    setBusy(true);
     const progress = progressStatus(domain);
     setStatus(progress.card);
+    announce(`Inspecting ${domain}…`);
 
     try {
       const res = await fetch("/api/inspect", {
         method: "POST",
         headers: { "content-type": "application/json", accept: NDJSON },
         body: JSON.stringify({ domain, checks }),
+        signal: controller.signal,
       });
       // Validation errors come back as plain JSON before any streaming starts.
       if (!res.ok || !res.body) {
@@ -199,7 +171,17 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
         if (event.type === "result") {
           finished = true;
           setStatus();
-          renderResult(event.result, resultsEl);
+          setBusy(false);
+          const attention = renderResult(event.result, resultsEl);
+          document.body.classList.add("has-results");
+          const heading = document.getElementById("report-title");
+          heading?.focus();
+          announce(
+            `Inspection of ${domain} complete. ` +
+              (attention === 0
+                ? "Nothing needs attention."
+                : `${attention} ${attention === 1 ? "item needs" : "items need"} attention.`),
+          );
         } else if (event.type === "error") {
           throw new Error(event.error);
         } else {
@@ -208,10 +190,16 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
       });
       if (!finished) throw new Error("The inspection ended unexpectedly.");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setStatus(errorStatus(msg));
+      if (controller.signal.aborted) {
+        setStatus();
+        announce("Inspection canceled.");
+      } else {
+        const msg = err instanceof Error ? err.message : String(err);
+        setStatus(errorStatus(msg));
+      }
     } finally {
-      submitBtn.disabled = false;
+      setBusy(false);
+      controller = null;
     }
   });
 </script>

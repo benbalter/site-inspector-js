@@ -7,6 +7,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@fontsource/ibm-plex-mono/600.css";
 import "../styles/global.css";
+import { val } from "../lib/ui";
 
 interface Props {
   title?: string;
@@ -21,11 +22,27 @@ const { title = "Site Inspector" } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Inspect a domain's technology, security, and capabilities." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
   </head>
-  <body class="min-h-full antialiased">
-    <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+  <body class="group/app flex min-h-full flex-col antialiased">
+    <a
+      href="#main"
+      class="sr-only rounded bg-ink px-3 py-2 text-sm text-surface focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50"
+    >
+      Skip to content
+    </a>
+    <main id="main" class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
       <slot />
-    </div>
+    </main>
+    <footer class="mx-auto w-full max-w-6xl border-t border-hairline px-4 py-6 sm:px-6">
+      <p class:list={[val, "text-xs text-ink-muted"]}>
+        Site Inspector ·
+        <a class="text-accent underline-offset-4 hover:underline" href="/api/openapi.json">
+          API spec (OpenAPI)
+        </a>
+      </p>
+    </footer>
   </body>
 </html>
