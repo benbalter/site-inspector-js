@@ -17,9 +17,9 @@ The aesthetic is a "forensic instrument" direction: IBM Plex Sans + Plex Mono
 (bundled locally via Fontsource), a faint blueprint grid, and precise hairline
 cards with monospaced technical readouts.
 
-It runs in **Node SSR** because the engine spawns headless Chrome (via
-Lighthouse) and uses other Node-only dependencies — it is not a static site and
-is meant to run on your machine.
+It runs in **Node SSR** because the engine uses Node-only networking and
+dependencies; optional checks can also spawn headless Chrome via Lighthouse.
+It is not a static site, but can be deployed as a Node web service.
 
 ## Running locally
 
@@ -100,6 +100,31 @@ npm run preview    # serve the built app
 npm run check      # astro check (type-check .astro and .ts files)
 npm test           # unit tests (node:test)
 ```
+
+## Deploying to Render
+
+The repository includes a root-level `render.yaml` Blueprint for deploying the
+web app as a Render Node web service. In Render, create a Blueprint instance
+from the repository and select the free plan. The build installs and builds the
+library first, then installs the web app from its lockfile and builds Astro.
+The start command runs Astro's standalone Node server; the adapter reads
+Render's `PORT` and binds to `0.0.0.0`.
+
+The Blueprint sets `SITE_INSPECTOR_PUBLIC=1`, which makes the service publicly
+reachable. Heavy Chrome/jsdom checks remain disabled in public mode. The API
+also limits request bodies to 16 KiB, admits up to 30 inspection requests per
+minute, and runs at most three inspections concurrently **per process**. These
+in-memory limits reset on restart and are not shared across instances; they are
+basic safeguards for a low-volume demo, not durable abuse prevention. Do not
+enable public mode for a production service without an external rate limiter,
+monitoring, and a review of Render's current policies for outbound inspection
+traffic.
+
+Render Free services sleep after inactivity and may take about a minute to
+wake. Render describes free instances as unsuitable for production and may
+suspend services that initiate unusually high outbound traffic. The app's
+local workflow remains unchanged; omit `SITE_INSPECTOR_PUBLIC=1` to keep it
+loopback-only.
 
 ## Notes
 

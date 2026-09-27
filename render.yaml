@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: site-inspector-web
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && npm --prefix web ci && npm --prefix web run build
+    startCommand: node web/dist/server/entry.mjs
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.0
+      - key: SITE_INSPECTOR_PUBLIC
+        value: "1"

@@ -6,6 +6,7 @@ import {
   publicMode,
   resolvesToPublicAddresses,
 } from "../../lib/network";
+import { acquireInspectionSlot, admitInspection } from "../../lib/rateLimit";
 import { NDJSON, encodeEvent, type StreamEvent } from "../../lib/stream";
 
 export const prerender = false;
@@ -15,6 +16,7 @@ installFetchGuard();
 const DEFAULT_TIMEOUT = 15_000;
 const MIN_TIMEOUT = 1_000;
 const MAX_TIMEOUT = 30_000;
+const MAX_BODY_BYTES = 16 * 1024;
 
 // Heavy checks launch headless Chrome or jsdom; run at most one such job at a time.
 let heavyJobRunning = false;
@@ -25,11 +27,43 @@ interface InspectBody {
   timeout?: unknown;
 }
 
+class RequestBodyTooLargeError extends Error {}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+async function readRequestBody(request: Request): Promise<InspectBody> {
+  const reader = request.body?.getReader();
+  if (!reader) throw new Error("Request body is required.");
+
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      await reader.cancel();
+      throw new RequestBodyTooLargeError();
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("Request body must be a JSON object.");
+  }
+  return parsed as InspectBody;
 }
 
 /** Reduce user input like "https://Example.com/path" to a bare lowercase hostname. */
@@ -45,9 +79,17 @@ function toHostname(input: string): string {
 export const POST: APIRoute = async ({ request }) => {
   let body: InspectBody;
   try {
-    body = (await request.json()) as InspectBody;
-  } catch {
-    return json({ error: "Invalid JSON body." }, 400);
+    body = await readRequestBody(request);
+  } catch (err) {
+    return json(
+      {
+        error:
+          err instanceof RequestBodyTooLargeError
+            ? "Request body is too large."
+            : "Invalid JSON body.",
+      },
+      400,
+    );
   }
 
   const raw = typeof body.domain === "string" ? body.domain.trim() : "";
@@ -58,6 +100,20 @@ export const POST: APIRoute = async ({ request }) => {
   if (!isValidHostname(domain)) {
     return json({ error: "Enter a public domain name, like example.com." }, 400);
   }
+
+  if (publicMode()) {
+    const admission = admitInspection();
+    if (!admission.allowed) {
+      return new Response(JSON.stringify({ error: "Too many requests. Try again shortly." }), {
+        status: 429,
+        headers: {
+          "content-type": "application/json",
+          "retry-after": String(admission.retryAfterSeconds),
+        },
+      });
+    }
+  }
+
   if (!(await resolvesToPublicAddresses(domain))) {
     return json({ error: "That domain resolves to a private or reserved address." }, 400);
   }
@@ -90,6 +146,11 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: "A slow inspection is already running. Try again shortly." }, 429);
   }
 
+  const releaseSlot = publicMode() ? acquireInspectionSlot() : null;
+  if (publicMode() && !releaseSlot) {
+    return json({ error: "The inspection service is busy. Try again shortly." }, 429);
+  }
+
   const timeout =
     typeof body.timeout === "number" && Number.isFinite(body.timeout)
       ? Math.min(MAX_TIMEOUT, Math.max(MIN_TIMEOUT, body.timeout))
@@ -97,6 +158,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   if (heavy.length > 0) heavyJobRunning = true;
   const release = () => {
+    releaseSlot?.();
     if (heavy.length > 0) heavyJobRunning = false;
   };
 
