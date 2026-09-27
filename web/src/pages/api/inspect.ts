@@ -7,6 +7,7 @@ import {
   resolvesToPublicAddresses,
 } from "../../lib/network";
 import { acquireInspectionSlot, admitInspection } from "../../lib/rateLimit";
+import { defaultChecks } from "../../lib/apiSpec";
 import { NDJSON, encodeEvent, type StreamEvent } from "../../lib/stream";
 
 export const prerender = false;
@@ -96,6 +97,12 @@ export const POST: APIRoute = async ({ request }) => {
   if (!raw) {
     return json({ error: "A domain is required." }, 400);
   }
+  const unsupportedFields = Object.keys(body).filter(
+    (key) => !["domain", "checks", "timeout"].includes(key),
+  );
+  if (unsupportedFields.length > 0) {
+    return json({ error: `Unknown fields: ${unsupportedFields.join(", ")}` }, 400);
+  }
   const domain = toHostname(raw);
   if (!isValidHostname(domain)) {
     return json({ error: "Enter a public domain name, like example.com." }, 400);
@@ -120,12 +127,19 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Validate requested checks against the engine's actual registry.
   const valid = availableChecks();
+  const fastChecks = availableChecks({ heavy: false });
   let checks: string[] | undefined;
   if (body.checks !== undefined) {
     if (!Array.isArray(body.checks)) {
       return json({ error: "checks must be an array of check names." }, 400);
     }
-    checks = body.checks.filter((c): c is string => typeof c === "string");
+    const requestedChecks = body.checks.filter(
+      (check): check is string => typeof check === "string",
+    );
+    if (requestedChecks.length !== body.checks.length) {
+      return json({ error: "checks must contain only check names as strings." }, 400);
+    }
+    checks = requestedChecks;
     if (checks.length === 0) {
       return json({ error: "Select at least one check." }, 400);
     }
@@ -137,8 +151,9 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Heavy checks drive a browser/jsdom that bypasses the fetch guard, so they
   // are only available when the app is running locally.
+  const selectedChecks = defaultChecks(checks, publicMode(), fastChecks);
   const heavyChecks = availableChecks({ heavy: true });
-  const heavy = (checks ?? valid).filter((c) => heavyChecks.includes(c));
+  const heavy = (selectedChecks ?? valid).filter((c) => heavyChecks.includes(c));
   if (heavy.length > 0 && publicMode()) {
     return json({ error: `Unavailable in public mode: ${heavy.join(", ")}` }, 400);
   }
@@ -151,8 +166,16 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: "The inspection service is busy. Try again shortly." }, 429);
   }
 
+  if (
+    body.timeout !== undefined &&
+    (typeof body.timeout !== "number" ||
+      !Number.isFinite(body.timeout) ||
+      !Number.isInteger(body.timeout))
+  ) {
+    return json({ error: "timeout must be an integer number of milliseconds." }, 400);
+  }
   const timeout =
-    typeof body.timeout === "number" && Number.isFinite(body.timeout)
+    typeof body.timeout === "number"
       ? Math.min(MAX_TIMEOUT, Math.max(MIN_TIMEOUT, body.timeout))
       : DEFAULT_TIMEOUT;
 
@@ -164,11 +187,11 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Clients that accept NDJSON get live progress, then the result.
   if (request.headers.get("accept")?.includes(NDJSON)) {
-    return streamInspection(domain, { checks, timeout }, release);
+    return streamInspection(domain, { checks: selectedChecks, timeout }, release);
   }
 
   try {
-    const result = await inspect(domain, { checks, timeout });
+    const result = await inspect(domain, { checks: selectedChecks, timeout });
     return json(result);
   } catch (err) {
     return json({ error: errorMessage(err) }, 500);

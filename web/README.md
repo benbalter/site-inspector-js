@@ -59,6 +59,36 @@ domain such as `example.com`.
   grouping is defined here, not in the engine.
 - `src/lib/network.ts` and `src/middleware.ts` — the SSRF guards described
   under [Security](#security).
+- `src/pages/api/openapi.json.ts` — an OpenAPI 3.1 document for machine clients
+  and LLM tool integrations. Its check-name enum is generated from the active
+  registry; in public mode it only advertises fast checks.
+
+## JSON API for tools and LLMs
+
+`POST /api/inspect` accepts a JSON object and returns an `InspectionResult` as
+JSON. The OpenAPI 3.1 description is available at `/api/openapi.json` and can be
+used to configure an HTTP-capable agent or LLM tool. The endpoint is
+unauthenticated and accepts public DNS hostnames only.
+
+```sh
+curl https://site-inspector.balter.dev/api/inspect \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json' \
+  -d '{"domain":"example.com","checks":["headers","https","csp"]}'
+```
+
+The `domain` field is required. `checks` is optional; when omitted on a public
+deployment, the API runs all fast checks. Provide a smaller subset when a
+concise response is preferable. `timeout` is optional and clamped to 1–30
+seconds. The response contains domain properties and structured facts keyed by
+check name; check-level failures appear in `checks[name].data.error`.
+
+Public deployments reject heavy Chrome/jsdom checks, cap request bodies at
+16 KiB, and enforce process-local request and concurrency limits. These are
+best-effort safeguards for a demo service, not API-key quotas or durable
+per-client rate limits. A request over the rate limit returns `429` and a
+`Retry-After` header. Do not send credentials or private URLs as inspection
+targets.
 
 ### Fast vs. heavy checks
 

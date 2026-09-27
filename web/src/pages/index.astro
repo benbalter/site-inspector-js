@@ -18,6 +18,12 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
       A read on a domain's technology, security, and capabilities — with a clear call on what's
       healthy and what needs attention.
     </p>
+    <a
+      class="val mt-3 inline-block text-accent underline decoration-hairline-strong underline-offset-4 hover:text-ink"
+      href="/api/openapi.json"
+    >
+      Machine-readable API spec (OpenAPI)
+    </a>
   </header>
 
   <form id="inspect-form" class="card p-2" data-fast-checks={JSON.stringify(fastChecks)}>
