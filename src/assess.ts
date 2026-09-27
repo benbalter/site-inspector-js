@@ -86,6 +86,7 @@ const POLARITY: Record<string, Polarity> = {
   // privacy
   "privacy.hasPrivacyPolicy": "positive-bonus",
   "privacy.hasCookiePolicy": "positive-bonus",
+  "privacy.gpcSupported": "positive-bonus",
 
   // infrastructure
   "dns.ipv6": "positive-bonus",

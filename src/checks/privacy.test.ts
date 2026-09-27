@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { PrivacyCheck } from "./privacy.js";
 import type { EndpointData } from "../types.js";
+import { stubFetch } from "../testing/fetch-stub.js";
 
 function makeEndpoint(body: string, headers: Record<string, string> = {}): EndpointData {
   return {
@@ -14,6 +15,15 @@ function makeEndpoint(body: string, headers: Record<string, string> = {}): Endpo
 
 describe("PrivacyCheck", () => {
   const check = new PrivacyCheck();
+
+  beforeEach(() => {
+    // No /.well-known/gpc.json unless a test says otherwise.
+    stubFetch({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
   it("detects OneTrust consent banner and privacy policy", async () => {
     const body = `
@@ -118,11 +128,30 @@ describe("PrivacyCheck", () => {
     expect(result.data.dntHeader).toBe("1");
   });
 
-  it("respects GPC (Global Privacy Control) header", async () => {
-    const body = "<html><body>Test</body></html>";
-    const result = await check.run(makeEndpoint(body, { "sec-gpc": "1" }), "example.com");
+  it("detects GPC support from /.well-known/gpc.json", async () => {
+    stubFetch({
+      "https://example.com/.well-known/gpc.json": { body: '{"gpc": true, "version": 1}' },
+    });
+    const result = await check.run(makeEndpoint("<html></html>"), "example.com");
 
-    expect(result.data.gpcHeader).toBe("1");
+    expect(result.data.gpcSupported).toBe(true);
+  });
+
+  it("doesn't count gpc.json with gpc: false as support", async () => {
+    stubFetch({
+      "https://example.com/.well-known/gpc.json": { body: '{"gpc": false}' },
+    });
+    const result = await check.run(makeEndpoint("<html></html>"), "example.com");
+
+    expect(result.data.gpcSupported).toBe(false);
+  });
+
+  it("doesn't mistake the word 'trusted' for TRUSTe", async () => {
+    const result = await check.run(
+      makeEndpoint("<p>Trusted by thousands of teams</p>"),
+      "example.com",
+    );
+    expect(result.data.consentLibraries).not.toContain("TrustArc");
   });
 
   it("detects P3P header", async () => {
@@ -189,7 +218,7 @@ describe("PrivacyCheck", () => {
     const result = await check.run(makeEndpoint(body, {}), "example.com");
 
     expect(result.data.dntHeader).toBe(null);
-    expect(result.data.gpcHeader).toBe(null);
+    expect(result.data.gpcSupported).toBe(false);
     expect(result.data.p3p).toBe(false);
   });
 

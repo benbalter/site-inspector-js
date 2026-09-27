@@ -119,7 +119,7 @@ describe("ApiDiscoveryCheck", () => {
   });
 
   it("detects all endpoint types", async () => {
-    mockFetch(() => true);
+    mockFetch((url) => !url.includes("site-inspector-404-check"));
 
     const result = await check.run(makeEndpoint(), "example.com");
 
@@ -128,5 +128,24 @@ describe("ApiDiscoveryCheck", () => {
     expect(result.data.hasOpenAPI).toBe(true);
     expect(result.data.endpoints.length).toBe(10);
     expect(result.data.probed).toBe(10);
+  });
+
+  it("ignores sites that answer 200 for any path (single-page app catch-alls)", async () => {
+    mockFetch(() => true);
+
+    const result = await check.run(makeEndpoint(), "example.com");
+
+    expect(result.data.catchAll).toBe(true);
+    expect(result.data.hasApi).toBe(false);
+    expect(result.data.endpoints).toEqual([]);
+  });
+
+  it("reports catchAll: false for a normal server", async () => {
+    mockFetch((url) => url.endsWith("/graphql"));
+
+    const result = await check.run(makeEndpoint(), "example.com");
+
+    expect(result.data.catchAll).toBe(false);
+    expect(result.data.endpoints).toEqual(["/graphql"]);
   });
 });

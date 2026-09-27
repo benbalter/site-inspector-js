@@ -34,4 +34,19 @@ describe("A11yAxeCheck", () => {
     const result = await check.run(makeEndpoint(""), "example.com");
     expect(result.data.violations).toBe(0);
   });
+
+  it("doesn't run the page's own scripts", async () => {
+    // If page scripts ran, this one would inject an image with no alt text.
+    const body = `<!DOCTYPE html><html lang="en"><head><title>Test</title></head><body>
+      <main><h1>Hello</h1></main>
+      <script>
+        const img = document.createElement("img");
+        img.src = "x.png";
+        document.querySelector("main").appendChild(img);
+      </script>
+    </body></html>`;
+    const result = await check.run(makeEndpoint(body), "example.com");
+    const ids = (result.data.topIssues as Array<{ id: string }>).map((i) => i.id);
+    expect(ids).not.toContain("image-alt");
+  }, 15000);
 });

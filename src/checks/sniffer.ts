@@ -22,13 +22,11 @@ for (const file of readdirSync(techDir).filter((f: string) => f.endsWith(".json"
 }
 Wappalyzer.setTechnologies(allTechs);
 
-/** Parse `set-cookie` header into `{ name: [value] }` format. */
-function parseCookies(headers: Record<string, string>): Record<string, string[]> {
-  const raw = headers["set-cookie"];
-  if (!raw) return {};
+/** Parse `Set-Cookie` headers into `{ name: [value] }` format. */
+function parseCookies(setCookies: string[]): Record<string, string[]> {
   const cookies: Record<string, string[]> = {};
-  for (const part of raw.split(/,(?=[^ ])/)) {
-    const [pair] = part.split(";");
+  for (const raw of setCookies) {
+    const [pair] = raw.split(";");
     const eq = pair.indexOf("=");
     if (eq === -1) continue;
     const name = pair.slice(0, eq).trim();
@@ -96,20 +94,21 @@ export class SnifferCheck implements Check {
   name = "sniffer";
 
   async run(endpoint: EndpointData): Promise<CheckResult> {
-    const { body, headers, url } = endpoint;
+    const { body, headers, setCookies, url } = endpoint;
 
     // Convert headers to array-valued format
     const headerArrays: Record<string, string[]> = {};
     for (const [k, v] of Object.entries(headers)) {
       headerArrays[k.toLowerCase()] = [v];
     }
+    if (setCookies.length > 0) headerArrays["set-cookie"] = setCookies;
 
     const detections: WappalyzerDetection[] = Wappalyzer.analyze({
       url,
       headers: headerArrays,
       html: body,
       scripts: parseScriptSrc(body),
-      cookies: parseCookies(headers),
+      cookies: parseCookies(setCookies),
       meta: parseMeta(body),
       scriptSrc: parseScriptSrc(body),
     });

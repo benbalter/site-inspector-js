@@ -6,15 +6,13 @@ const require = createRequire(import.meta.url);
 const { CspParser } = require("csp_evaluator/dist/parser");
 const { CspEvaluator } = require("csp_evaluator");
 
-const SEVERITY_LABELS: Record<number, string> = {
-  10: "HIGH",
-  20: "MEDIUM",
-  30: "INFO",
-  0: "NONE",
+// A TypeScript numeric enum: maps both name -> value and value -> name.
+const { Severity } = require("csp_evaluator/dist/finding") as {
+  Severity: Record<string, number> & Record<number, string>;
 };
 
 function severityLabel(severity: number): string {
-  return SEVERITY_LABELS[severity] ?? "UNKNOWN";
+  return Severity[severity] ?? "UNKNOWN";
 }
 
 export class CspCheck implements Check {
@@ -34,6 +32,8 @@ export class CspCheck implements Check {
           findings: [],
           highSeverityCount: 0,
           mediumSeverityCount: 0,
+          possibleIssueCount: 0,
+          syntaxErrorCount: 0,
           infoCount: 0,
         },
       };
@@ -46,6 +46,9 @@ export class CspCheck implements Check {
       directive: string;
       description: string;
     }> = evaluator.evaluate();
+
+    const count = (...severities: number[]) =>
+      rawFindings.filter((f) => severities.includes(f.severity)).length;
 
     const findings = rawFindings.map((f) => ({
       severity: severityLabel(f.severity),
@@ -60,9 +63,11 @@ export class CspCheck implements Check {
         hasReportOnly: reportOnlyPolicy !== null,
         rawPolicy,
         findings,
-        highSeverityCount: rawFindings.filter((f) => f.severity === 10).length,
-        mediumSeverityCount: rawFindings.filter((f) => f.severity === 20).length,
-        infoCount: rawFindings.filter((f) => f.severity === 30).length,
+        highSeverityCount: count(Severity.HIGH),
+        mediumSeverityCount: count(Severity.MEDIUM),
+        possibleIssueCount: count(Severity.HIGH_MAYBE, Severity.MEDIUM_MAYBE),
+        syntaxErrorCount: count(Severity.SYNTAX),
+        infoCount: count(Severity.INFO),
       },
     };
   }

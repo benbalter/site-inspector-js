@@ -1,202 +1,108 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import type { EndpointData } from "../types.js";
-
-const mockFetch = vi.fn();
-
-vi.stubGlobal("fetch", mockFetch);
-
 import { DnssecCheck } from "./dnssec.js";
+import { stubFetch, type FakeResponse } from "../testing/fetch-stub.js";
 
 const dummyEndpoint: EndpointData = {
   url: "https://example.com",
+  finalUrl: "https://example.com",
   statusCode: 200,
   headers: {},
+  setCookies: [],
   body: "",
   redirectChain: [],
 };
 
+const TYPES = { A: 1, DS: 43, RRSIG: 46, DNSKEY: 48 } as const;
+
+/** Stub dns.google responses per record type for `name`. */
+function stubDoh(
+  name: string,
+  answers: Partial<Record<keyof typeof TYPES, { AD?: boolean; count?: number }>>,
+  override?: FakeResponse,
+) {
+  const routes: Record<string, FakeResponse> = {};
+  for (const [type, num] of Object.entries(TYPES)) {
+    const a = answers[type as keyof typeof TYPES] ?? {};
+    routes[`https://dns.google/resolve?name=${name}&type=${num}&do=1`] = override ?? {
+      body: JSON.stringify({
+        Status: 0,
+        AD: a.AD ?? false,
+        Answer: a.count
+          ? Array.from({ length: a.count }, () => ({ type: num, data: "…" }))
+          : undefined,
+      }),
+    };
+  }
+  return stubFetch(routes);
+}
+
 describe("DnssecCheck", () => {
   const check = new DnssecCheck();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
-  it("returns DNSSEC enabled when DNSKEY and DS records exist", async () => {
-    mockFetch.mockResolvedValue({
-      json: async () => ({
-        Status: 0,
-        AD: true,
-        Answer: [{ type: 48, data: "256 3 13 ..." }],
-      }),
+  it("reports a signed, validated zone apex", async () => {
+    stubDoh("example.com", {
+      A: { AD: true, count: 1 },
+      DNSKEY: { AD: true, count: 2 },
+      DS: { AD: true, count: 1 },
+      RRSIG: { count: 1 },
     });
 
     const result = await check.run(dummyEndpoint, "example.com");
 
     expect(result.name).toBe("dnssec");
-    expect(result.data.enabled).toBe(true);
-    expect(result.data.adFlag).toBe(true);
-    expect(result.data.hasDnskey).toBe(true);
-    expect(result.data.hasDs).toBe(true);
-    expect(result.data.hasRrsig).toBe(true);
-    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(result.data).toEqual({
+      enabled: true,
+      adFlag: true,
+      hasDnskey: true,
+      hasDs: true,
+      hasRrsig: true,
+      error: null,
+    });
   });
 
-  it("returns DNSSEC disabled when no records exist", async () => {
-    mockFetch.mockResolvedValue({
-      json: async () => ({
-        Status: 0,
-        AD: false,
-        Answer: undefined,
-      }),
-    });
+  it("detects a signed subdomain, which has no DNSKEY/DS of its own", async () => {
+    stubDoh("blog.example.com", { A: { AD: true, count: 1 } });
+
+    const result = await check.run(dummyEndpoint, "blog.example.com");
+
+    expect(result.data).toMatchObject({ enabled: true, adFlag: true, hasDnskey: false });
+  });
+
+  it("reports an unsigned domain as disabled", async () => {
+    stubDoh("example.com", { A: { count: 1 } });
 
     const result = await check.run(dummyEndpoint, "example.com");
 
-    expect(result.name).toBe("dnssec");
-    expect(result.data.enabled).toBe(false);
-    expect(result.data.adFlag).toBe(false);
-    expect(result.data.hasDnskey).toBe(false);
-    expect(result.data.hasDs).toBe(false);
-    expect(result.data.hasRrsig).toBe(false);
+    expect(result.data).toMatchObject({ enabled: false, adFlag: false, error: null });
   });
 
-  it("returns enabled when DNSKEY record exists", async () => {
-    let callCount = 0;
-    mockFetch.mockImplementation(() => {
-      callCount++;
-      if (callCount === 1) {
-        // DNSKEY response
-        return Promise.resolve({
-          json: async () => ({
-            Status: 0,
-            AD: false,
-            Answer: [{ type: 48, data: "256 3 13 ..." }],
-          }),
-        });
-      }
-      // DS and RRSIG responses with empty answers
-      return Promise.resolve({
-        json: async () => ({
-          Status: 0,
-          AD: false,
-          Answer: undefined,
-        }),
-      });
-    });
+  it("counts DNSKEY records without validation as enabled but not validated", async () => {
+    stubDoh("example.com", { A: { count: 1 }, DNSKEY: { count: 1 } });
 
     const result = await check.run(dummyEndpoint, "example.com");
 
-    expect(result.data.enabled).toBe(true);
-    expect(result.data.hasDnskey).toBe(true);
-    expect(result.data.hasDs).toBe(false);
-    expect(result.data.hasRrsig).toBe(false);
+    expect(result.data).toMatchObject({ enabled: true, adFlag: false, hasDnskey: true });
   });
 
-  it("returns enabled when DS record exists", async () => {
-    let callCount = 0;
-    mockFetch.mockImplementation(() => {
-      callCount++;
-      if (callCount === 2) {
-        // DS response
-        return Promise.resolve({
-          json: async () => ({
-            Status: 0,
-            AD: true,
-            Answer: [{ type: 43, data: "257 3 8 ..." }],
-          }),
-        });
-      }
-      // DNSKEY and RRSIG responses with empty answers
-      return Promise.resolve({
-        json: async () => ({
-          Status: 0,
-          AD: false,
-          Answer: undefined,
-        }),
-      });
-    });
+  it("reports an error when the DoH service fails", async () => {
+    stubDoh("example.com", {}, { status: 502, body: "<html>Bad gateway</html>" });
 
     const result = await check.run(dummyEndpoint, "example.com");
 
-    expect(result.data.enabled).toBe(true);
-    expect(result.data.hasDnskey).toBe(false);
-    expect(result.data.hasDs).toBe(true);
-    expect(result.data.hasRrsig).toBe(false);
-    expect(result.data.adFlag).toBe(true);
+    expect(result.data).toMatchObject({ enabled: false, error: "DNS-over-HTTPS lookup failed" });
   });
 
-  it("sets AD flag when DNSKEY response has AD=true", async () => {
-    mockFetch.mockImplementation(async (url: string) => {
-      if (url.includes("type=48")) {
-        // DNSKEY response with AD flag
-        return {
-          json: async () => ({
-            Status: 0,
-            AD: true,
-            Answer: undefined,
-          }),
-        };
-      }
-      return {
-        json: async () => ({
-          Status: 0,
-          AD: false,
-          Answer: undefined,
-        }),
-      };
-    });
+  it("reports an error when the DoH service is unreachable", async () => {
+    stubFetch({});
 
     const result = await check.run(dummyEndpoint, "example.com");
 
-    expect(result.data.adFlag).toBe(true);
-  });
-
-  it("handles fetch errors gracefully", async () => {
-    mockFetch.mockRejectedValue(new Error("Network error"));
-
-    const result = await check.run(dummyEndpoint, "example.com");
-
-    expect(result.name).toBe("dnssec");
-    expect(result.data.enabled).toBe(false);
-    expect(result.data.adFlag).toBe(false);
-    expect(result.data.hasDnskey).toBe(false);
-    expect(result.data.hasDs).toBe(false);
-    expect(result.data.hasRrsig).toBe(false);
-  });
-
-  it("checks domain name from parameter", async () => {
-    mockFetch.mockResolvedValue({
-      json: async () => ({
-        Status: 0,
-        AD: false,
-        Answer: undefined,
-      }),
-    });
-
-    await check.run(dummyEndpoint, "example.org");
-
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("example.org"),
-      expect.any(Object),
-    );
-  });
-
-  it("passes correct record types to DoH API", async () => {
-    mockFetch.mockResolvedValue({
-      json: async () => ({
-        Status: 0,
-        AD: false,
-        Answer: undefined,
-      }),
-    });
-
-    await check.run(dummyEndpoint, "example.com");
-
-    // Should call with type=48 (DNSKEY), type=43 (DS), type=46 (RRSIG)
-    const calls = mockFetch.mock.calls.map((call) => call[0] as string);
-    expect(calls.some((url) => url.includes("type=48"))).toBe(true);
-    expect(calls.some((url) => url.includes("type=43"))).toBe(true);
-    expect(calls.some((url) => url.includes("type=46"))).toBe(true);
+    expect(result.data).toMatchObject({ enabled: false, adFlag: false });
+    expect(result.data.error).toBeTruthy();
   });
 });

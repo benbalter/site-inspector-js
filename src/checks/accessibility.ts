@@ -37,7 +37,9 @@ export class AccessibilityCheck implements Check {
     let withAlt = 0;
     imgElements.each((_i, el) => {
       const alt = $(el).attr("alt");
-      if (alt !== undefined && alt.length > 0) {
+      // alt="" is correct for decorative images (WCAG H67), so only a missing
+      // attribute counts against coverage.
+      if (alt !== undefined) {
         withAlt++;
       }
     });

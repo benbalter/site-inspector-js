@@ -2,11 +2,13 @@ import { describe, it, expect } from "vitest";
 import { CookiesCheck } from "./cookies.js";
 import type { EndpointData } from "../types.js";
 
-function makeEndpoint(headers: Record<string, string> = {}): EndpointData {
+function makeEndpoint(setCookies: string[] = []): EndpointData {
   return {
     url: "https://example.com",
+    finalUrl: "https://example.com",
     statusCode: 200,
-    headers,
+    headers: {},
+    setCookies,
     body: "",
     redirectChain: [],
   };
@@ -28,9 +30,7 @@ describe("CookiesCheck", () => {
 
   it("parses a single secure cookie with all flags", async () => {
     const result = await check.run(
-      makeEndpoint({
-        "set-cookie": "sid=abc123; Secure; HttpOnly; SameSite=Strict",
-      }),
+      makeEndpoint(["sid=abc123; Secure; HttpOnly; SameSite=Strict"]),
       "example.com",
     );
 
@@ -44,8 +44,10 @@ describe("CookiesCheck", () => {
   });
 
   it("handles multiple cookies with mixed security flags", async () => {
-    const header = "sid=abc; Secure; HttpOnly; SameSite=Lax, " + "tracker=xyz; SameSite=None";
-    const result = await check.run(makeEndpoint({ "set-cookie": header }), "example.com");
+    const result = await check.run(
+      makeEndpoint(["sid=abc; Secure; HttpOnly; SameSite=Lax", "tracker=xyz; SameSite=None"]),
+      "example.com",
+    );
 
     expect(result.data.hasCookies).toBe(true);
     expect(result.data.count).toBe(2);
@@ -74,12 +76,7 @@ describe("CookiesCheck", () => {
   });
 
   it("parses SameSite attribute case-insensitively", async () => {
-    const result = await check.run(
-      makeEndpoint({
-        "set-cookie": "tok=v; samesite=NONE; secure",
-      }),
-      "example.com",
-    );
+    const result = await check.run(makeEndpoint(["tok=v; samesite=NONE; secure"]), "example.com");
 
     const cookies = result.data.cookies as Array<{
       sameSite: string | null;
@@ -87,5 +84,19 @@ describe("CookiesCheck", () => {
     }>;
     expect(cookies[0]?.sameSite).toBe("None");
     expect(cookies[0]?.secure).toBe(true);
+  });
+
+  it("keeps cookies whose Expires date contains a comma", async () => {
+    const result = await check.run(
+      makeEndpoint([
+        "a=1; Expires=Wed, 21 Oct 2026 07:28:00 GMT; Secure; HttpOnly",
+        "b=2; Expires=Thu, 22 Oct 2026 07:28:00 GMT; Secure",
+      ]),
+      "example.com",
+    );
+
+    expect(result.data.count).toBe(2);
+    expect(result.data.allSecure).toBe(true);
+    expect(result.data.allHttpOnly).toBe(false);
   });
 });

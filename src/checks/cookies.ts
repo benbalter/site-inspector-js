@@ -33,18 +33,11 @@ function parseCookie(raw: string): CookieInfo {
   return { name, secure, httpOnly, sameSite };
 }
 
-function splitSetCookieHeader(value: string): string[] {
-  // Split on ", " followed by a token and "=" (cookie boundary heuristic)
-  return value.split(/,\s(?=[A-Za-z0-9_.-]+=)/).map((s) => s.trim());
-}
-
 export class CookiesCheck implements Check {
   name = "cookies";
 
   async run(endpoint: EndpointData): Promise<CheckResult> {
-    const raw = endpoint.headers["set-cookie"];
-
-    if (!raw) {
+    if (endpoint.setCookies.length === 0) {
       return {
         name: this.name,
         data: {
@@ -57,8 +50,7 @@ export class CookiesCheck implements Check {
       };
     }
 
-    const cookieStrings = splitSetCookieHeader(raw);
-    const cookies = cookieStrings.map(parseCookie);
+    const cookies = endpoint.setCookies.map(parseCookie);
 
     return {
       name: this.name,

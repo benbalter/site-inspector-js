@@ -214,7 +214,7 @@ describe("I18nCheck", () => {
     expect(result.data.multilingual).toBe(false);
   });
 
-  it("detects lang as multilingual when hreflangs present but not x-default", async () => {
+  it("reports a single hreflang without x-default as one language", async () => {
     const html = `
       <html lang="en">
       <head>
@@ -228,7 +228,7 @@ describe("I18nCheck", () => {
     `;
     const result = await check.run(makeEndpoint(html), "example.com");
 
-    expect(result.data.multilingual).toBe(true);
+    expect(result.data.multilingual).toBe(false);
     expect(result.data.languageCount).toBe(1);
     expect(result.data.hasXDefault).toBe(false);
   });
@@ -264,5 +264,14 @@ describe("I18nCheck", () => {
     const result = await check.run(makeEndpoint(html), "example.com");
 
     expect(result.data.dir).toBe("rtl");
+  });
+
+  it("doesn't call a page with a single hreflang multilingual", async () => {
+    const result = await check.run(
+      makeEndpoint('<html><head><link rel="alternate" hreflang="en" href="/"></head></html>'),
+      "example.com",
+    );
+    expect(result.data.languageCount).toBe(1);
+    expect(result.data.multilingual).toBe(false);
   });
 });

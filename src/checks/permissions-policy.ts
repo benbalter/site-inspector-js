@@ -30,6 +30,18 @@ function parsePermissionsPolicy(header: string): Record<string, string> {
   return features;
 }
 
+// Legacy Feature-Policy format: feature allowlist; feature2 allowlist
+// e.g. "camera 'none'; microphone 'self'; geolocation *"
+function parseFeaturePolicy(header: string): Record<string, string> {
+  const features: Record<string, string> = {};
+  for (const part of header.split(";")) {
+    const [name, ...allowlist] = part.trim().split(/\s+/);
+    if (!name) continue;
+    features[name.toLowerCase()] = allowlist.join(" ");
+  }
+  return features;
+}
+
 export class PermissionsPolicyCheck implements Check {
   name = "permissions-policy";
 
@@ -54,7 +66,8 @@ export class PermissionsPolicyCheck implements Check {
       };
     }
 
-    const features = parsePermissionsPolicy(raw);
+    const features =
+      headerType === "feature-policy" ? parseFeaturePolicy(raw) : parsePermissionsPolicy(raw);
     const blocked = Object.entries(features)
       .filter(([, v]) => v === "()" || v === "'none'")
       .map(([k]) => k);

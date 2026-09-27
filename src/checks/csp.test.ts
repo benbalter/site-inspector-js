@@ -1,30 +1,17 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import type { EndpointData } from "../types.js";
-
-const { mockCspParser, mockCspEvaluator } = vi.hoisted(() => ({
-  mockCspParser: vi.fn(),
-  mockCspEvaluator: vi.fn(),
-}));
-
-vi.mock("node:module", () => ({
-  createRequire: () => (id: string) => {
-    if (id === "csp_evaluator/dist/parser") {
-      return { CspParser: mockCspParser };
-    }
-    if (id === "csp_evaluator") {
-      return { CspEvaluator: mockCspEvaluator };
-    }
-    throw new Error(`Unexpected require: ${id}`);
-  },
-}));
-
 import { CspCheck } from "./csp.js";
+
+// These tests run the real csp_evaluator, so severity mapping is checked
+// against the library's actual values rather than invented ones.
 
 function makeEndpoint(headers: Record<string, string> = {}): EndpointData {
   return {
     url: "https://example.com",
+    finalUrl: "https://example.com",
     statusCode: 200,
     headers,
+    setCookies: [],
     body: "",
     redirectChain: [],
   };
@@ -32,10 +19,6 @@ function makeEndpoint(headers: Record<string, string> = {}): EndpointData {
 
 describe("CspCheck", () => {
   const check = new CspCheck();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it("has name 'csp'", () => {
     expect(check.name).toBe("csp");
@@ -50,83 +33,54 @@ describe("CspCheck", () => {
       findings: [],
       highSeverityCount: 0,
       mediumSeverityCount: 0,
+      possibleIssueCount: 0,
+      syntaxErrorCount: 0,
       infoCount: 0,
     });
-    expect(mockCspParser).not.toHaveBeenCalled();
   });
 
-  it("returns hasCsp: true with no high severity findings for a strong CSP", async () => {
-    const csp = "default-src 'none'; script-src 'self'; style-src 'self'";
-    const mockParsed = { directives: [] };
-    mockCspParser.mockImplementation(function (this: Record<string, unknown>) {
-      this.csp = mockParsed;
-    });
-    mockCspEvaluator.mockImplementation(function () {
-      return {
-        evaluate: () => [
-          {
-            severity: 30,
-            directive: "default-src",
-            description: "No reporting configured",
-          },
-        ],
-      };
-    });
-
+  it("labels and counts HIGH findings for unsafe-inline scripts", async () => {
+    const csp = "script-src 'unsafe-inline'";
     const result = await check.run(makeEndpoint({ "content-security-policy": csp }), "example.com");
 
     expect(result.data.hasCsp).toBe(true);
     expect(result.data.rawPolicy).toBe(csp);
+    expect(result.data.highSeverityCount).toBe(2);
+    expect(result.data.findings).toContainEqual(
+      expect.objectContaining({ severity: "HIGH", directive: "script-src" }),
+    );
+  });
+
+  it("labels 'maybe' findings instead of reporting UNKNOWN", async () => {
+    // csp_evaluator rates a 'self'-only policy as MEDIUM_MAYBE (50).
+    const result = await check.run(
+      makeEndpoint({
+        "content-security-policy": "default-src 'self'; object-src 'none'; base-uri 'none'",
+      }),
+      "example.com",
+    );
+
     expect(result.data.highSeverityCount).toBe(0);
-    expect(result.data.mediumSeverityCount).toBe(0);
-    expect(result.data.infoCount).toBe(1);
+    expect(result.data.possibleIssueCount).toBe(1);
     expect(result.data.findings).toEqual([
-      {
-        severity: "INFO",
-        directive: "default-src",
-        description: "No reporting configured",
-      },
+      expect.objectContaining({ severity: "MEDIUM_MAYBE", directive: "default-src" }),
     ]);
   });
 
-  it("reports high severity findings for weak CSP with unsafe-inline", async () => {
-    const csp = "default-src 'self'; script-src 'unsafe-inline'";
-    const mockParsed = { directives: [] };
-    mockCspParser.mockImplementation(function (this: Record<string, unknown>) {
-      this.csp = mockParsed;
-    });
-    mockCspEvaluator.mockImplementation(function () {
-      return {
-        evaluate: () => [
-          {
-            severity: 10,
-            directive: "script-src",
-            description: "'unsafe-inline' allows the execution of unsafe in-page scripts.",
-          },
-          {
-            severity: 20,
-            directive: "script-src",
-            description: "Consider adding 'strict-dynamic'.",
-          },
-        ],
-      };
-    });
+  it("counts syntax errors separately from medium findings", async () => {
+    const result = await check.run(
+      makeEndpoint({ "content-security-policy": "default-src 'none'; scriptsrc 'self'" }),
+      "example.com",
+    );
 
-    const result = await check.run(makeEndpoint({ "content-security-policy": csp }), "example.com");
-
-    expect(result.data.hasCsp).toBe(true);
-    expect(result.data.highSeverityCount).toBe(1);
-    expect(result.data.mediumSeverityCount).toBe(1);
-    expect(result.data.findings).toHaveLength(2);
-    expect(result.data.findings[0].severity).toBe("HIGH");
-    expect(result.data.findings[1].severity).toBe("MEDIUM");
+    expect(result.data.syntaxErrorCount).toBeGreaterThan(0);
+    expect(result.data.mediumSeverityCount).toBe(0);
+    expect(result.data.findings).toContainEqual(expect.objectContaining({ severity: "SYNTAX" }));
   });
 
   it("detects report-only header", async () => {
     const result = await check.run(
-      makeEndpoint({
-        "content-security-policy-report-only": "default-src 'self'",
-      }),
+      makeEndpoint({ "content-security-policy-report-only": "default-src 'self'" }),
       "example.com",
     );
 
@@ -136,14 +90,6 @@ describe("CspCheck", () => {
 
   it("handles both enforced and report-only headers", async () => {
     const csp = "default-src 'self'";
-    const mockParsed = { directives: [] };
-    mockCspParser.mockImplementation(function (this: Record<string, unknown>) {
-      this.csp = mockParsed;
-    });
-    mockCspEvaluator.mockImplementation(function () {
-      return { evaluate: () => [] };
-    });
-
     const result = await check.run(
       makeEndpoint({
         "content-security-policy": csp,
@@ -155,6 +101,5 @@ describe("CspCheck", () => {
     expect(result.data.hasCsp).toBe(true);
     expect(result.data.hasReportOnly).toBe(true);
     expect(result.data.rawPolicy).toBe(csp);
-    expect(result.data.findings).toEqual([]);
   });
 });

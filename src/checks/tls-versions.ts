@@ -32,8 +32,19 @@ function testTlsVersion(
   maxVersion: tls.SecureVersion,
 ): Promise<boolean> {
   return new Promise((resolve) => {
+    // OpenSSL 3's default security level refuses TLS 1.0/1.1 handshakes
+    // outright, so lower it for those probes or they'd always "fail".
+    const legacy = maxVersion === "TLSv1" || maxVersion === "TLSv1.1";
     const socket = tls.connect(
-      { host, port, minVersion, maxVersion, rejectUnauthorized: false, timeout: 5000 },
+      {
+        host,
+        port,
+        minVersion,
+        maxVersion,
+        rejectUnauthorized: false,
+        timeout: 5000,
+        ...(legacy && { ciphers: "DEFAULT@SECLEVEL=0" }),
+      },
       () => {
         socket.destroy();
         resolve(true);

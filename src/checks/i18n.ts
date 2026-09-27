@@ -47,7 +47,7 @@ export class I18nCheck implements Check {
         hreflangs,
         languageCount,
         hasXDefault,
-        multilingual: languageCount > 1 || hreflangs.length > 0,
+        multilingual: languageCount > 1,
       },
     };
   }

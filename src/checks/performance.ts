@@ -1,6 +1,5 @@
 import type { EndpointData, CheckResult } from "../types.js";
 import type { Check } from "./check.js";
-import { USER_AGENT } from "../utils.js";
 
 interface ServerTimingEntry {
   name: string;
@@ -51,30 +50,19 @@ export class PerformanceCheck implements Check {
   name = "performance";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    let responseTimeMs: number;
-    try {
-      const start = Date.now();
-      const response = await fetch(endpoint.url, {
-        signal: AbortSignal.timeout(10000),
-        headers: {
-          "User-Agent": USER_AGENT,
-        },
-      });
-      await response.text();
-      responseTimeMs = Date.now() - start;
-    } catch {
-      responseTimeMs = -1;
-    }
+    // Time to fetch the page (including redirects), measured by the endpoint.
+    const responseTimeMs = endpoint.responseTimeMs ?? null;
 
+    // Content-Length is the size on the wire (after compression); the decoded
+    // body is what the browser has to parse.
     const contentLengthHeader = endpoint.headers["content-length"];
-    const contentLengthBytes = contentLengthHeader
-      ? parseInt(contentLengthHeader, 10)
-      : endpoint.body.length;
+    const contentLengthBytes = contentLengthHeader ? parseInt(contentLengthHeader, 10) : null;
+    const decodedBytes = Buffer.byteLength(endpoint.body, "utf8");
 
     const contentEncoding = endpoint.headers["content-encoding"] ?? null;
     const compressed = contentEncoding !== null;
 
-    const sizeCategory = categorizeSize(contentLengthBytes);
+    const sizeCategory = categorizeSize(decodedBytes);
     const redirectCount = endpoint.redirectChain.length;
 
     const serverTimingHeader = endpoint.headers["server-timing"];
@@ -87,6 +75,7 @@ export class PerformanceCheck implements Check {
       data: {
         responseTimeMs,
         contentLengthBytes,
+        decodedBytes,
         contentEncoding,
         compressed,
         sizeCategory,

@@ -10,13 +10,16 @@ interface PreloadStatus {
   max_age_grepped?: string;
 }
 
+interface PreloadIssue {
+  code: string;
+  summary: string;
+  message: string;
+}
+
+/** Response of hstspreload.org's /api/v2/preloadable endpoint. */
 interface PreloadableStatus {
-  status: string;
-  issues?: Array<{
-    code: string;
-    summary: string;
-    message: string;
-  }>;
+  errors?: PreloadIssue[];
+  warnings?: PreloadIssue[];
 }
 
 export class HstsPreloadCheck implements Check {
@@ -34,10 +37,12 @@ export class HstsPreloadCheck implements Check {
     return {
       name: this.name,
       data: {
-        preloaded: statusData?.status === "preloaded" ? true : false,
+        preloaded: statusData?.status === "preloaded",
         status: statusData?.status ?? "unknown",
-        eligible: preloadableData?.status === "preloadable" ? true : false,
-        issues: preloadableData?.issues ?? [],
+        // Eligible when there are no errors; null if the API couldn't be reached.
+        eligible: preloadableData ? (preloadableData.errors ?? []).length === 0 : null,
+        errors: preloadableData?.errors ?? [],
+        warnings: preloadableData?.warnings ?? [],
       },
     };
   }

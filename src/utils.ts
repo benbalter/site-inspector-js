@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import dns from "node:dns/promises";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -154,5 +155,41 @@ export async function probeUrl(
     return status === 200;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Whether the server answers 200 for any path, as single-page apps often do.
+ * On such sites, a 200 from a probe like /graphql or /sw.js proves nothing.
+ */
+export async function isCatchAll(origin: string, timeoutMs = 5000): Promise<boolean> {
+  const random = Math.random().toString(36).slice(2);
+  return probeUrl(`${origin}/site-inspector-404-check-${random}`, "HEAD", timeoutMs);
+}
+
+/** DNS error codes that mean "no such record" rather than a failed lookup. */
+const DNS_ABSENT = new Set(["ENODATA", "ENOTFOUND"]);
+
+/** Result of {@link findTxtRecords}. */
+export interface TxtLookup {
+  /** Matching records, with multi-string records joined. */
+  records: string[];
+  /** Error code if the lookup itself failed (e.g. ESERVFAIL); null if it worked. */
+  error: string | null;
+}
+
+/**
+ * Look up TXT records at `name` and keep those matching `pattern`. A missing
+ * name or record isn't an error; a failed lookup (timeout, SERVFAIL) is, so
+ * callers can tell "no SPF record" from "couldn't check".
+ */
+export async function findTxtRecords(name: string, pattern: RegExp): Promise<TxtLookup> {
+  try {
+    const txt = await dns.resolveTxt(name);
+    return { records: txt.map((r) => r.join("")).filter((r) => pattern.test(r)), error: null };
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code && DNS_ABSENT.has(code)) return { records: [], error: null };
+    return { records: [], error: code ?? (err instanceof Error ? err.message : String(err)) };
   }
 }

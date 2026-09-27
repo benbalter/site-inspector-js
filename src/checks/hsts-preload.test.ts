@@ -1,20 +1,40 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { HstsPreloadCheck } from "./hsts-preload.js";
 import type { EndpointData } from "../types.js";
+import { stubFetch } from "../testing/fetch-stub.js";
 
-function makeEndpoint(headers: Record<string, string> = {}): EndpointData {
+function makeEndpoint(): EndpointData {
   return {
     url: "https://example.com",
+    finalUrl: "https://example.com",
     statusCode: 200,
-    headers,
+    headers: {},
+    setCookies: [],
     body: "",
     redirectChain: [],
   };
 }
 
+const STATUS = "https://hstspreload.org/api/v2/status?domain=example.com";
+const PRELOADABLE = "https://hstspreload.org/api/v2/preloadable?domain=example.com";
+
+/** Stub both hstspreload.org endpoints with the API's real response shapes. */
+function stubApi(status: object, preloadable: object) {
+  return stubFetch({
+    [STATUS]: { body: JSON.stringify(status) },
+    [PRELOADABLE]: { body: JSON.stringify(preloadable) },
+  });
+}
+
+const noHeader = {
+  code: "response.no_header",
+  summary: "No HSTS header",
+  message: "Response error: No HSTS header is present on the response.",
+};
+
 describe("HstsPreloadCheck", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const check = new HstsPreloadCheck();
@@ -23,231 +43,68 @@ describe("HstsPreloadCheck", () => {
     expect(check.name).toBe("hsts-preload");
   });
 
-  it("returns preloaded status when domain is on the preload list", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/status")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "preloaded" }),
-          };
-        }
-        if (url.includes("/preloadable")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "preloadable", issues: [] }),
-          };
-        }
-        return { ok: false };
-      }),
-    );
+  it("reports a preloaded, eligible domain", async () => {
+    stubApi({ name: "example.com", status: "preloaded" }, { errors: [], warnings: [] });
 
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
+    const result = await check.run(makeEndpoint(), "example.com");
 
     expect(result.name).toBe("hsts-preload");
     expect(result.data).toEqual({
       preloaded: true,
       status: "preloaded",
       eligible: true,
-      issues: [],
+      errors: [],
+      warnings: [],
     });
   });
 
-  it("returns not preloaded when domain is unknown", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/status")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "unknown" }),
-          };
-        }
-        if (url.includes("/preloadable")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "unknown", issues: [] }),
-          };
-        }
-        return { ok: false };
-      }),
-    );
+  it("reports an ineligible domain with its errors", async () => {
+    stubApi({ status: "unknown" }, { errors: [noHeader], warnings: [] });
 
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
+    const result = await check.run(makeEndpoint(), "example.com");
 
     expect(result.data).toEqual({
       preloaded: false,
       status: "unknown",
       eligible: false,
-      issues: [],
+      errors: [noHeader],
+      warnings: [],
     });
   });
 
-  it("returns pending when domain is pending preload", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/status")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "pending" }),
-          };
-        }
-        if (url.includes("/preloadable")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "preloadable", issues: [] }),
-          };
-        }
-        return { ok: false };
-      }),
-    );
+  it("is still eligible when there are only warnings", async () => {
+    const warning = { code: "header.preloadable.max_age.over_2_years", summary: "", message: "" };
+    stubApi({ status: "pending" }, { errors: [], warnings: [warning] });
 
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
+    const result = await check.run(makeEndpoint(), "example.com");
 
-    expect(result.data).toEqual({
-      preloaded: false,
-      status: "pending",
-      eligible: true,
-      issues: [],
-    });
+    expect(result.data).toMatchObject({ status: "pending", eligible: true, warnings: [warning] });
   });
 
-  it("returns removed status when domain was removed from preload list", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/status")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "removed" }),
-          };
-        }
-        if (url.includes("/preloadable")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "unknown", issues: [] }),
-          };
-        }
-        return { ok: false };
-      }),
-    );
-
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
-
-    expect(result.data).toEqual({
-      preloaded: false,
-      status: "removed",
-      eligible: false,
-      issues: [],
-    });
+  it.each(["removed", "pending", "unknown"])("passes through status %s", async (status) => {
+    stubApi({ status }, { errors: [], warnings: [] });
+    const result = await check.run(makeEndpoint(), "example.com");
+    expect(result.data).toMatchObject({ preloaded: false, status });
   });
 
-  it("returns eligible with issues when domain has preload issues", async () => {
-    const issues = [
-      {
-        code: "ONLY_PRELOAD_HEADER",
-        summary: "Uses HSTS Preload header only",
-        message: "The domain is only submittable via the form; there is no valid HSTS header",
-      },
-    ];
+  it("reports eligibility as unknown when the API is unreachable", async () => {
+    stubFetch({});
 
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/status")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "unknown" }),
-          };
-        }
-        if (url.includes("/preloadable")) {
-          return {
-            ok: true,
-            json: async () => ({ status: "preloadable", issues }),
-          };
-        }
-        return { ok: false };
-      }),
-    );
-
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
+    const result = await check.run(makeEndpoint(), "example.com");
 
     expect(result.data).toEqual({
       preloaded: false,
       status: "unknown",
-      eligible: true,
-      issues,
+      eligible: null,
+      errors: [],
+      warnings: [],
     });
   });
 
-  it("handles API errors gracefully", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("Network error");
-      }),
-    );
-
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
-
-    expect(result.data).toEqual({
-      preloaded: false,
-      status: "unknown",
-      eligible: false,
-      issues: [],
-    });
-  });
-
-  it("handles non-ok API responses", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        return { ok: false };
-      }),
-    );
-
-    const endpoint = makeEndpoint();
-    const result = await check.run(endpoint, "example.com");
-
-    expect(result.data).toEqual({
-      preloaded: false,
-      status: "unknown",
-      eligible: false,
-      issues: [],
-    });
-  });
-
-  it("encodes domain properly in URLs", async () => {
-    const fetchMock = vi.fn(async (url: string) => {
-      if (url.includes("/status")) {
-        return {
-          ok: true,
-          json: async () => ({ status: "unknown" }),
-        };
-      }
-      if (url.includes("/preloadable")) {
-        return {
-          ok: true,
-          json: async () => ({ status: "unknown", issues: [] }),
-        };
-      }
-      return { ok: false };
-    });
-
-    vi.stubGlobal("fetch", fetchMock);
-
-    const endpoint = makeEndpoint();
-    await check.run(endpoint, "example-test.com");
-
-    expect(fetchMock).toHaveBeenCalledWith(
+  it("encodes the domain in the URLs", async () => {
+    const spy = stubFetch({});
+    await check.run(makeEndpoint(), "example-test.com");
+    expect(spy).toHaveBeenCalledWith(
       expect.stringContaining("domain=example-test.com"),
       expect.any(Object),
     );

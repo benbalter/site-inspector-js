@@ -95,7 +95,7 @@ describe("AccessibilityCheck", () => {
     expect(headings.isSequential).toBe(false);
   });
 
-  it("detects images without alt attributes", async () => {
+  it("detects images without alt attributes (empty alt is fine)", async () => {
     const html = `
       <html lang="en">
       <body>
@@ -114,9 +114,9 @@ describe("AccessibilityCheck", () => {
       altCoverage: number;
     };
     expect(images.total).toBe(3);
-    expect(images.withAlt).toBe(1);
-    expect(images.withoutAlt).toBe(2);
-    expect(images.altCoverage).toBe(33);
+    expect(images.withAlt).toBe(2);
+    expect(images.withoutAlt).toBe(1);
+    expect(images.altCoverage).toBe(67);
   });
 
   it("handles empty document", async () => {
@@ -161,5 +161,13 @@ describe("AccessibilityCheck", () => {
 
     expect(result.data.viewport).toBe(true);
     expect(result.data.viewportContent).toBe("width=device-width");
+  });
+
+  it("counts empty alt text as covered (decorative images, per WCAG)", async () => {
+    const result = await check.run(
+      makeEndpoint('<html><body><img src="a.png" alt=""><img src="b.png"></body></html>'),
+      "example.com",
+    );
+    expect(result.data.images).toMatchObject({ total: 2, withAlt: 1, withoutAlt: 1 });
   });
 });

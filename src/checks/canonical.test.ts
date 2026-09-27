@@ -179,4 +179,13 @@ describe("CanonicalCheck", () => {
     expect(result.data).toHaveProperty("noindex");
     expect(result.data).toHaveProperty("conflict");
   });
+
+  it("resolves the canonical against the final URL after redirects", async () => {
+    const endpoint = {
+      ...makeEndpoint('<link rel="canonical" href="/en/">', "https://example.com"),
+      finalUrl: "https://example.com/en/",
+    };
+    const result = await check.run(endpoint, "example.com");
+    expect(result.data.selfReferential).toBe(true);
+  });
 });
