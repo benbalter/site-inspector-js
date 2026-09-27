@@ -116,6 +116,7 @@ export const PROPERTY_LABELS: Record<string, string> = {
   root: "Root",
   canonicallyWww: "Canonically WWW",
   canonicallyHttps: "Canonically HTTPS",
+  serverError: "Server Error",
   redirect: "External Redirect",
 };
 

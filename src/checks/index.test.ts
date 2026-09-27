@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import type { EndpointData } from "../types.js";
 
+// Controllable run() implementations for the timeout and ordering tests.
+const { headersRun, lighthouseRun } = vi.hoisted(() => ({
+  headersRun: vi.fn(),
+  lighthouseRun: vi.fn(),
+}));
+
 // Mock all check modules to avoid real implementations
 vi.mock("./dns.js", () => ({
   DnsCheck: class {
@@ -11,7 +17,7 @@ vi.mock("./dns.js", () => ({
 vi.mock("./headers.js", () => ({
   HeadersCheck: class {
     name = "headers";
-    run = vi.fn().mockResolvedValue({ name: "headers", data: { server: "nginx" } });
+    run = headersRun.mockResolvedValue({ name: "headers", data: { server: "nginx" } });
   },
 }));
 vi.mock("./https.js", () => ({
@@ -83,7 +89,8 @@ vi.mock("./whois.js", () => ({
 vi.mock("./lighthouse.js", () => ({
   LighthouseCheck: class {
     name = "lighthouse";
-    run = vi.fn().mockResolvedValue({ name: "lighthouse", data: {} });
+    heavy = true;
+    run = lighthouseRun.mockResolvedValue({ name: "lighthouse", data: {} });
   },
 }));
 vi.mock("./csp.js", () => ({
@@ -235,8 +242,10 @@ const { runChecks, availableChecks } = await import("./index.js");
 
 const mockEndpoint: EndpointData = {
   url: "https://example.com",
+  finalUrl: "https://example.com",
   statusCode: 200,
   headers: {},
+  setCookies: [],
   body: "<html></html>",
   redirectChain: [],
 };
@@ -547,5 +556,56 @@ describe("Check Registry", () => {
 
     // Restore
     DnsCheck.prototype.run = origRun;
+  });
+});
+
+describe("runChecks timeouts, ordering, and validation", () => {
+  it("throws on unknown check names", async () => {
+    await expect(runChecks(mockEndpoint, "example.com", ["dns", "bogus"])).rejects.toThrow(
+      "Unknown checks: bogus",
+    );
+  });
+
+  it("fails a hung check with a timeout error and aborts its signal", async () => {
+    let signal: AbortSignal | undefined;
+    headersRun.mockImplementationOnce((_ep, _domain, ctx) => {
+      signal = ctx.signal;
+      return new Promise(() => {});
+    });
+
+    const results = await runChecks(mockEndpoint, "example.com", ["headers", "dns"], {
+      checkTimeoutMs: 20,
+    });
+
+    expect(results.headers.data.error).toBe("Timed out after 20ms");
+    expect(results.dns.data).toEqual({ ipv6: true });
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it("passes the request timeout to checks", async () => {
+    await runChecks(mockEndpoint, "example.com", ["headers"], { timeoutMs: 1234 });
+    expect(headersRun).toHaveBeenLastCalledWith(
+      mockEndpoint,
+      "example.com",
+      expect.objectContaining({ timeoutMs: 1234 }),
+    );
+  });
+
+  it("runs heavy checks after light ones, keeping registry order in the output", async () => {
+    const order: string[] = [];
+    lighthouseRun.mockImplementationOnce(async () => {
+      order.push("lighthouse");
+      return { name: "lighthouse", data: {} };
+    });
+    headersRun.mockImplementationOnce(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+      order.push("headers");
+      return { name: "headers", data: {} };
+    });
+
+    const results = await runChecks(mockEndpoint, "example.com", ["lighthouse", "headers"]);
+
+    expect(order).toEqual(["headers", "lighthouse"]);
+    expect(Object.keys(results)).toEqual(["headers", "lighthouse"]);
   });
 });

@@ -168,4 +168,18 @@ describe("LighthouseCheck", () => {
     expect(metrics.largestContentfulPaint).toBeNull();
     expect(metrics.speedIndex).toBeNull();
   });
+
+  it("kills Chrome when the check's signal aborts", async () => {
+    const controller = new AbortController();
+    mockLighthouse.mockImplementation(() => {
+      controller.abort();
+      return new Promise(() => {});
+    });
+
+    void check.run(makeEndpoint(), "example.com", {
+      timeoutMs: 1000,
+      signal: controller.signal,
+    });
+    await vi.waitFor(() => expect(mockKill).toHaveBeenCalled());
+  });
 });

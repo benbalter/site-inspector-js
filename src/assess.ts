@@ -33,6 +33,7 @@ const POLARITY: Record<string, Polarity> = {
   "properties.enforcesHttps": "positive-bonus",
   "properties.downgradesHttps": "negative",
   "properties.canonicallyHttps": "positive-bonus",
+  "properties.serverError": "negative",
   "properties.redirect": "negative",
 
   // https / TLS certificate
@@ -181,13 +182,14 @@ export interface Finding {
   path: string;
   /** Human-readable label (e.g. `"SPF · Strong Policy"`). */
   label: string;
+  /** The field's value: booleans always, numbers/strings when a rule grades them. */
   value: boolean | number | string;
   severity: Severity;
 }
 
 /** The result of assessing an entire inspection. */
 export interface Assessment {
-  /** Every graded boolean field found. */
+  /** Every graded field found: all booleans, plus values a rule grades. */
   findings: Finding[];
   /** Just the findings that need attention. */
   attention: Finding[];
@@ -201,7 +203,8 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function titleCase(s: string): string {
+/** Turn a field or check name like `dns-security` or `allSecure` into a label. */
+export function titleCase(s: string): string {
   return s
     .replace(/[-_]/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")

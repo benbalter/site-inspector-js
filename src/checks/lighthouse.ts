@@ -1,10 +1,11 @@
-import type { Check } from "./check.js";
+import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
 export class LighthouseCheck implements Check {
   name = "lighthouse";
+  heavy = true;
 
-  async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
+  async run(endpoint: EndpointData, _domain: string, ctx?: CheckContext): Promise<CheckResult> {
     try {
       // Dynamic imports so the check doesn't fail at module load time
       // if lighthouse/chrome-launcher aren't installed
@@ -14,6 +15,11 @@ export class LighthouseCheck implements Check {
       const chrome = await launch({
         chromeFlags: ["--headless", "--no-sandbox", "--disable-gpu"],
       });
+      // If the run exceeds its time budget, kill Chrome so it doesn't outlive
+      // the check (and keep the process from exiting).
+      const killChrome = () => void chrome.kill();
+      ctx?.signal.addEventListener("abort", killChrome, { once: true });
+      if (ctx?.signal.aborted) killChrome();
 
       try {
         const result = await lighthouse(endpoint.url, {
@@ -57,6 +63,7 @@ export class LighthouseCheck implements Check {
           },
         };
       } finally {
+        ctx?.signal.removeEventListener("abort", killChrome);
         await chrome.kill();
       }
     } catch (err: unknown) {

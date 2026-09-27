@@ -69,9 +69,19 @@ site-inspector inspect example.com --all-endpoints
 # Custom timeout (milliseconds)
 site-inspector inspect example.com --timeout 15000
 
+# Fail (exit 1) if anything needs attention — handy in CI
+site-inspector inspect example.com --fail-on-issues
+
 # List all available checks
 site-inspector checks
 ```
+
+With `--json`, the output includes an `assessment` with the items that need
+attention; add `--only-issues` to output just those.
+
+Exit status: `0` on success, `1` on bad input or an error (or when
+`--fail-on-issues` finds something), and `2` when the domain doesn't respond on
+any endpoint.
 
 ## Library Usage
 

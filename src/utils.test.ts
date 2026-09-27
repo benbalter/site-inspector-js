@@ -1,5 +1,85 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchJson, probeUrl } from "./utils.js";
+import {
+  USER_AGENT,
+  VERSION,
+  fetchJson,
+  fetchWithTimeout,
+  normalizeDomain,
+  probeUrl,
+  readBody,
+} from "./utils.js";
+import { stubFetch } from "./testing/fetch-stub.js";
+
+describe("normalizeDomain", () => {
+  it.each([
+    ["example.com", "example.com"],
+    ["HTTPS://Example.COM/path?q=1", "example.com"],
+    ["http://example.com:8080", "example.com"],
+    ["example.com.", "example.com"],
+    ["www.example.com", "example.com"],
+    ["https://www.example.co.uk/", "example.co.uk"],
+    ["www2.example.com", "www2.example.com"],
+    ["www.com", "www.com"],
+    ["  sub.example.com  ", "sub.example.com"],
+  ])("%s -> %s", (input, expected) => {
+    expect(normalizeDomain(input)).toBe(expected);
+  });
+});
+
+describe("USER_AGENT", () => {
+  it("includes the package version", () => {
+    expect(VERSION).toMatch(/^\d+\.\d+\.\d+/);
+    expect(USER_AGENT).toContain(`site-inspector/${VERSION}`);
+  });
+});
+
+describe("readBody", () => {
+  it("reads the whole body when under the limit", async () => {
+    expect(await readBody(new Response("hello"))).toBe("hello");
+  });
+
+  it("truncates bodies over the limit", async () => {
+    expect(await readBody(new Response("x".repeat(100)), 10)).toBe("x".repeat(10));
+  });
+
+  it("returns an empty string when there is no body", async () => {
+    expect(await readBody(new Response(null, { status: 204 }))).toBe("");
+  });
+});
+
+describe("fetchWithTimeout", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("lowercases headers and keeps each Set-Cookie separately", async () => {
+    stubFetch({
+      "https://example.com": {
+        headers: [
+          ["X-Thing", "1"],
+          ["Set-Cookie", "a=1"],
+          ["Set-Cookie", "b=2"],
+        ],
+        body: "ok",
+      },
+    });
+
+    const res = await fetchWithTimeout("https://example.com", 1000);
+
+    expect(res.headers["x-thing"]).toBe("1");
+    expect(res.setCookies).toEqual(["a=1", "b=2"]);
+    expect(res.body).toBe("ok");
+  });
+
+  it("sends the User-Agent", async () => {
+    const spy = stubFetch({ "https://example.com": {} });
+    await fetchWithTimeout("https://example.com", 1000);
+    expect(spy).toHaveBeenCalledWith(
+      "https://example.com",
+      expect.objectContaining({ headers: { "User-Agent": USER_AGENT } }),
+    );
+  });
+});
 
 describe("fetchJson", () => {
   let fetchSpy: ReturnType<typeof vi.fn>;
@@ -120,6 +200,27 @@ describe("probeUrl", () => {
       "https://example.com/test",
       expect.objectContaining({ method: "GET" }),
     );
+  });
+
+  it("retries as GET when the server rejects HEAD", async () => {
+    fetchSpy.mockResolvedValueOnce({ status: 405 }).mockResolvedValueOnce({ status: 200 });
+
+    const result = await probeUrl("https://example.com/test");
+
+    expect(result).toBe(true);
+    expect(fetchSpy).toHaveBeenLastCalledWith(
+      "https://example.com/test",
+      expect.objectContaining({ method: "GET" }),
+    );
+  });
+
+  it("releases the response body", async () => {
+    const cancel = vi.fn();
+    fetchSpy.mockResolvedValue({ status: 200, body: { cancel } });
+
+    await probeUrl("https://example.com/test");
+
+    expect(cancel).toHaveBeenCalled();
   });
 
   it("returns false for 301 redirect status", async () => {

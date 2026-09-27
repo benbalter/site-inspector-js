@@ -1,6 +1,6 @@
 // @ts-expect-error — whois-json has no type declarations
 import whois from "whois-json";
-import type { Check } from "./check.js";
+import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
 function daysBetween(from: Date, to: Date): number {
@@ -18,9 +18,10 @@ function parseNameServers(raw: string | undefined | null): string[] {
 export class WhoisCheck implements Check {
   name = "whois";
 
-  async run(_endpoint: EndpointData, domain: string): Promise<CheckResult> {
+  async run(_endpoint: EndpointData, domain: string, ctx?: CheckContext): Promise<CheckResult> {
     try {
-      const raw = await whois(domain);
+      // Bound the socket's idle time (the library's default is 60s).
+      const raw = await whois(domain, { timeout: ctx?.timeoutMs ?? 10_000 });
       const result = Array.isArray(raw) ? raw[0] : raw;
 
       const registrar: string | null = result?.registrar ?? null;
