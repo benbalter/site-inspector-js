@@ -31,6 +31,7 @@ export type { Severity, Finding, Insight, Assessment, CheckCategory, Unit } from
 export { Domain } from "./domain.js";
 export { Endpoint } from "./endpoint.js";
 export { normalizeDomain, USER_AGENT, VERSION } from "./utils.js";
+export { isPublicAddress, resolvePublic } from "./network.js";
 
 /**
  * Inspect a domain and return a comprehensive report.

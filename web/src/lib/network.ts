@@ -3,41 +3,12 @@
 // reach loopback, private-network, or cloud-metadata addresses (SSRF).
 
 import dns from "node:dns";
-import { BlockList, isIP } from "node:net";
+import { isPublicAddress } from "site-inspector";
 import { Agent, setGlobalDispatcher } from "undici";
 
-const blocked = new BlockList();
-// IPv4
-blocked.addSubnet("0.0.0.0", 8, "ipv4"); // "this" network
-blocked.addSubnet("10.0.0.0", 8, "ipv4"); // private
-blocked.addSubnet("100.64.0.0", 10, "ipv4"); // CGNAT
-blocked.addSubnet("127.0.0.0", 8, "ipv4"); // loopback
-blocked.addSubnet("169.254.0.0", 16, "ipv4"); // link-local, incl. cloud metadata
-blocked.addSubnet("172.16.0.0", 12, "ipv4"); // private
-blocked.addSubnet("192.0.0.0", 24, "ipv4"); // IETF protocol assignments
-blocked.addSubnet("192.168.0.0", 16, "ipv4"); // private
-blocked.addSubnet("198.18.0.0", 15, "ipv4"); // benchmarking
-blocked.addSubnet("224.0.0.0", 4, "ipv4"); // multicast
-blocked.addSubnet("240.0.0.0", 4, "ipv4"); // reserved + broadcast
-// IPv6
-blocked.addAddress("::", "ipv6"); // unspecified
-blocked.addAddress("::1", "ipv6"); // loopback
-blocked.addSubnet("fc00::", 7, "ipv6"); // unique local
-blocked.addSubnet("fe80::", 10, "ipv6"); // link-local
-blocked.addSubnet("ff00::", 8, "ipv6"); // multicast
-
-/** True if `address` is a literal IP that is safe for the server to connect to. */
-export function isPublicAddress(address: string): boolean {
-  const family = isIP(address);
-  if (family === 0) return false;
-  if (family === 6) {
-    // IPv4-mapped IPv6 (::ffff:a.b.c.d) — judge the embedded IPv4 address.
-    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
-    if (mapped) return isPublicAddress(mapped[1]);
-    return !blocked.check(address, "ipv6");
-  }
-  return !blocked.check(address, "ipv4");
-}
+// The address policy lives in the library so checks that open raw sockets to
+// hosts found in DNS (MX, CNAME targets) apply the same rules.
+export { isPublicAddress };
 
 const HOSTNAME_RE =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$/i;
