@@ -1,6 +1,5 @@
 import type { APIRoute } from "astro";
 import { inspect, availableChecks } from "site-inspector";
-import { HEAVY_CHECKS } from "../../lib/checkGroups";
 import {
   installFetchGuard,
   isValidHostname,
@@ -81,9 +80,8 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Heavy checks drive a browser/jsdom that bypasses the fetch guard, so they
   // are only available when the app is running locally.
-  const heavy = (checks ?? valid).filter((c) =>
-    (HEAVY_CHECKS as readonly string[]).includes(c),
-  );
+  const heavyChecks = availableChecks({ heavy: true });
+  const heavy = (checks ?? valid).filter((c) => heavyChecks.includes(c));
   if (heavy.length > 0 && publicMode()) {
     return json({ error: `Unavailable in public mode: ${heavy.join(", ")}` }, 400);
   }

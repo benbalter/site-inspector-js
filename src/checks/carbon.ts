@@ -1,13 +1,13 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 export class CarbonCheck implements Check {
   name = "carbon";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const htmlSize = Buffer.byteLength(body, "utf8");
     const htmlSizeKb = Math.round((htmlSize / 1024) * 10) / 10;

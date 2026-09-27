@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { assess, assessField } from "./assess.js";
-import type { InspectionResult } from "./types.js";
+import { PROPERTY_LABELS, assess, assessField } from "./assess.js";
+import type { DomainProperties, InspectionResult } from "./types.js";
 
 describe("assessField", () => {
   it("treats absence-of-a-tracker and other neutral facts as neutral, never attention", () => {
@@ -98,5 +98,24 @@ describe("assess", () => {
     // The tracker fact is present as a finding but not attention.
     expect(a.findings.some((f) => f.path === "trackers.googleAnalytics")).toBe(true);
     expect(a.attention.some((f) => f.check === "privacy")).toBe(false);
+  });
+});
+
+describe("PROPERTY_LABELS", () => {
+  it("labels every boolean domain property", () => {
+    // Typed as the full interface, so adding a property forces updating this.
+    const props: Required<Omit<DomainProperties, "redirectTarget">> = {
+      up: true,
+      www: true,
+      root: true,
+      https: true,
+      enforcesHttps: true,
+      downgradesHttps: false,
+      canonicallyWww: false,
+      canonicallyHttps: true,
+      serverError: false,
+      redirect: false,
+    };
+    expect(Object.keys(PROPERTY_LABELS).sort()).toEqual(Object.keys(props).sort());
   });
 });

@@ -1,7 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
-import { fetchJson, isCatchAll, probeUrl } from "../utils.js";
+import { fetchJson, isCatchAll, parseHtml, probeUrl } from "../utils.js";
 
 export class PwaCheck implements Check {
   name = "pwa";
@@ -9,7 +8,7 @@ export class PwaCheck implements Check {
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
     const body = endpoint.body ?? "";
     const origin = new URL(endpoint.url).origin;
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     // Detect service worker registration in HTML/JS
     const swRegistration = /navigator\.serviceWorker\.register|serviceWorker\.register/i.test(body);

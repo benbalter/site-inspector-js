@@ -12,7 +12,7 @@ export type {
 } from "./types.js";
 export { availableChecks, runChecks, DEFAULT_CHECK_TIMEOUT } from "./checks/index.js";
 export type { Check, CheckContext, RunChecksOptions } from "./checks/index.js";
-export { assess, assessField, titleCase } from "./assess.js";
+export { assess, assessField, titleCase, PROPERTY_LABELS } from "./assess.js";
 export type { Severity, Finding, Assessment } from "./assess.js";
 export { Domain } from "./domain.js";
 export { Endpoint } from "./endpoint.js";

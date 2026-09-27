@@ -4,7 +4,9 @@ import {
   VERSION,
   fetchJson,
   fetchWithTimeout,
+  letterGrade,
   normalizeDomain,
+  parseHtml,
   probeUrl,
   readBody,
 } from "./utils.js";
@@ -23,6 +25,38 @@ describe("normalizeDomain", () => {
     ["  sub.example.com  ", "sub.example.com"],
   ])("%s -> %s", (input, expected) => {
     expect(normalizeDomain(input)).toBe(expected);
+  });
+});
+
+describe("parseHtml", () => {
+  it("parses each endpoint's body once and shares the result", () => {
+    const endpoint = {
+      url: "https://example.com",
+      finalUrl: "https://example.com",
+      statusCode: 200,
+      headers: {},
+      setCookies: [],
+      body: "<title>Hi</title>",
+      redirectChain: [],
+    };
+    const $ = parseHtml(endpoint);
+    expect($("title").text()).toBe("Hi");
+    expect(parseHtml(endpoint)).toBe($);
+    expect(parseHtml({ ...endpoint })).not.toBe($);
+  });
+});
+
+describe("letterGrade", () => {
+  it.each([
+    [9, "A"],
+    [7, "A"],
+    [5, "B"],
+    [3, "C"],
+    [1, "D"],
+    [0, "F"],
+    [-1, "F"],
+  ])("%i -> %s", (score, grade) => {
+    expect(letterGrade(score)).toBe(grade);
   });
 });
 

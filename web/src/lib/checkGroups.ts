@@ -2,8 +2,7 @@
 // exist in the site-inspector engine (the CLI renders checks as a flat list) —
 // it is defined here purely to organize the web UI.
 
-/** Checks that launch headless Chrome and are therefore slow — opt-in only. */
-export const HEAVY_CHECKS = ["lighthouse", "a11y-axe"] as const;
+import { titleCase } from "site-inspector/assess";
 
 export interface CheckGroup {
   title: string;
@@ -103,30 +102,6 @@ export const CHECK_LABELS: Record<string, string> = {
   pwa: "Progressive Web App",
 };
 
-/** Bad-when-true domain properties (rendered with inverted colors). */
-export const INVERTED_PROPERTIES = ["downgradesHttps", "redirect"];
-
-/** Human-friendly labels for domain-property flags. */
-export const PROPERTY_LABELS: Record<string, string> = {
-  up: "Up",
-  https: "HTTPS",
-  enforcesHttps: "Enforces HTTPS",
-  downgradesHttps: "Downgrades HTTPS",
-  www: "WWW",
-  root: "Root",
-  canonicallyWww: "Canonically WWW",
-  canonicallyHttps: "Canonically HTTPS",
-  serverError: "Server Error",
-  redirect: "External Redirect",
-};
-
 export function checkLabel(name: string): string {
   return CHECK_LABELS[name] ?? titleCase(name);
-}
-
-export function titleCase(s: string): string {
-  return s
-    .replace(/[-_]/g, " ")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
 }

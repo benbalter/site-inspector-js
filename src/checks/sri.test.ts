@@ -57,13 +57,13 @@ describe("SriCheck", () => {
     expect(result.data.coverage).toBe(50);
   });
 
-  it("returns 100% coverage when there are no external resources", async () => {
+  it("returns null coverage when there are no external resources", async () => {
     const html = `<html><head><title>Hello</title></head><body></body></html>`;
 
     const result = await check.run(makeEndpoint(html), "example.com");
 
     expect(result.data.totalExternal).toBe(0);
-    expect(result.data.coverage).toBe(100);
+    expect(result.data.coverage).toBeNull();
   });
 
   it("ignores internal scripts and stylesheets", async () => {
@@ -79,7 +79,7 @@ describe("SriCheck", () => {
     expect(result.data.totalExternalScripts).toBe(0);
     expect(result.data.totalExternalStylesheets).toBe(0);
     expect(result.data.totalExternal).toBe(0);
-    expect(result.data.coverage).toBe(100);
+    expect(result.data.coverage).toBeNull();
   });
 
   it("counts protocol-relative URLs as external", async () => {

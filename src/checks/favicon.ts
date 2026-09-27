@@ -1,7 +1,6 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
-import { probeUrl } from "../utils.js";
+import { parseHtml, probeUrl } from "../utils.js";
 
 interface FaviconLink {
   rel: string;
@@ -14,9 +13,8 @@ export class FaviconCheck implements Check {
   name = "favicon";
 
   async run(endpoint: EndpointData): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
     const origin = new URL(endpoint.url).origin;
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const icons: FaviconLink[] = [];
     $("link").each((_i, el) => {

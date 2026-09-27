@@ -3,8 +3,15 @@ import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
 const require = createRequire(import.meta.url);
-const { JSDOM } = require("jsdom");
-// axe-core needs a window context
+
+// jsdom is slow to load and memory-hungry, so require it only when the check
+// runs. axe-core needs a window context, which jsdom provides. It's left
+// untyped (as require returns it) because we patch browser APIs on the window.
+let jsdom: ReturnType<typeof require> | undefined;
+function loadJsdom() {
+  jsdom ??= require("jsdom");
+  return jsdom;
+}
 const axeSource = require.resolve("axe-core");
 
 interface AxeViolation {
@@ -44,7 +51,7 @@ export class A11yAxeCheck implements Check {
     }
 
     // Closing the window stops jsdom's timers and subresource loads.
-    let dom: InstanceType<typeof JSDOM> | undefined;
+    let dom: ReturnType<typeof require> | undefined;
     const closeWindow = () => dom?.window.close();
     ctx?.signal.addEventListener("abort", closeWindow, { once: true });
 
@@ -52,6 +59,7 @@ export class A11yAxeCheck implements Check {
       // "outside-only" lets us eval axe in the window without executing the
       // site's own scripts, and without "resources" jsdom won't fetch the
       // page's subresources. Axe audits the HTML as served.
+      const { JSDOM } = loadJsdom();
       dom = new JSDOM(body, {
         runScripts: "outside-only",
         pretendToBeVisual: true,

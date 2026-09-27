@@ -1,7 +1,7 @@
 import { Command, InvalidArgumentError } from "commander";
 import chalk from "chalk";
 import { inspect } from "./index.js";
-import { assess, assessField, titleCase } from "./assess.js";
+import { PROPERTY_LABELS, assess, assessField, titleCase } from "./assess.js";
 import { availableChecks } from "./checks/index.js";
 import { VERSION } from "./utils.js";
 import type { InspectionResult } from "./types.js";
@@ -147,16 +147,10 @@ function printResult(result: InspectionResult): void {
   // Domain properties
   console.log(chalk.bold("Domain Properties"));
   const props = result.properties;
-  printProp("Up", "up", props.up);
-  printProp("HTTPS", "https", props.https);
-  printProp("Enforces HTTPS", "enforcesHttps", props.enforcesHttps);
-  printProp("Downgrades HTTPS", "downgradesHttps", props.downgradesHttps);
-  printProp("WWW", "www", props.www);
-  printProp("Root", "root", props.root);
-  printProp("Canonically WWW", "canonicallyWww", props.canonicallyWww);
-  printProp("Canonically HTTPS", "canonicallyHttps", props.canonicallyHttps);
-  printProp("Server Error", "serverError", props.serverError);
-  printProp("External Redirect", "redirect", props.redirect);
+  for (const [key, label] of Object.entries(PROPERTY_LABELS)) {
+    const value = props[key as keyof typeof props];
+    if (typeof value === "boolean") printProp(label, key, value);
+  }
   if (props.redirectTarget) {
     console.log(`  ${chalk.gray("Redirect Target:")} ${props.redirectTarget}`);
   }

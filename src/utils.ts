@@ -1,5 +1,7 @@
 import { createRequire } from "node:module";
 import dns from "node:dns/promises";
+import { load, type CheerioAPI } from "cheerio";
+import type { EndpointData } from "./types.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
@@ -48,6 +50,26 @@ export async function readBody(response: Response, maxBytes = MAX_BODY_BYTES): P
     text += decoder.decode(value, { stream: true });
   }
   return text + decoder.decode();
+}
+
+const parsedHtml = new WeakMap<EndpointData, CheerioAPI>();
+
+/**
+ * Parse an endpoint's body with cheerio, once. Checks share the parsed
+ * document, so they must only read from it.
+ */
+export function parseHtml(endpoint: EndpointData): CheerioAPI {
+  let $ = parsedHtml.get(endpoint);
+  if (!$) {
+    $ = load(endpoint.body ?? "");
+    parsedHtml.set(endpoint, $);
+  }
+  return $;
+}
+
+/** Map a score to a letter grade: 7+ A, 5+ B, 3+ C, 1+ D, otherwise F. */
+export function letterGrade(score: number): "A" | "B" | "C" | "D" | "F" {
+  return score >= 7 ? "A" : score >= 5 ? "B" : score >= 3 ? "C" : score >= 1 ? "D" : "F";
 }
 
 /** Flatten response headers into a lowercase-keyed object. */

@@ -1,15 +1,14 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 export class CanonicalCheck implements Check {
   name = "canonical";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
     // Relative URLs resolve against the page that was served, after redirects.
     const url = endpoint.finalUrl ?? endpoint.url;
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const canonical = $('link[rel="canonical"]').attr("href") ?? null;
 

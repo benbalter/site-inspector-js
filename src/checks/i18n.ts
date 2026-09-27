@@ -1,14 +1,13 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
-import { load } from "cheerio";
+import { parseHtml } from "../utils.js";
 
 export class I18nCheck implements Check {
   name = "i18n";
 
   async run(endpoint: EndpointData, _domain: string): Promise<CheckResult> {
-    const body = endpoint.body ?? "";
     const headers = endpoint.headers;
-    const $ = load(body);
+    const $ = parseHtml(endpoint);
 
     const htmlLang = $("html").attr("lang") ?? null;
 

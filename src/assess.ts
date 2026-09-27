@@ -204,6 +204,20 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Display labels for the domain properties, in display order. */
+export const PROPERTY_LABELS: Record<string, string> = {
+  up: "Up",
+  https: "HTTPS",
+  enforcesHttps: "Enforces HTTPS",
+  downgradesHttps: "Downgrades HTTPS",
+  www: "WWW",
+  root: "Root",
+  canonicallyWww: "Canonically WWW",
+  canonicallyHttps: "Canonically HTTPS",
+  serverError: "Server Error",
+  redirect: "External Redirect",
+};
+
 /** Turn a field or check name like `dns-security` or `allSecure` into a label. */
 export function titleCase(s: string): string {
   return s

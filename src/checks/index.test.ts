@@ -609,3 +609,14 @@ describe("runChecks timeouts, ordering, and validation", () => {
     expect(Object.keys(results)).toEqual(["headers", "lighthouse"]);
   });
 });
+
+describe("availableChecks filters", () => {
+  it("separates heavy checks from fast ones", () => {
+    const heavy = availableChecks({ heavy: true });
+    const fast = availableChecks({ heavy: false });
+
+    expect(heavy).toContain("lighthouse");
+    expect(fast).not.toContain("lighthouse");
+    expect([...fast, ...heavy].sort()).toEqual(availableChecks().sort());
+  });
+});
