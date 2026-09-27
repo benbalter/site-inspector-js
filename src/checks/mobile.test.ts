@@ -8,6 +8,8 @@ function makeEndpoint(body: string): EndpointData {
     statusCode: 200,
     headers: { "content-type": "text/html" },
     body,
+    finalUrl: "https://example.com",
+    setCookies: [],
     redirectChain: [],
   };
 }

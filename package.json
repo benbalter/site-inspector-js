@@ -7,13 +7,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./assess": {
-      "import": "./dist/assess.js",
-      "types": "./dist/assess.d.ts"
-    }
+      "types": "./dist/assess.d.ts",
+      "import": "./dist/assess.js"
+    },
+    "./package.json": "./package.json"
   },
   "bin": {
     "site-inspector": "./dist/cli.js"
@@ -28,9 +29,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "lint": "eslint src/",
-    "format": "prettier --write 'src/**/*.ts'",
-    "format:check": "prettier --check 'src/**/*.ts'",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "lint": "eslint src web/src",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -45,6 +47,12 @@
   ],
   "author": "Ben Balter",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benbalter/site-inspector-js.git"
+  },
+  "bugs": "https://github.com/benbalter/site-inspector-js/issues",
+  "homepage": "https://github.com/benbalter/site-inspector-js#readme",
   "engines": {
     "node": ">=22.19"
   },
@@ -72,6 +80,7 @@
     "@vitest/coverage-v8": "^4.1.5",
     "eslint": "^10.9.1",
     "prettier": "^3.9.6",
+    "prettier-plugin-astro": "^1.1.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.69.0",
     "vitest": "^4.1.5"

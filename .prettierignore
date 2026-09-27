@@ -1,0 +1,10 @@
+dist/
+coverage/
+data/
+node_modules/
+package-lock.json
+web/dist/
+web/.astro/
+web/node_modules/
+web/package-lock.json
+*.md

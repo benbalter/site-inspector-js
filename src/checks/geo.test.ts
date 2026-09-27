@@ -19,6 +19,8 @@ describe("GeoCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
       redirectChain: [],
     };
     vi.clearAllMocks();

@@ -23,6 +23,7 @@ describe("Endpoint", () => {
       finalUrl: "https://example.com",
       statusCode: 200,
       body: "<html></html>",
+      setCookies: [],
       redirectChain: [],
     });
     expect(data.headers["x-test"]).toBe("1");

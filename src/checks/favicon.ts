@@ -12,7 +12,7 @@ interface FaviconLink {
 export class FaviconCheck implements Check {
   name = "favicon";
 
-  async run(endpoint: EndpointData): Promise<CheckResult> {
+  async run(endpoint: EndpointData, _domain?: string): Promise<CheckResult> {
     const origin = new URL(endpoint.url).origin;
     const $ = parseHtml(endpoint);
 

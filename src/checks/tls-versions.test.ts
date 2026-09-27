@@ -41,7 +41,7 @@ describe("TlsVersionsCheck", () => {
       return socket;
     });
 
-    vi.mocked(tls.connect).mockImplementation(connectMock);
+    vi.mocked(tls.connect).mockImplementation(connectMock as unknown as typeof tls.connect);
   }
 
   it("should have the correct name", async () => {
@@ -59,16 +59,18 @@ describe("TlsVersionsCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
       redirectChain: [],
     };
 
     const result = await check.run(endpoint, "example.com");
 
     expect(result.name).toBe("tls-versions");
-    expect(result.data.supported["TLSv1"]).toBe(true);
-    expect(result.data.supported["TLSv1.1"]).toBe(true);
-    expect(result.data.supported["TLSv1.2"]).toBe(true);
-    expect(result.data.supported["TLSv1.3"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.1"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.2"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.3"]).toBe(true);
     expect(result.data.hasDeprecated).toBe(true);
     expect(result.data.deprecated).toContain("TLSv1");
     expect(result.data.deprecated).toContain("TLSv1.1");
@@ -85,17 +87,19 @@ describe("TlsVersionsCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
       redirectChain: [],
     };
 
     const result = await check.run(endpoint, "example.com");
 
-    expect(result.data.supported["TLSv1"]).toBe(false);
-    expect(result.data.supported["TLSv1.1"]).toBe(false);
-    expect(result.data.supported["TLSv1.2"]).toBe(true);
-    expect(result.data.supported["TLSv1.3"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.1"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.2"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.3"]).toBe(true);
     expect(result.data.hasDeprecated).toBe(false);
-    expect(result.data.deprecated.length).toBe(0);
+    expect((result.data.deprecated as string[]).length).toBe(0);
     expect(result.data.tls13).toBe(true);
     expect(result.data.minimumVersion).toBe("TLSv1.2");
   });
@@ -109,13 +113,15 @@ describe("TlsVersionsCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
       redirectChain: [],
     };
 
     const result = await check.run(endpoint, "example.com");
 
-    expect(result.data.supported["TLSv1"]).toBe(false);
-    expect(result.data.supported["TLSv1.1"]).toBe(true);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.1"]).toBe(true);
     expect(result.data.hasDeprecated).toBe(true);
     expect(result.data.deprecated).toContain("TLSv1.1");
     expect(result.data.deprecated).not.toContain("TLSv1.2");
@@ -130,15 +136,17 @@ describe("TlsVersionsCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
       redirectChain: [],
     };
 
     const result = await check.run(endpoint, "example.com");
 
-    expect(result.data.supported["TLSv1"]).toBe(false);
-    expect(result.data.supported["TLSv1.1"]).toBe(false);
-    expect(result.data.supported["TLSv1.2"]).toBe(false);
-    expect(result.data.supported["TLSv1.3"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.1"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.2"]).toBe(false);
+    expect((result.data.supported as Record<string, boolean>)["TLSv1.3"]).toBe(false);
     expect(result.data.hasDeprecated).toBe(false);
     expect(result.data.tls13).toBe(false);
     expect(result.data.minimumVersion).toBeNull();
@@ -153,13 +161,15 @@ describe("TlsVersionsCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
       redirectChain: [],
     };
 
     await check.run(endpoint, "example.com");
 
     const calls = vi.mocked(tls.connect).mock.calls;
-    const call = calls[0]; // First call for TLSv1
+    const call = calls[0] as unknown as [tls.ConnectionOptions]; // First call for TLSv1
     expect(call[0].host).toBe("example.com");
     expect(call[0].port).toBe(443);
   });
@@ -173,13 +183,15 @@ describe("TlsVersionsCheck", () => {
       statusCode: 200,
       headers: {},
       body: "",
+      finalUrl: "https://example.com:8443",
+      setCookies: [],
       redirectChain: [],
     };
 
     await check.run(endpoint, "example.com");
 
     const calls = vi.mocked(tls.connect).mock.calls;
-    const call = calls[0]; // First call for TLSv1
+    const call = calls[0] as unknown as [tls.ConnectionOptions]; // First call for TLSv1
     expect(call[0].host).toBe("example.com");
     expect(call[0].port).toBe(8443);
   });
@@ -202,7 +214,10 @@ describe("TlsVersionsCheck", () => {
     );
 
     const byVersion = Object.fromEntries(
-      vi.mocked(tls.connect).mock.calls.map(([opts]) => [opts.maxVersion, opts.ciphers]),
+      (vi.mocked(tls.connect).mock.calls as unknown as [tls.ConnectionOptions][]).map(([opts]) => [
+        opts.maxVersion,
+        opts.ciphers,
+      ]),
     );
     // OpenSSL 3 refuses legacy handshakes at the default level, which made
     // TLS 1.0/1.1 always look unsupported.

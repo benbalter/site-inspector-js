@@ -23,6 +23,8 @@ const dummyEndpoint: EndpointData = {
   statusCode: 200,
   headers: {},
   body: "",
+  finalUrl: "https://example.com",
+  setCookies: [],
   redirectChain: [],
 };
 

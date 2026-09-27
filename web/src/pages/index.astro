@@ -15,16 +15,12 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
     <div class="kicker mb-2">Domain diagnostics</div>
     <h1 class="text-4xl font-bold tracking-tight text-ink sm:text-5xl">Site Inspector</h1>
     <p class="mt-3 max-w-2xl text-ink-muted">
-      A read on a domain's technology, security, and capabilities — with a clear
-      call on what's healthy and what needs attention.
+      A read on a domain's technology, security, and capabilities — with a clear call on what's
+      healthy and what needs attention.
     </p>
   </header>
 
-  <form
-    id="inspect-form"
-    class="card p-2"
-    data-fast-checks={JSON.stringify(fastChecks)}
-  >
+  <form id="inspect-form" class="card p-2" data-fast-checks={JSON.stringify(fastChecks)}>
     <div class="flex flex-col gap-2 sm:flex-row">
       <div class="flex flex-1 items-center gap-2 px-3">
         <span class="val text-ink-faint select-none">▸</span>
@@ -50,28 +46,26 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
       </button>
     </div>
 
-    {
-      heavy.length > 0 && (
-        <details class="border-t border-hairline px-3 pb-3 pt-2">
-          <summary class="kicker cursor-pointer list-none hover:text-accent">
-            + Advanced — slower checks (launch headless Chrome)
-          </summary>
-          <div class="mt-3 flex flex-wrap gap-4">
-            {heavy.map((name) => (
-              <label class="flex cursor-pointer items-center gap-2 text-sm text-ink">
-                <input
-                  type="checkbox"
-                  name="heavy-check"
-                  value={name}
-                  class="h-4 w-4 rounded border-hairline-strong text-accent focus:ring-accent"
-                />
-                {checkLabel(name)}
-              </label>
-            ))}
-          </div>
-        </details>
-      )
-    }
+    {heavy.length > 0 && (
+      <details class="border-t border-hairline px-3 pb-3 pt-2">
+        <summary class="kicker cursor-pointer list-none hover:text-accent">
+          + Advanced — slower checks (launch headless Chrome)
+        </summary>
+        <div class="mt-3 flex flex-wrap gap-4">
+          {heavy.map((name) => (
+            <label class="flex cursor-pointer items-center gap-2 text-sm text-ink">
+              <input
+                type="checkbox"
+                name="heavy-check"
+                value={name}
+                class="h-4 w-4 rounded border-hairline-strong text-accent focus:ring-accent"
+              />
+              {checkLabel(name)}
+            </label>
+          ))}
+        </div>
+      </details>
+    )}
   </form>
 
   <div id="status" class="mt-6" aria-live="polite"></div>

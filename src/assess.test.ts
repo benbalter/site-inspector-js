@@ -71,6 +71,7 @@ describe("assess", () => {
         downgradesHttps: false, // negative false -> pass
         canonicallyWww: false,
         canonicallyHttps: false,
+        serverError: false,
         redirect: false,
       },
       checks: {

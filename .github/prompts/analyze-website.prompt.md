@@ -67,7 +67,9 @@ If the user only wants specific aspects analyzed, use the `--checks` flag:
 node dist/cli.js inspect {domain} --json --checks dns,headers,https,csp
 ```
 
-Available checks: `dns`, `headers`, `https`, `hsts`, `content`, `cookies`, `sniffer`, `accessibility`, `well-known`, `sri`, `mixed-content`, `carbon`, `whois`, `lighthouse`, `csp`, `robots`, `opengraph`, `dns-security`, `performance`, `structured-data`
+Run `node dist/cli.js checks` for the full list of available checks.
+
+To see only what needs attention, add `--only-issues` (with `--json`, this outputs just the flagged items). Every `--json` result also includes an `assessment` with the items needing attention.
 
 ## Notes
 

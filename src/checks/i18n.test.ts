@@ -8,6 +8,8 @@ function makeEndpoint(body: string, headers?: Record<string, string>): EndpointD
     statusCode: 200,
     headers: headers ?? { "content-type": "text/html" },
     body,
+    finalUrl: "https://example.com",
+    setCookies: [],
     redirectChain: [],
   };
 }

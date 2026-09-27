@@ -110,7 +110,5 @@ export function publicMode(): boolean {
 /** True if `address` (as reported by the adapter) is a loopback client. */
 export function isLoopbackClient(address: string | undefined): boolean {
   if (!address) return false;
-  return (
-    address === "::1" || address.startsWith("127.") || address.startsWith("::ffff:127.")
-  );
+  return address === "::1" || address.startsWith("127.") || address.startsWith("::ffff:127.");
 }

@@ -8,6 +8,8 @@ function makeEndpoint(body: string, url: string = "https://example.com/page"): E
     statusCode: 200,
     headers: {},
     body,
+    finalUrl: url,
+    setCookies: [],
     redirectChain: [],
   };
 }
@@ -176,6 +178,8 @@ describe("FaviconCheck", () => {
       statusCode: 200,
       headers: {},
       body: null as unknown as string,
+      finalUrl: "https://example.com/page",
+      setCookies: [],
       redirectChain: [],
     };
     fetchSpy.mockResolvedValue({ status: 404 });
