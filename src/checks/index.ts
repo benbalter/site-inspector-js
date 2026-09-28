@@ -38,6 +38,21 @@ import { PrivacyCheck } from "./privacy.js";
 import { A11yAxeCheck } from "./a11y-axe.js";
 import { ApiDiscoveryCheck } from "./api-discovery.js";
 import { PwaCheck } from "./pwa.js";
+import { CrossOriginIsolationCheck } from "./cross-origin-isolation.js";
+import { ReportingCheck } from "./reporting.js";
+import { ExposedFilesCheck } from "./exposed-files.js";
+import { AdsTxtCheck } from "./ads-txt.js";
+import { SubdomainTakeoverCheck } from "./subdomain-takeover.js";
+import { HttpVersionsCheck } from "./http-versions.js";
+import { CaaCheck } from "./caa.js";
+import { DkimCheck } from "./dkim.js";
+import { OcspStaplingCheck } from "./ocsp-stapling.js";
+import { MxTlsCheck } from "./mx-tls.js";
+import { TlsCiphersCheck } from "./tls-ciphers.js";
+import { CertificateTransparencyCheck } from "./certificate-transparency.js";
+import { GreenHostingCheck } from "./green-hosting.js";
+import { RpkiCheck } from "./rpki.js";
+import { RedirectHygieneCheck } from "./redirect-hygiene.js";
 
 /** All available checks, keyed by name. */
 const ALL_CHECKS: Check[] = [
@@ -79,6 +94,21 @@ const ALL_CHECKS: Check[] = [
   new A11yAxeCheck(),
   new ApiDiscoveryCheck(),
   new PwaCheck(),
+  new CrossOriginIsolationCheck(),
+  new ReportingCheck(),
+  new ExposedFilesCheck(),
+  new AdsTxtCheck(),
+  new SubdomainTakeoverCheck(),
+  new HttpVersionsCheck(),
+  new CaaCheck(),
+  new DkimCheck(),
+  new OcspStaplingCheck(),
+  new MxTlsCheck(),
+  new TlsCiphersCheck(),
+  new CertificateTransparencyCheck(),
+  new GreenHostingCheck(),
+  new RpkiCheck(),
+  new RedirectHygieneCheck(),
 ];
 
 /**

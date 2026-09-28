@@ -1,4 +1,6 @@
 import tls from "node:tls";
+import { isIP, isIPv4 } from "node:net";
+import { resolvePublic } from "../network.js";
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
@@ -26,6 +28,7 @@ const TLS_VERSIONS = [
 ];
 
 function testTlsVersion(
+  address: string,
   host: string,
   port: number,
   minVersion: tls.SecureVersion,
@@ -37,7 +40,9 @@ function testTlsVersion(
     const legacy = maxVersion === "TLSv1" || maxVersion === "TLSv1.1";
     const socket = tls.connect(
       {
-        host,
+        host: address,
+        // SNI can't be an IP literal.
+        ...(isIP(host) === 0 && { servername: host }),
         port,
         minVersion,
         maxVersion,
@@ -69,10 +74,28 @@ export class TlsVersionsCheck implements Check {
     const host = url.hostname;
     const port = url.port ? Number(url.port) : 443;
 
+    // The endpoint may have redirected to a host other than the vetted input
+    // domain, so only connect to a public address (SSRF).
+    const addrs = await resolvePublic(host);
+    if (!addrs) {
+      return {
+        name: this.name,
+        data: {
+          supported: null,
+          deprecated: [],
+          hasDeprecated: null,
+          tls13: null,
+          minimumVersion: null,
+          skipped: "non-public address or unresolvable",
+        },
+      };
+    }
+    const address = addrs.find((a) => isIPv4(a)) ?? addrs[0];
+
     const results = await Promise.all(
       TLS_VERSIONS.map(async (v) => ({
         version: v.name,
-        supported: await testTlsVersion(host, port, v.minVersion, v.maxVersion),
+        supported: await testTlsVersion(address, host, port, v.minVersion, v.maxVersion),
       })),
     );
 
@@ -95,6 +118,7 @@ export class TlsVersionsCheck implements Check {
         hasDeprecated: deprecated.length > 0,
         tls13: latestSupported,
         minimumVersion: results.find((r) => r.supported)?.version ?? null,
+        skipped: null,
       },
     };
   }

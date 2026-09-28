@@ -1,23 +1,14 @@
 import type { EndpointData, EndpointInfo } from "./types.js";
-import { USER_AGENT, headersToRecord, readBody } from "./utils.js";
+import { USER_AGENT, errorMessage, headersToRecord, readBody } from "./utils.js";
 
 /** Redirects beyond this many hops are treated as an error. */
 export const MAX_REDIRECTS = 10;
 
-const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+export const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 /** Hostname without a leading `www.`, for comparing apex and www variants. */
 function siteHost(hostname: string): string {
   return hostname.replace(/^www\./, "");
-}
-
-/** Describe a fetch error, preferring the underlying cause (e.g. ENOTFOUND). */
-function errorMessage(err: unknown): string {
-  if (!(err instanceof Error)) return String(err);
-  if (err.name === "TimeoutError") return "Timed out";
-  const cause = err.cause;
-  if (cause instanceof Error && cause.message) return `${err.message}: ${cause.message}`;
-  return err.message;
 }
 
 /**

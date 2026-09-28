@@ -57,6 +57,7 @@
     "node": ">=22.19"
   },
   "dependencies": {
+    "@tgwf/co2": "0.19.0",
     "axe-core": "^4.13.0",
     "cache-control-parser": "^2.2.0",
     "chalk": "^6.0.1",
@@ -70,6 +71,7 @@
     "open-graph-scraper": "^6.12.0",
     "robots-parser": "^3.0.1",
     "ssl-checker": "^3.0.1",
+    "structured-headers": "2.1.0",
     "wappalyzer-core": "^6.10.66",
     "whois-json": "^2.0.4"
   },

@@ -238,6 +238,98 @@ vi.mock("./pwa.js", () => ({
   },
 }));
 
+vi.mock("./cross-origin-isolation.js", () => ({
+  CrossOriginIsolationCheck: class {
+    name = "cross-origin-isolation";
+    run = vi.fn().mockResolvedValue({ name: "cross-origin-isolation", data: {} });
+  },
+}));
+vi.mock("./reporting.js", () => ({
+  ReportingCheck: class {
+    name = "reporting";
+    run = vi.fn().mockResolvedValue({ name: "reporting", data: {} });
+  },
+}));
+vi.mock("./exposed-files.js", () => ({
+  ExposedFilesCheck: class {
+    name = "exposed-files";
+    run = vi.fn().mockResolvedValue({ name: "exposed-files", data: {} });
+  },
+}));
+vi.mock("./ads-txt.js", () => ({
+  AdsTxtCheck: class {
+    name = "ads-txt";
+    run = vi.fn().mockResolvedValue({ name: "ads-txt", data: {} });
+  },
+}));
+vi.mock("./subdomain-takeover.js", () => ({
+  SubdomainTakeoverCheck: class {
+    name = "subdomain-takeover";
+    run = vi.fn().mockResolvedValue({ name: "subdomain-takeover", data: {} });
+  },
+}));
+vi.mock("./http-versions.js", () => ({
+  HttpVersionsCheck: class {
+    name = "http-versions";
+    run = vi.fn().mockResolvedValue({ name: "http-versions", data: {} });
+  },
+}));
+vi.mock("./caa.js", () => ({
+  CaaCheck: class {
+    name = "caa";
+    run = vi.fn().mockResolvedValue({ name: "caa", data: {} });
+  },
+}));
+vi.mock("./dkim.js", () => ({
+  DkimCheck: class {
+    name = "dkim";
+    run = vi.fn().mockResolvedValue({ name: "dkim", data: {} });
+  },
+}));
+vi.mock("./ocsp-stapling.js", () => ({
+  OcspStaplingCheck: class {
+    name = "ocsp-stapling";
+    run = vi.fn().mockResolvedValue({ name: "ocsp-stapling", data: {} });
+  },
+}));
+vi.mock("./mx-tls.js", () => ({
+  MxTlsCheck: class {
+    name = "mx-tls";
+    run = vi.fn().mockResolvedValue({ name: "mx-tls", data: {} });
+  },
+}));
+vi.mock("./tls-ciphers.js", () => ({
+  TlsCiphersCheck: class {
+    name = "tls-ciphers";
+    run = vi.fn().mockResolvedValue({ name: "tls-ciphers", data: {} });
+  },
+}));
+vi.mock("./certificate-transparency.js", () => ({
+  CertificateTransparencyCheck: class {
+    name = "certificate-transparency";
+    run = vi.fn().mockResolvedValue({ name: "certificate-transparency", data: {} });
+  },
+}));
+vi.mock("./green-hosting.js", () => ({
+  GreenHostingCheck: class {
+    name = "green-hosting";
+    run = vi.fn().mockResolvedValue({ name: "green-hosting", data: {} });
+  },
+}));
+vi.mock("./rpki.js", () => ({
+  RpkiCheck: class {
+    name = "rpki";
+    run = vi.fn().mockResolvedValue({ name: "rpki", data: {} });
+  },
+}));
+
+vi.mock("./redirect-hygiene.js", () => ({
+  RedirectHygieneCheck: class {
+    name = "redirect-hygiene";
+    run = vi.fn().mockResolvedValue({ name: "redirect-hygiene", data: {} });
+  },
+}));
+
 const { runChecks, availableChecks } = await import("./index.js");
 
 const mockEndpoint: EndpointData = {
@@ -291,12 +383,27 @@ describe("Check Registry", () => {
     expect(names).toContain("a11y-axe");
     expect(names).toContain("api-discovery");
     expect(names).toContain("pwa");
-    expect(names).toHaveLength(38);
+    expect(names).toContain("cross-origin-isolation");
+    expect(names).toContain("reporting");
+    expect(names).toContain("exposed-files");
+    expect(names).toContain("ads-txt");
+    expect(names).toContain("subdomain-takeover");
+    expect(names).toContain("http-versions");
+    expect(names).toContain("caa");
+    expect(names).toContain("dkim");
+    expect(names).toContain("ocsp-stapling");
+    expect(names).toContain("mx-tls");
+    expect(names).toContain("tls-ciphers");
+    expect(names).toContain("certificate-transparency");
+    expect(names).toContain("green-hosting");
+    expect(names).toContain("rpki");
+    expect(names).toContain("redirect-hygiene");
+    expect(names).toHaveLength(53);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(38);
+    expect(Object.keys(results)).toHaveLength(53);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });

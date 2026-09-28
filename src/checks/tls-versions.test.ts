@@ -4,10 +4,13 @@ import { TlsVersionsCheck } from "./tls-versions.js";
 import type { EndpointData } from "../types.js";
 
 vi.mock("node:tls");
+const resolvePublic = vi.fn();
+vi.mock("../network.js", () => ({ resolvePublic: (host: string) => resolvePublic(host) }));
 
 describe("TlsVersionsCheck", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resolvePublic.mockResolvedValue(["93.184.216.34"]);
   });
 
   function mockTlsConnect(supportedVersions: string[] = []) {
@@ -170,7 +173,9 @@ describe("TlsVersionsCheck", () => {
 
     const calls = vi.mocked(tls.connect).mock.calls;
     const call = calls[0] as unknown as [tls.ConnectionOptions]; // First call for TLSv1
-    expect(call[0].host).toBe("example.com");
+    // Connects to the vetted address, with SNI for the name.
+    expect(call[0].host).toBe("93.184.216.34");
+    expect(call[0].servername).toBe("example.com");
     expect(call[0].port).toBe(443);
   });
 
@@ -192,7 +197,7 @@ describe("TlsVersionsCheck", () => {
 
     const calls = vi.mocked(tls.connect).mock.calls;
     const call = calls[0] as unknown as [tls.ConnectionOptions]; // First call for TLSv1
-    expect(call[0].host).toBe("example.com");
+    expect(call[0].host).toBe("93.184.216.34");
     expect(call[0].port).toBe(8443);
   });
 
@@ -225,5 +230,26 @@ describe("TlsVersionsCheck", () => {
     expect(byVersion["TLSv1.1"]).toBe("DEFAULT@SECLEVEL=0");
     expect(byVersion["TLSv1.2"]).toBeUndefined();
     expect(byVersion["TLSv1.3"]).toBeUndefined();
+  });
+
+  it("skips hosts that resolve to non-public addresses", async () => {
+    mockTlsConnect(["TLSv1.2", "TLSv1.3"]);
+    resolvePublic.mockResolvedValue(null);
+    const result = await new TlsVersionsCheck().run(
+      {
+        url: "https://internal.example.com",
+        finalUrl: "https://internal.example.com",
+        statusCode: 200,
+        headers: {},
+        setCookies: [],
+        body: "",
+        redirectChain: [],
+      },
+      "internal.example.com",
+    );
+    expect(tls.connect).not.toHaveBeenCalled();
+    expect(result.data.skipped).toBe("non-public address or unresolvable");
+    expect(result.data.tls13).toBeNull();
+    expect(result.data.hasDeprecated).toBeNull();
   });
 });

@@ -61,8 +61,6 @@ const POLARITY: Record<string, Polarity> = {
 
   // transport / content mixing
   "mixed-content.hasMixedContent": "negative",
-  "tls-versions.supported.TLSv1": "negative",
-  "tls-versions.supported.TLSv1.1": "negative",
   "tls-versions.supported.TLSv1.2": "positive-bonus",
   "tls-versions.supported.TLSv1.3": "positive-bonus",
   "tls-versions.hasDeprecated": "negative",
@@ -120,6 +118,41 @@ const POLARITY: Record<string, Polarity> = {
   "pwa.hasServiceWorker": "positive-bonus",
   "pwa.installable": "positive-bonus",
 
+  // newer transport, exposure, and mail checks
+  "cross-origin-isolation.isolated": "positive-bonus",
+  "cross-origin-isolation.coopPresent": "positive-bonus",
+  "cross-origin-isolation.corpPresent": "positive-bonus",
+  "reporting.hasReportingEndpoint": "positive-bonus",
+  "reporting.nelPresent": "positive-bonus",
+  "reporting.cspReportUri": "positive-bonus",
+  "reporting.cspReportTo": "positive-bonus",
+  "reporting.nelGroupDefined": "positive-required",
+  "exposed-files.files.gitHead": "negative",
+  "exposed-files.files.env": "negative",
+  "exposed-files.files.dsStore": "negative",
+  "exposed-files.files.serverStatus": "negative",
+  "exposed-files.files.svnEntries": "negative",
+  "exposed-files.files.wpConfigBackup": "negative",
+  "exposed-files.directoryListing": "negative",
+  "subdomain-takeover.vulnerable": "negative",
+  "http-versions.http2": "positive-bonus",
+  "http-versions.http3Advertised": "positive-bonus",
+  "caa.present": "positive-bonus",
+  "caa.issuerRestricted": "positive-bonus",
+  "dkim.hasActiveKey": "positive-bonus",
+  "ocsp-stapling.stapled": "positive-bonus",
+  "mx-tls.allStarttls": "positive-required",
+  "mx-tls.allCertsValid": "positive-bonus",
+  // Most large sites still accept static-RSA and CBC suites, so their absence
+  // earns credit rather than their presence being flagged.
+  "tls-ciphers.forwardSecrecyOnly": "positive-bonus",
+  "tls-ciphers.tripleDesAccepted": "negative",
+  "green-hosting.green": "positive-bonus",
+  // HSTS preload requires the first redirect to upgrade on the same host.
+  "redirect-hygiene.httpsFirst": "positive-bonus",
+  "redirect-hygiene.crossHostBeforeHttps": "negative",
+  "redirect-hygiene.hstsOnAllHttpsHops": "positive-bonus",
+
   // accessibility
   "accessibility.htmlLang": "positive-required",
   "accessibility.hasH1": "positive-required",
@@ -157,7 +190,32 @@ const VALUE_RULES: Record<string, (value: unknown) => Severity> = {
   "lighthouse.scores.accessibility": lighthouseScore,
   "lighthouse.scores.bestPractices": lighthouseScore,
   "lighthouse.scores.seo": lighthouseScore,
+  // Plain-HTTP requests seen while the page actually loaded.
+  "lighthouse.insecureRequestCount": zeroPasses,
+  "cross-origin-isolation.coop": (v) => (v === "same-origin" ? "pass" : "neutral"),
+  "reporting.reportToError": presentIsAttention,
+  "reporting.reportingEndpointsError": presentIsAttention,
+  "reporting.nelError": presentIsAttention,
+  "ads-txt.adsTxt.invalidLines": (v) => (typeof v === "number" && v > 0 ? "attention" : "neutral"),
+  "ads-txt.appAdsTxt.invalidLines": (v) =>
+    typeof v === "number" && v > 0 ? "attention" : "neutral",
+  // RFC 8301: at least 1024 bits, 2048 recommended.
+  "dkim.minRsaKeyBits": (v) =>
+    typeof v !== "number" ? "neutral" : v < 1024 ? "attention" : v >= 2048 ? "pass" : "neutral",
+  "rpki.status": rpkiStatus,
+  "rpki.ipv6.status": rpkiStatus,
 };
+
+/** A parse error or similar: attention when present, nothing when null. */
+function presentIsAttention(value: unknown): Severity {
+  return typeof value === "string" && value !== "" ? "attention" : "neutral";
+}
+
+/** RIPEstat route origin validation: an invalid route may be hijacked or dropped. */
+function rpkiStatus(value: unknown): Severity {
+  if (value === "valid") return "pass";
+  return typeof value === "string" && value.startsWith("invalid") ? "attention" : "neutral";
+}
 
 const SIX_MONTHS = 15_552_000;
 
@@ -183,6 +241,8 @@ export const DUPLICATE_OF: Record<string, string> = {
   "dns.ipv6": "ipv6.hasIpv6",
   "content.robotsTxt": "robots.exists",
   "well-known.mtaSts": "email-security.mtaSts.exists",
+  "tls-versions.supported.TLSv1": "tls-versions.hasDeprecated",
+  "tls-versions.supported.TLSv1.1": "tls-versions.hasDeprecated",
 };
 
 function gradeSeverity(value: unknown): Severity {
@@ -346,7 +406,7 @@ const CONTEXT_RULES: ContextRule[] = [
   {
     // Not the certificate or TLS checks: a broken certificate is often *why*
     // HTTPS is down, so those findings stay graded.
-    keys: ["hsts.", "hsts-preload.", "mixed-content."],
+    keys: ["hsts.", "hsts-preload.", "mixed-content.", "redirect-hygiene."],
     when: (r) => !r.properties.https,
     severity: "not-applicable",
     replaces: ["attention", "neutral"],
@@ -363,7 +423,7 @@ const CONTEXT_RULES: ContextRule[] = [
     note: "Not applicable: the site sets no cookies.",
   },
   {
-    keys: ["email-security.mtaSts.", "email-security.tlsRpt."],
+    keys: ["email-security.mtaSts.", "email-security.tlsRpt.", "mx-tls."],
     when: (r) => {
       const mx = hasMx(r);
       return mx === undefined ? undefined : !mx;
@@ -405,6 +465,62 @@ function applyContext(result: InspectionResult, findings: Finding[]): void {
 type InsightRule = (result: InspectionResult) => Insight | undefined;
 
 const INSIGHT_RULES: InsightRule[] = [
+  // CAA is only consulted at issuance, so a certificate from an unlisted CA
+  // keeps working until renewal, which will then fail.
+  (r) => {
+    const issue = field(r, "caa", "issue");
+    const issuer = field(r, "https", "certIssuer");
+    if (field(r, "caa", "present") !== true || !Array.isArray(issue) || issue.length === 0) {
+      return undefined;
+    }
+    if (typeof issuer !== "string") return undefined;
+    const accepted = caIdentifiers(issuer);
+    if (!accepted) return undefined;
+    const allowed = issue
+      .filter((v): v is string => typeof v === "string")
+      .map((v) => v.split(";")[0].trim().toLowerCase());
+    if (allowed.some((id) => accepted.includes(id))) return undefined;
+    return {
+      id: "caa-issuer-mismatch",
+      check: "caa",
+      title: "Certificate issuer isn't authorized by CAA",
+      severity: "attention",
+      detail: `The certificate comes from a CA that accepts ${accepted[0]}, but CAA only allows ${allowed.join(", ") || "no CA"}. Renewal from the same CA will fail.`,
+      because: ["caa.issue", "https.certIssuer"],
+    };
+  },
+  (r) => {
+    if (field(r, "ocsp-stapling", "mustStaple") !== true) return undefined;
+    if (field(r, "ocsp-stapling", "stapled") !== false) return undefined;
+    return {
+      id: "must-staple-unstapled",
+      check: "ocsp-stapling",
+      title: "Must-staple certificate without a stapled response",
+      severity: "attention",
+      detail:
+        "The certificate requires OCSP stapling, so browsers that enforce it will reject the connection.",
+      because: ["ocsp-stapling.mustStaple", "ocsp-stapling.stapled"],
+    };
+  },
+  // Senders that honor an enforcing MTA-STS policy won't deliver to MX hosts
+  // without valid STARTTLS.
+  (r) => {
+    if (field(r, "email-security", "mtaSts.mode") !== "enforce") return undefined;
+    const starttls = field(r, "mx-tls", "allStarttls");
+    const certs = field(r, "mx-tls", "allCertsValid");
+    if (starttls !== false && certs !== false) return undefined;
+    return {
+      id: "mta-sts-mx-tls",
+      check: "mx-tls",
+      title: "MTA-STS enforces TLS your mail servers don't provide",
+      severity: "attention",
+      detail:
+        starttls === false
+          ? "Some MX hosts don't offer STARTTLS, so senders enforcing MTA-STS will refuse to deliver to them."
+          : "Some MX hosts present invalid certificates, so senders enforcing MTA-STS will refuse to deliver to them.",
+      because: ["email-security.mtaSts.mode", "mx-tls.allStarttls", "mx-tls.allCertsValid"],
+    };
+  },
   // SPF says who may send; DMARC tells receivers to reject what fails. Without
   // both, anyone can send mail that appears to come from this domain.
   (r) => {
@@ -477,6 +593,69 @@ const INSIGHT_RULES: InsightRule[] = [
     };
   },
 ];
+
+/**
+ * The CAA identifiers each CA accepts, keyed by patterns for its issuing-CA
+ * names. Identifier sets come from CCADB's CAA identifiers report
+ * (AllCAAIdentifiersReport, September 2026). Issuers not listed here return
+ * undefined, so the CAA insight stays quiet rather than guess.
+ */
+const CA_IDENTIFIERS: [RegExp, string[]][] = [
+  [/^(R|E)\d+$|let'?s encrypt/i, ["letsencrypt.org"]],
+  [
+    /digicert|geotrust|rapidssl|thawte/i,
+    [
+      "digicert.com",
+      "www.digicert.com",
+      "digicert.ne.jp",
+      "cybertrust.ne.jp",
+      "thawte.com",
+      "geotrust.com",
+      "rapidssl.com",
+      "symantec.com",
+      "digitalcertvalidation.com",
+      "quovadisglobal.com",
+      "amazon.com",
+      "amazontrust.com",
+      "awstrust.com",
+      "amazonaws.com",
+    ],
+  ],
+  [
+    /sectigo|comodo|usertrust|zerossl/i,
+    [
+      "sectigo.com",
+      "comodo.com",
+      "comodoca.com",
+      "usertrust.com",
+      "trust-provider.com",
+      "entrust.net",
+      "affirmtrust.com",
+    ],
+  ],
+  [/globalsign/i, ["globalsign.com"]],
+  [/google trust|^W[RE]\d+$|^GTS /i, ["pki.goog"]],
+  [
+    /amazon/i,
+    [
+      "amazon.com",
+      "amazontrust.com",
+      "awstrust.com",
+      "amazonaws.com",
+      "aws.amazon.com",
+      "amazontrustservices.eu",
+      "amazonaws.eu",
+      "amznts.eu",
+    ],
+  ],
+  [/ssl\.com/i, ["ssl.com"]],
+  [/go ?daddy|starfield/i, ["godaddy.com", "starfieldtech.com"]],
+  [/entrust/i, ["entrust.net", "affirmtrust.com"]],
+];
+
+function caIdentifiers(issuer: string): string[] | undefined {
+  return CA_IDENTIFIERS.find(([pattern]) => pattern.test(issuer))?.[1];
+}
 
 /**
  * Assess an entire inspection result, producing per-field verdicts in context,

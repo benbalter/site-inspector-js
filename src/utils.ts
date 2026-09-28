@@ -215,3 +215,12 @@ export async function findTxtRecords(name: string, pattern: RegExp): Promise<Txt
     return { records: [], error: code ?? (err instanceof Error ? err.message : String(err)) };
   }
 }
+
+/** Describe a fetch error, preferring the underlying cause (e.g. ENOTFOUND). */
+export function errorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  if (err.name === "TimeoutError") return "Timed out";
+  const cause = err.cause;
+  if (cause instanceof Error && cause.message) return `${err.message}: ${cause.message}`;
+  return err.message;
+}

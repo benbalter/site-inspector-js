@@ -184,4 +184,107 @@ describe("LighthouseCheck", () => {
     });
     await vi.waitFor(() => expect(mockKill).toHaveBeenCalled());
   });
+
+  describe("insecure requests and third parties", () => {
+    // Detail shapes from Lighthouse 13's is-on-https and third-parties-insight audits.
+    const table = (items: object[]) => ({ details: { type: "table", headings: [], items } });
+
+    function runWith(audits: Record<string, unknown>) {
+      mockLighthouse.mockResolvedValue({
+        lhr: { categories: { performance: { score: 0.9 } }, audits },
+      });
+      return check.run(makeEndpoint(), "example.com");
+    }
+
+    it("lists insecure requests, capped, with the full count", async () => {
+      const items = Array.from({ length: 25 }, (_, i) => ({
+        url: `http://example.com/img${i}.png`,
+        resolution: "Allowed",
+      }));
+
+      const result = await runWith({ "is-on-https": { score: 0, ...table(items) } });
+
+      expect(result.data.insecureRequestCount).toBe(25);
+      expect(result.data.insecureRequests).toHaveLength(20);
+      expect((result.data.insecureRequests as string[])[0]).toBe("http://example.com/img0.png");
+    });
+
+    it("counts only requests that actually went out over HTTP", async () => {
+      // upgrade-insecure-requests and mixed-content blocking stop these from loading.
+      const items = [
+        { url: "http://example.com/a.png", resolution: "Allowed" },
+        { url: "http://example.com/b.png", resolution: "Allowed with warning" },
+        { url: "http://example.com/c.js", resolution: "Blocked" },
+        { url: "http://example.com/d.png", resolution: "Automatically upgraded to HTTPS" },
+      ];
+
+      const result = await runWith({ "is-on-https": { score: 0, ...table(items) } });
+
+      expect(result.data.insecureRequests).toEqual([
+        "http://example.com/a.png",
+        "http://example.com/b.png",
+      ]);
+      expect(result.data.insecureRequestCount).toBe(2);
+    });
+
+    it("reports no insecure requests on a clean page", async () => {
+      const result = await runWith({ "is-on-https": { score: 1, ...table([]) } });
+
+      expect(result.data.insecureRequestCount).toBe(0);
+      expect(result.data.insecureRequests).toEqual([]);
+    });
+
+    it("summarizes third parties from third-parties-insight", async () => {
+      const items = Array.from({ length: 12 }, (_, i) => ({
+        entity: `Vendor ${i}`,
+        mainThreadTime: 12 - i + 0.4,
+        transferSize: 1000 * (i + 1),
+        subItems: {
+          type: "subitems",
+          items: [{ url: `https://vendor${i}.example/x.js`, mainThreadTime: 1, transferSize: 1 }],
+        },
+      }));
+      items[0] = { ...items[0], entity: "Google Tag Manager", mainThreadTime: 88.6 };
+
+      const result = await runWith({
+        "third-parties-insight": { score: 1, ...table(items), isEntityGrouped: true },
+      });
+
+      const parties = result.data.thirdParties as Array<Record<string, unknown>>;
+      expect(parties).toHaveLength(10);
+      expect(parties[0]).toEqual({
+        entity: "Google Tag Manager",
+        transferSize: 1000,
+        mainThreadTime: 89,
+      });
+      expect(parties[1].entity).toBe("Vendor 1");
+    });
+
+    it("falls back to the pre-13 third-party-summary audit", async () => {
+      const result = await runWith({
+        "third-party-summary": table([
+          {
+            entity: { type: "link", text: "YouTube", url: "https://youtube.com" },
+            transferSize: 5000,
+            blockingTime: 30,
+            mainThreadTime: 120,
+          },
+        ]),
+      });
+
+      expect(result.data.thirdParties).toEqual([
+        { entity: "YouTube", transferSize: 5000, mainThreadTime: 120 },
+      ]);
+    });
+
+    it("reports null when the audits didn't run", async () => {
+      const result = await runWith({
+        "third-parties-insight": { score: null, scoreDisplayMode: "notApplicable" },
+      });
+
+      expect(result.data.insecureRequests).toBeNull();
+      expect(result.data.insecureRequestCount).toBeNull();
+      expect(result.data.thirdParties).toBeNull();
+    });
+  });
 });

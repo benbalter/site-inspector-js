@@ -37,7 +37,7 @@ describe("assessField", () => {
     expect(assessField("https", "expiringSoon", true)).toBe("attention");
     expect(assessField("properties", "downgradesHttps", true)).toBe("attention");
     expect(assessField("properties", "redirect", false)).toBe("pass");
-    expect(assessField("tls-versions", "supported.TLSv1", true)).toBe("attention");
+    expect(assessField("tls-versions", "hasDeprecated", true)).toBe("attention");
   });
 
   it("treats bonus fields' absence as neutral, presence as pass", () => {
@@ -213,6 +213,16 @@ describe("assess — duplicate signals", () => {
     expect(assessField("content", "robotsTxt", true)).toBe("neutral");
     expect(DUPLICATE_OF["accessibility.viewport"]).toBe("mobile.hasViewport");
   });
+
+  it("counts legacy TLS support once, not once per version", () => {
+    const r = makeResult({
+      "tls-versions": {
+        supported: { TLSv1: true, "TLSv1.1": true, "TLSv1.2": true, "TLSv1.3": true },
+        hasDeprecated: true,
+      },
+    });
+    expect(assess(r).attentionByCheck).toEqual({ "tls-versions": 1 });
+  });
 });
 
 describe("assess — applicability", () => {
@@ -385,5 +395,95 @@ describe("scoreCategories", () => {
     });
     // Nothing graded: no score rather than a misleading 0 or 100.
     expect(scores.find((s) => s.title === "Performance")?.score).toBeNull();
+  });
+});
+
+describe("assess — new checks", () => {
+  it("grades transport, email, and exposure signals from the newer checks", () => {
+    expect(assessField("exposed-files", "files.env", true)).toBe("attention");
+    expect(assessField("exposed-files", "directoryListing", false)).toBe("pass");
+    expect(assessField("subdomain-takeover", "vulnerable", true)).toBe("attention");
+    expect(assessField("mx-tls", "allStarttls", false)).toBe("attention");
+    expect(assessField("tls-ciphers", "tripleDesAccepted", true)).toBe("attention");
+    expect(assessField("tls-ciphers", "forwardSecrecyOnly", false)).toBe("neutral");
+    expect(assessField("dkim", "minRsaKeyBits", 512)).toBe("attention");
+    expect(assessField("dkim", "minRsaKeyBits", 1024)).toBe("neutral");
+    expect(assessField("dkim", "minRsaKeyBits", 2048)).toBe("pass");
+    expect(assessField("rpki", "status", "valid")).toBe("pass");
+    expect(assessField("rpki", "status", "invalid_asn")).toBe("attention");
+    expect(assessField("rpki", "ipv6.status", "unknown")).toBe("neutral");
+    expect(assessField("reporting", "nelError", "Unexpected token")).toBe("attention");
+    expect(assessField("reporting", "nelError", null)).toBe("neutral");
+    expect(assessField("ads-txt", "adsTxt.invalidLines", 3)).toBe("attention");
+    expect(assessField("lighthouse", "insecureRequestCount", 2)).toBe("attention");
+    expect(assessField("cross-origin-isolation", "coop", "same-origin")).toBe("pass");
+  });
+
+  it("marks mail-server TLS not applicable for a domain with no MX", () => {
+    const r = makeResult({ dns: { mx: [] }, "mx-tls": { allStarttls: null, hasMx: false } });
+    expect(severityIn(r, "mx-tls", "hasMx")).toBe("not-applicable");
+  });
+
+  it("flags a certificate from a CA that CAA doesn't authorize", () => {
+    const r = makeResult({
+      https: { valid: true, certIssuer: "R11" }, // Let's Encrypt
+      caa: { present: true, issue: ["digicert.com"] },
+    });
+    const insight = assess(r).insights.find((i) => i.id === "caa-issuer-mismatch");
+    expect(insight?.severity).toBe("attention");
+    expect(insight?.because).toEqual(["caa.issue", "https.certIssuer"]);
+
+    const ok = makeResult({
+      https: { valid: true, certIssuer: "R11" },
+      caa: { present: true, issue: ["letsencrypt.org"] },
+    });
+    expect(assess(ok).insights.map((i) => i.id)).not.toContain("caa-issuer-mismatch");
+
+    // CAs accept several identifiers; a Comodo-era record still authorizes Sectigo.
+    const alternate = makeResult({
+      https: { valid: true, certIssuer: "Sectigo Public Server Authentication CA DV E36" },
+      caa: { present: true, issue: ["comodoca.com"] },
+    });
+    expect(assess(alternate).insights.map((i) => i.id)).not.toContain("caa-issuer-mismatch");
+
+    // An issuer we can't map to a CA domain says nothing.
+    const unknown = makeResult({
+      https: { valid: true, certIssuer: "Some Private CA" },
+      caa: { present: true, issue: ["digicert.com"] },
+    });
+    expect(assess(unknown).insights.map((i) => i.id)).not.toContain("caa-issuer-mismatch");
+  });
+
+  it("flags a must-staple certificate that isn't stapled", () => {
+    const r = makeResult({ "ocsp-stapling": { mustStaple: true, stapled: false } });
+    expect(assess(r).insights.map((i) => i.id)).toContain("must-staple-unstapled");
+    const fine = makeResult({ "ocsp-stapling": { mustStaple: false, stapled: false } });
+    expect(assess(fine).insights.map((i) => i.id)).not.toContain("must-staple-unstapled");
+  });
+
+  it("flags MTA-STS enforcement against mail servers without working TLS", () => {
+    const r = makeResult({
+      "email-security": { mtaSts: { exists: true, mode: "enforce" } },
+      "mx-tls": { allStarttls: false, allCertsValid: true },
+    });
+    const insight = assess(r).insights.find((i) => i.id === "mta-sts-mx-tls");
+    expect(insight?.severity).toBe("attention");
+    const unknown = makeResult({
+      "email-security": { mtaSts: { exists: true, mode: "enforce" } },
+      "mx-tls": { allStarttls: null, allCertsValid: null },
+    });
+    expect(assess(unknown).insights.map((i) => i.id)).not.toContain("mta-sts-mx-tls");
+  });
+});
+
+describe("assess — redirect hygiene", () => {
+  it("grades the HTTP-to-HTTPS path, and doesn't apply without HTTPS", () => {
+    expect(assessField("redirect-hygiene", "crossHostBeforeHttps", true)).toBe("attention");
+    expect(assessField("redirect-hygiene", "httpsFirst", true)).toBe("pass");
+    const r = makeResult(
+      { "redirect-hygiene": { httpsFirst: false, hstsOnAllHttpsHops: false } },
+      { https: false },
+    );
+    expect(severityIn(r, "redirect-hygiene", "httpsFirst")).toBe("not-applicable");
   });
 });

@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **38 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **53 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -198,75 +198,100 @@ import type {
 
 ## Checks
 
-Site Inspector runs 38 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 53 checks in 8 categories (the same grouping the web UI uses, from `CHECK_CATEGORIES`). Checks run in parallel and return structured data; `lighthouse` and `a11y-axe` are heavy and opt-in.
 
-### 🔒 Security
+### 🔒 Transport Security
 
-| Check | Description | Library |
+| Check | Description | Library / source |
+|-------|-------------|---------|
+| **https** | TLS certificate validity, issuer, expiry, protocol, cipher, chain completeness | [ssl-checker](https://www.npmjs.com/package/ssl-checker) |
+| **tls-versions** | TLS version support testing — TLS 1.0, 1.1, 1.2, 1.3 handshake verification | — |
+| **tls-ciphers** | Weak TLS 1.2 cipher suites the server accepts (static RSA without forward secrecy, CBC, 3DES), within what the local OpenSSL can offer | — |
+| **ocsp-stapling** | Whether the server staples an OCSP response, and whether the certificate requires it (must-staple) | — |
+| **hsts** | Strict-Transport-Security header — max-age, includeSubDomains, preload readiness | — |
+| **redirect-hygiene** | Walks the HTTP entry points' redirects: whether the first hop upgrades to HTTPS on the same host (an HSTS preload requirement) and every HTTPS hop on the domain sends HSTS | — |
+| **hsts-preload** | HSTS preload list status and eligibility via hstspreload.org API | — |
+| **mixed-content** | Detects `http://` resources loaded on HTTPS pages (active vs. passive) | — |
+
+### 🛡️ Browser Hardening & Privacy
+
+| Check | Description | Library / source |
 |-------|-------------|---------|
 | **headers** | Security headers — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and more | — |
-| **https** | TLS certificate validity, issuer, expiry, protocol, cipher, chain completeness | [ssl-checker](https://www.npmjs.com/package/ssl-checker) |
-| **hsts** | Strict-Transport-Security header — max-age, includeSubDomains, preload readiness | — |
 | **csp** | Content Security Policy evaluation — detects unsafe-inline, unsafe-eval, missing directives, bypasses | [csp_evaluator](https://www.npmjs.com/package/csp_evaluator) |
+| **cross-origin-isolation** | Cross-Origin-Opener/Embedder/Resource-Policy headers (and report-only variants), and whether the page is cross-origin isolated | [structured-headers](https://www.npmjs.com/package/structured-headers) |
 | **cookies** | Cookie inventory — Secure, HttpOnly, SameSite flag coverage | — |
 | **sri** | Subresource Integrity — coverage for external scripts and stylesheets | — |
-| **mixed-content** | Detects `http://` resources loaded on HTTPS pages (active vs. passive) | — |
-| **dns-security** | Email authentication — SPF and DMARC record parsing, policy strength assessment | — |
 | **cors** | CORS header analysis — Access-Control-Allow-Origin, methods, headers, credentials | — |
 | **referrer-policy** | Referrer-Policy header evaluation and strictness assessment | — |
 | **permissions-policy** | Permissions-Policy header parsing — blocked/allowed features, dangerous grants | — |
-| **tls-versions** | TLS version support testing — TLS 1.0, 1.1, 1.2, 1.3 handshake verification | — |
-| **email-security** | Extended email security — BIMI, MTA-STS, TLS-RPT DNS record detection | — |
-| **hsts-preload** | HSTS preload list status and eligibility via hstspreload.org API | — |
+| **reporting** | Report-To, Reporting-Endpoints, and NEL headers, and whether CSP sends violation reports | [structured-headers](https://www.npmjs.com/package/structured-headers) |
 | **privacy** | Privacy indicators — consent banners, privacy/cookie policies, tracker detection | — |
 
-### 🌐 DNS & Infrastructure
+### 🎯 Attack Surface
 
-| Check | Description | Library |
+| Check | Description | Library / source |
+|-------|-------------|---------|
+| **exposed-files** | Probes for exposed sensitive files (`.git`, `.env`, `.DS_Store`, server-status, `.svn`, wp-config backups) by content signature, and directory listings. File contents are never reported | — |
+| **subdomain-takeover** | Follows CNAME chains for the apex and `www.` and flags dangling records pointing at takeover-prone services | [can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) fingerprints |
+| **certificate-transparency** | Unexpired certificates logged for the domain via crt.sh: issuers, wildcards, and the subdomains they reveal | [crt.sh](https://crt.sh) |
+| **api-discovery** | API endpoint discovery — probes for GraphQL, OpenAPI/Swagger, REST conventions | — |
+
+### ✉️ Email & Domain Trust
+
+| Check | Description | Library / source |
+|-------|-------------|---------|
+| **dns-security** | Email authentication — SPF and DMARC record parsing, policy strength assessment | — |
+| **dkim** | Probes common DKIM selectors and reports each key's type and size. A domain may use a selector not in the list | — |
+| **email-security** | Extended email security — BIMI, MTA-STS, TLS-RPT DNS record detection | — |
+| **mx-tls** | Connects to MX hosts on port 25: STARTTLS, TLS version, certificate validity. Unreachable hosts (port 25 is often blocked) are reported as unknown | — |
+| **caa** | CAA records (walking up to the parent domain per RFC 8659): which CAs may issue certificates | — |
+| **dnssec** | DNSSEC validation via DNS-over-HTTPS — DNSKEY, DS, RRSIG record presence and AD flag | — |
+| **whois** | Domain registration — registrar, creation/expiry dates, nameservers, domain age | [whois-json](https://www.npmjs.com/package/whois-json) |
+
+### 🌐 Infrastructure
+
+| Check | Description | Library / source |
 |-------|-------------|---------|
 | **dns** | A, AAAA, MX, CAA records; IPv6 support; CDN detection via CNAME; reverse DNS | — |
-| **whois** | Domain registration — registrar, creation/expiry dates, nameservers, domain age | [whois-json](https://www.npmjs.com/package/whois-json) |
-| **dnssec** | DNSSEC validation via DNS-over-HTTPS — DNSKEY, DS, RRSIG record presence and AD flag | — |
 | **ipv6** | IPv6 support — AAAA record resolution and TCP connectivity testing | — |
+| **rpki** | BGP prefix and origin AS for the site's addresses, and whether the route is RPKI-valid | [RIPEstat](https://stat.ripe.net/) |
 | **geo** | IP geolocation — country, region, city, timezone, coordinates via IP lookup | [geoip-lite](https://www.npmjs.com/package/geoip-lite) |
+| **green-hosting** | Whether the site runs on a host that uses or offsets renewable energy | [Green Web Foundation](https://www.thegreenwebfoundation.org/) |
+| **sniffer** | Technology detection — CMS, frameworks, analytics, CDNs, and thousands more via Wappalyzer engine | [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/enthec/webappanalyzer) |
 
-### 📄 Content & SEO
+### 📄 Discoverability
 
-| Check | Description | Library |
+| Check | Description | Library / source |
 |-------|-------------|---------|
 | **content** | DOCTYPE, page title, meta description/generator, robots.txt and sitemap.xml existence | — |
+| **canonical** | Canonical URL detection — HTML link tag, HTTP Link header, self-referential check, noindex conflict detection | [cheerio](https://www.npmjs.com/package/cheerio) |
 | **robots** | robots.txt parsing — sitemap references, crawl-delay, Googlebot and wildcard blocking | [robots-parser](https://www.npmjs.com/package/robots-parser) |
 | **opengraph** | Open Graph and Twitter Card meta tags — social sharing readiness | [open-graph-scraper](https://www.npmjs.com/package/open-graph-scraper) |
 | **structured-data** | JSON-LD / schema.org blocks, OpenSearch description, microdata detection | — |
-| **accessibility** | `lang` attribute, heading hierarchy, image alt text coverage, viewport meta | — |
-| **well-known** | `security.txt` (RFC 9116), `change-password`, OpenID Connect, WebFinger, MTA-STS, Android asset links, Apple app-site-association, NodeInfo (Fediverse), `humans.txt` | — |
-| **canonical** | Canonical URL detection — HTML link tag, HTTP Link header, self-referential check, noindex conflict detection | [cheerio](https://www.npmjs.com/package/cheerio) |
 | **i18n** | Internationalization — HTML lang, charset, hreflang tags, Content-Language header, RTL support | [cheerio](https://www.npmjs.com/package/cheerio) |
-| **a11y-axe** | Automated accessibility testing — axe-core rule violations with impact levels and WCAG criteria | [axe-core](https://www.npmjs.com/package/axe-core) |
+| **well-known** | `security.txt` (RFC 9116), `change-password`, OpenID Connect, WebFinger, MTA-STS, Android asset links, Apple app-site-association, NodeInfo (Fediverse), `humans.txt` | — |
+| **ads-txt** | Parses ads.txt and app-ads.txt (IAB authorized sellers): DIRECT/RESELLER records and invalid lines | — |
 
 ### ⚡ Performance
 
-| Check | Description | Library |
+| Check | Description | Library / source |
 |-------|-------------|---------|
+| **lighthouse** | Performance, accessibility, best-practices, SEO scores and Web Vitals (requires Chrome); also plain-HTTP requests seen at runtime and the heaviest third parties | [Lighthouse](https://github.com/GoogleChrome/lighthouse) |
 | **performance** | Response time, page size, compression, Server-Timing header, size category | — |
-| **carbon** | Page weight analysis — HTML size, external resource counts, inline script/style sizes | — |
-| **lighthouse** | Performance, accessibility, best-practices, SEO scores and Web Vitals (requires Chrome) | [Lighthouse](https://github.com/GoogleChrome/lighthouse) |
+| **http-versions** | HTTP/2 via TLS ALPN, and HTTP/3 advertised in Alt-Svc | — |
 | **cache-headers** | HTTP caching analysis — Cache-Control directives, ETag, Last-Modified, Vary, caching quality score | [cache-control-parser](https://www.npmjs.com/package/cache-control-parser) |
+| **carbon** | Page weight analysis — HTML size, external resource counts, inline script/style sizes; estimated grams of CO₂ per view of the HTML document (Sustainable Web Design model, excludes subresources) | [CO2.js](https://www.npmjs.com/package/@tgwf/co2) |
 
-### 🔍 Technology
+### ♿ Accessibility & Mobile
 
-| Check | Description | Library |
+| Check | Description | Library / source |
 |-------|-------------|---------|
-| **sniffer** | Technology detection — CMS, frameworks, analytics, CDNs, and thousands more via Wappalyzer engine | [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core) + [webappanalyzer](https://github.com/enthec/webappanalyzer) |
-
-### 📱 Mobile & PWA
-
-| Check | Description | Library |
-|-------|-------------|---------|
+| **accessibility** | `lang` attribute, heading hierarchy, image alt text coverage, viewport meta | — |
+| **a11y-axe** | Automated accessibility testing — axe-core rule violations with impact levels and WCAG criteria | [axe-core](https://www.npmjs.com/package/axe-core) |
 | **mobile** | Mobile readiness — viewport meta, theme-color, apple-touch-icon, manifest link, web-app-capable, readiness score | [cheerio](https://www.npmjs.com/package/cheerio) |
-| **favicon** | Favicon detection — /favicon.ico probe, icon link tags, Apple touch icons, SVG icons, size variants | [cheerio](https://www.npmjs.com/package/cheerio) |
 | **pwa** | Progressive Web App analysis — service worker detection, manifest parsing, installability assessment | [cheerio](https://www.npmjs.com/package/cheerio) |
-| **api-discovery** | API endpoint discovery — probes for GraphQL, OpenAPI/Swagger, REST conventions | — |
+| **favicon** | Favicon detection — /favicon.ico probe, icon link tags, Apple touch icons, SVG icons, size variants | [cheerio](https://www.npmjs.com/package/cheerio) |
 
 ## Domain Properties
 
@@ -293,6 +318,12 @@ The technology detection fingerprints are vendored in the `data/` directory from
 
 ```bash
 ./scripts/update-fingerprints.sh
+```
+
+The subdomain-takeover fingerprints in `data/takeover-fingerprints.json` come from [EdOverflow/can-i-take-over-xyz](https://github.com/EdOverflow/can-i-take-over-xyz) (by EdOverflow and contributors, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); see `data/takeover-fingerprints.NOTICE.md`):
+
+```bash
+./scripts/update-takeover-fingerprints.sh
 ```
 
 ## Development

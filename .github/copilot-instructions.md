@@ -79,7 +79,8 @@ const lib = require("package-name");
 - `src/checks/index.ts` — Check registry: `runChecks()`, `availableChecks({ heavy })`
 - `src/testing/fetch-stub.ts` — `stubFetch()` test helper (canned responses by URL)
 - `web/` — Astro SSR front end; `web/src/lib/network.ts` holds its SSRF guards
-- `data/` — Vendored Wappalyzer fingerprints (do not edit manually; update via `scripts/update-fingerprints.sh`)
+- `data/` — Vendored Wappalyzer and subdomain-takeover fingerprints (do not edit manually; update via `scripts/update-fingerprints.sh` and `scripts/update-takeover-fingerprints.sh`)
+- `src/network.ts` — `isPublicAddress` / `resolvePublic`: every raw TLS/TCP socket must connect to an address from `resolvePublic` (SSRF)
 
 ## Commands
 

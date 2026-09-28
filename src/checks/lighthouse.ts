@@ -25,6 +25,8 @@ export class LighthouseCheck implements Check {
         const result = await lighthouse(endpoint.url, {
           port: chrome.port,
           output: "json",
+          // Resolution strings in audit details are localized; SECURED_RESOLUTIONS is English.
+          locale: "en-US",
           onlyCategories: ["performance", "accessibility", "best-practices", "seo"],
         });
 
@@ -60,6 +62,8 @@ export class LighthouseCheck implements Check {
               speedIndex: metricOrNull(audits, "speed-index"),
               timeToInteractive: metricOrNull(audits, "interactive"),
             },
+            ...insecureRequests(audits),
+            thirdParties: thirdParties(audits),
           },
         };
       } finally {
@@ -96,4 +100,79 @@ function metricOrNull(
   const audit = audits?.[key];
   if (!audit || audit.numericValue === undefined) return null;
   return Math.round(audit.numericValue);
+}
+
+const MAX_INSECURE_REQUESTS = 20;
+const MAX_THIRD_PARTIES = 10;
+
+interface TableAudit {
+  details?: { items?: Array<Record<string, unknown>> };
+}
+
+function tableItems(audits: Record<string, unknown>, key: string) {
+  const items = (audits?.[key] as TableAudit | undefined)?.details?.items;
+  return Array.isArray(items) ? items : null;
+}
+
+/**
+ * `is-on-https` resolutions (Lighthouse's English strings) for requests the
+ * browser stopped or upgraded, so nothing actually went out over HTTP.
+ */
+const SECURED_RESOLUTIONS = new Set(["Blocked", "Automatically upgraded to HTTPS"]);
+
+/** Requests the page actually made over plain HTTP, from the `is-on-https` audit. */
+function insecureRequests(audits: Record<string, unknown>): {
+  insecureRequests: string[] | null;
+  insecureRequestCount: number | null;
+} {
+  const items = tableItems(audits, "is-on-https");
+  if (!items) return { insecureRequests: null, insecureRequestCount: null };
+  const urls = items
+    .filter((item) => !SECURED_RESOLUTIONS.has(String(item.resolution)))
+    .map((item) => item.url)
+    .filter((url): url is string => typeof url === "string");
+  return {
+    insecureRequests: urls.slice(0, MAX_INSECURE_REQUESTS),
+    insecureRequestCount: urls.length,
+  };
+}
+
+/** A third-party entity the page loaded, from Lighthouse's third-party audit. */
+export interface ThirdParty {
+  entity: string;
+  /** Bytes transferred. */
+  transferSize: number;
+  /** Main-thread time in ms. */
+  mainThreadTime: number;
+}
+
+/**
+ * Third parties by main-thread cost. Lighthouse 13 replaced the
+ * `third-party-summary` audit with `third-parties-insight`, which drops
+ * blocking time; both report main-thread time.
+ */
+function thirdParties(audits: Record<string, unknown>): ThirdParty[] | null {
+  const items =
+    tableItems(audits, "third-parties-insight") ?? tableItems(audits, "third-party-summary");
+  if (!items) return null;
+
+  const num = (value: unknown) => (typeof value === "number" ? Math.round(value) : 0);
+  return items
+    .map((item) => {
+      const entity = item.entity;
+      const name =
+        typeof entity === "string"
+          ? entity
+          : typeof (entity as { text?: unknown })?.text === "string"
+            ? (entity as { text: string }).text
+            : null;
+      return {
+        entity: name,
+        transferSize: num(item.transferSize),
+        mainThreadTime: num(item.mainThreadTime),
+      };
+    })
+    .filter((item): item is ThirdParty => item.entity !== null)
+    .sort((a, b) => b.mainThreadTime - a.mainThreadTime || b.transferSize - a.transferSize)
+    .slice(0, MAX_THIRD_PARTIES);
 }

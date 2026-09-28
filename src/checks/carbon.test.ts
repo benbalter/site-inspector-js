@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { CarbonCheck } from "./carbon.js";
 import type { EndpointData } from "../types.js";
 
@@ -115,5 +115,54 @@ describe("CarbonCheck", () => {
     expect(result.data.externalScripts).toBe(1);
     expect(result.data.inlineScripts).toBe(1);
     expect(result.data.inlineScriptSize).toBe("inline();".length);
+  });
+
+  describe("CO2 estimate", () => {
+    // Values from @tgwf/co2 0.19.0's Sustainable Web Design v4 model.
+    it("estimates grams of CO2 per view of the HTML document", async () => {
+      const html = "x".repeat(1000);
+
+      const result = await check.run(makeEndpoint(html), "example.com");
+
+      expect(result.data.co2Model).toBe("swd-v4");
+      expect(result.data.co2Scope).toBe("html");
+      expect(result.data.co2GramsPerView).toBe(0.000148);
+      expect(result.data.co2GramsPerViewGreenHosting).toBe(0.000121);
+      expect(result.data.co2Error).toBeNull();
+    });
+
+    it("scales with the document size", async () => {
+      const result = await check.run(makeEndpoint("x".repeat(51234)), "example.com");
+
+      expect(result.data.co2GramsPerView).toBe(0.00759);
+      expect(result.data.co2GramsPerViewGreenHosting).toBe(0.0062);
+    });
+
+    it("estimates zero for an empty body", async () => {
+      const result = await check.run(makeEndpoint(""), "example.com");
+
+      expect(result.data.co2GramsPerView).toBe(0);
+      expect(result.data.co2GramsPerViewGreenHosting).toBe(0);
+    });
+
+    it("reports null, not zero, when CO2.js can't be loaded", async () => {
+      vi.resetModules();
+      vi.doMock("@tgwf/co2", () => {
+        throw new Error("Cannot find package '@tgwf/co2'");
+      });
+      try {
+        const { CarbonCheck: Fresh } = await import("./carbon.js");
+
+        const result = await new Fresh().run(makeEndpoint("<html></html>"), "example.com");
+
+        expect(result.data.htmlSize).toBe(13);
+        expect(result.data.co2GramsPerView).toBeNull();
+        expect(result.data.co2GramsPerViewGreenHosting).toBeNull();
+        expect(result.data.co2Error).toEqual(expect.any(String));
+      } finally {
+        vi.doUnmock("@tgwf/co2");
+        vi.resetModules();
+      }
+    });
   });
 });

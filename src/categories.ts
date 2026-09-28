@@ -13,28 +13,43 @@ export interface CheckCategory {
 export const CHECK_CATEGORIES: CheckCategory[] = [
   {
     title: "Transport Security",
-    checks: ["https", "tls-versions", "hsts", "hsts-preload", "mixed-content"],
+    checks: [
+      "https",
+      "tls-versions",
+      "tls-ciphers",
+      "ocsp-stapling",
+      "hsts",
+      "hsts-preload",
+      "redirect-hygiene",
+      "mixed-content",
+    ],
   },
   {
     title: "Browser Hardening & Privacy",
     checks: [
       "headers",
       "csp",
+      "cross-origin-isolation",
       "cookies",
       "sri",
       "cors",
       "referrer-policy",
       "permissions-policy",
+      "reporting",
       "privacy",
     ],
   },
   {
+    title: "Attack Surface",
+    checks: ["exposed-files", "subdomain-takeover", "certificate-transparency", "api-discovery"],
+  },
+  {
     title: "Email & Domain Trust",
-    checks: ["dns-security", "email-security", "dnssec", "whois"],
+    checks: ["dns-security", "dkim", "email-security", "mx-tls", "caa", "dnssec", "whois"],
   },
   {
     title: "Infrastructure",
-    checks: ["dns", "ipv6", "geo", "sniffer", "api-discovery"],
+    checks: ["dns", "ipv6", "rpki", "geo", "green-hosting", "sniffer"],
   },
   {
     title: "Discoverability",
@@ -46,11 +61,12 @@ export const CHECK_CATEGORIES: CheckCategory[] = [
       "structured-data",
       "i18n",
       "well-known",
+      "ads-txt",
     ],
   },
   {
     title: "Performance",
-    checks: ["lighthouse", "performance", "cache-headers", "carbon"],
+    checks: ["lighthouse", "performance", "http-versions", "cache-headers", "carbon"],
   },
   {
     title: "Accessibility & Mobile",
@@ -81,6 +97,17 @@ export const CHECK_LABELS: Record<string, string> = {
   "a11y-axe": "Accessibility (axe-core)",
   sniffer: "Detected Technologies",
   pwa: "Progressive Web App",
+  "cross-origin-isolation": "Cross-Origin Isolation",
+  reporting: "Reporting (Report-To / NEL)",
+  "ads-txt": "ads.txt",
+  "http-versions": "HTTP/2 & HTTP/3",
+  caa: "CAA Records",
+  dkim: "DKIM",
+  "ocsp-stapling": "OCSP Stapling",
+  "mx-tls": "Mail Server TLS",
+  "tls-ciphers": "Cipher Suites",
+  rpki: "RPKI Route Validation",
+  "redirect-hygiene": "Redirect Hygiene",
 };
 
 export function checkLabel(name: string): string {
