@@ -11,7 +11,7 @@ vi.mock("node:dns/promises", () => ({
 
 import { DnsSecurityCheck } from "./dns-security.js";
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
@@ -39,7 +39,7 @@ describe("DnsSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("dns-security");
     expect(result.data.spf).toEqual({
@@ -70,7 +70,7 @@ describe("DnsSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.spf).toMatchObject({ exists: true, record: "v=spf1 ~all" });
     expect(result.data.dmarc).toMatchObject({
@@ -84,7 +84,7 @@ describe("DnsSecurityCheck", () => {
   it("handles domain with no TXT records at all", async () => {
     mockResolveTxt.mockRejectedValue(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.spf).toMatchObject({ exists: false, record: null, strongPolicy: false });
     expect(result.data.dmarc).toMatchObject({ exists: false, record: null, strongPolicy: false });
@@ -98,7 +98,7 @@ describe("DnsSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const spf = result.data.spf as Record<string, unknown>;
 
     expect(spf.allMechanism).toBe("-all");
@@ -113,7 +113,7 @@ describe("DnsSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const spf = result.data.spf as Record<string, unknown>;
 
     expect(spf.allMechanism).toBe("~all");
@@ -131,7 +131,7 @@ describe("DnsSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const dmarc = result.data.dmarc as Record<string, unknown>;
 
     expect(dmarc.policy).toBe("reject");
@@ -149,7 +149,7 @@ describe("DnsSecurityCheck", () => {
       return Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const dmarc = result.data.dmarc as Record<string, unknown>;
 
     expect(dmarc.policy).toBe("none");
@@ -167,9 +167,9 @@ describe("DnsSecurityCheck", () => {
       );
     }
     const spf = async () =>
-      (await check.run(dummyEndpoint, "example.com")).data.spf as Record<string, unknown>;
+      (await check.run(placeholderEndpoint, "example.com")).data.spf as Record<string, unknown>;
     const dmarc = async () =>
-      (await check.run(dummyEndpoint, "example.com")).data.dmarc as Record<string, unknown>;
+      (await check.run(placeholderEndpoint, "example.com")).data.dmarc as Record<string, unknown>;
 
     it("reads a bare 'all' as +all (pass everything)", async () => {
       serve({ "example.com": ["v=spf1 a mx all"] });
@@ -208,7 +208,7 @@ describe("DnsSecurityCheck", () => {
       mockResolveTxt.mockRejectedValue(
         Object.assign(new Error("queryTxt ESERVFAIL example.com"), { code: "ESERVFAIL" }),
       );
-      const result = await check.run(dummyEndpoint, "example.com");
+      const result = await check.run(placeholderEndpoint, "example.com");
       expect(result.data.spf).toMatchObject({ exists: false, error: "ESERVFAIL" });
       expect(result.data.dmarc).toMatchObject({ exists: false, error: "ESERVFAIL" });
     });

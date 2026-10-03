@@ -15,7 +15,7 @@ const mockCreateConnection = vi.mocked(net.createConnection) as unknown as Mock<
   (options: unknown, callback?: () => void) => unknown
 >;
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
@@ -52,7 +52,7 @@ describe("Ipv6Check", () => {
       return mockSocket;
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("ipv6");
     expect(result.data.hasIpv6).toBe(true);
@@ -67,7 +67,7 @@ describe("Ipv6Check", () => {
     mockResolve4.mockResolvedValue(["93.184.216.34"]);
     mockResolve6.mockRejectedValue(new Error("NODATA"));
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("ipv6");
     expect(result.data.hasIpv6).toBe(false);
@@ -94,7 +94,7 @@ describe("Ipv6Check", () => {
     };
     mockCreateConnection.mockReturnValue(mockSocket);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("ipv6");
     expect(result.data.hasIpv6).toBe(true);
@@ -107,7 +107,7 @@ describe("Ipv6Check", () => {
     mockResolve4.mockRejectedValue(new Error("NODATA"));
     mockResolve6.mockRejectedValue(new Error("NODATA"));
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("ipv6");
     expect(result.data.hasIpv6).toBe(false);
@@ -169,7 +169,7 @@ describe("Ipv6Check", () => {
       return mockSocket;
     });
 
-    await check.run(dummyEndpoint, "example.com");
+    await check.run(placeholderEndpoint, "example.com");
 
     // Verify that port 443 was used (https)
     expect(mockCreateConnection).toHaveBeenCalledWith(
