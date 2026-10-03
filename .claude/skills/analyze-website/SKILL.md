@@ -1,4 +1,5 @@
 ---
+name: analyze-website
 description: "Analyze a website's technology, security, performance, and SEO using site-inspector"
 ---
 
