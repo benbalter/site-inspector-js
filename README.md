@@ -76,12 +76,9 @@ site-inspector inspect example.com --fail-on-issues
 site-inspector checks
 ```
 
-With `--json`, the output includes an `assessment` with the items that need
-attention; add `--only-issues` to output just those.
+With `--json`, the output includes an `assessment` with the items that need attention; add `--only-issues` to output just those.
 
-Exit status: `0` on success, `1` on bad input or an error (or when
-`--fail-on-issues` finds something), and `2` when the domain doesn't respond on
-any endpoint.
+Exit status: `0` on success, `1` on bad input or an error (or when `--fail-on-issues` finds something), and `2` when the domain doesn't respond on any endpoint.
 
 ## Library Usage
 
@@ -113,11 +110,7 @@ const partial = await inspect("example.com", {
 
 ### Assessment (what's good / what needs attention)
 
-The raw `data` is the readout; `assess()` layers the engine's opinion on top —
-a per-field verdict of `pass`, `attention`, or `neutral`. Verdicts come from a
-curated table (never guessed from field names), so a `neutral` fact like "no
-IPv6" or "no tracker present" is never mistaken for a failing. This is the single
-source of truth shared by the CLI (`--only-issues`) and the web UI.
+The raw `data` is the readout; `assess()` layers the engine's opinion on top — a per-field verdict of `pass`, `attention`, or `neutral`. Verdicts come from a curated table (never guessed from field names), so a `neutral` fact like "no IPv6" or "no tracker present" is never mistaken for a failing. This is the single source of truth shared by the CLI (`--only-issues`) and the web UI.
 
 ```typescript
 import { inspect, assess, assessField } from "site-inspector";
@@ -289,8 +282,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add a check.
 
 ## Web UI
 
-`web/` holds a small Astro app that renders a report in the browser, with the
-same verdicts as the CLI. It's meant to run on your own machine:
+`web/` holds a small Astro app that renders a report in the browser, with the same verdicts as the CLI. It's meant to run on your own machine:
 
 ```bash
 npm run build          # the web app imports the built library
