@@ -24,7 +24,7 @@ vi.mock("node:dns/promises", () => {
 
 import { DnsCheck } from "./dns.js";
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
@@ -49,7 +49,7 @@ describe("DnsCheck", () => {
     mockReverse.mockResolvedValue(["host.example.com"]);
     mockResolveCname.mockRejectedValue(new Error("NODATA"));
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("dns");
     expect(result.data.ipv6).toBe(true);
@@ -69,7 +69,7 @@ describe("DnsCheck", () => {
     mockReverse.mockRejectedValue(new Error("ENOTFOUND"));
     mockResolveCname.mockResolvedValue(["example.com.cdn.cloudflare.net"]);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.cdn).toBe("cloudflare");
     expect(result.data.ipv6).toBe(false);
@@ -84,7 +84,7 @@ describe("DnsCheck", () => {
     mockReverse.mockResolvedValue(["host.example.com"]);
     mockResolveCname.mockRejectedValue(new Error("NODATA"));
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.ipv6).toBe(false);
     expect(result.data.aaaa).toEqual([]);
@@ -98,7 +98,7 @@ describe("DnsCheck", () => {
     mockResolveCaa.mockRejectedValue(new Error("SERVFAIL"));
     mockResolveCname.mockRejectedValue(new Error("SERVFAIL"));
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("dns");
     expect(result.data.ip).toBeNull();

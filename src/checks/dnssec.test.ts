@@ -3,7 +3,7 @@ import type { EndpointData } from "../types.js";
 import { DnssecCheck } from "./dnssec.js";
 import { stubFetch, type FakeResponse } from "../testing/fetch-stub.js";
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   finalUrl: "https://example.com",
   statusCode: 200,
@@ -52,7 +52,7 @@ describe("DnssecCheck", () => {
       RRSIG: { count: 1 },
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("dnssec");
     expect(result.data).toEqual({
@@ -68,7 +68,7 @@ describe("DnssecCheck", () => {
   it("detects a signed subdomain, which has no DNSKEY/DS of its own", async () => {
     stubDoh("blog.example.com", { A: { AD: true, count: 1 } });
 
-    const result = await check.run(dummyEndpoint, "blog.example.com");
+    const result = await check.run(placeholderEndpoint, "blog.example.com");
 
     expect(result.data).toMatchObject({ enabled: true, adFlag: true, hasDnskey: false });
   });
@@ -76,7 +76,7 @@ describe("DnssecCheck", () => {
   it("reports an unsigned domain as disabled", async () => {
     stubDoh("example.com", { A: { count: 1 } });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data).toMatchObject({ enabled: false, adFlag: false, error: null });
   });
@@ -84,7 +84,7 @@ describe("DnssecCheck", () => {
   it("counts DNSKEY records without validation as enabled but not validated", async () => {
     stubDoh("example.com", { A: { count: 1 }, DNSKEY: { count: 1 } });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data).toMatchObject({ enabled: true, adFlag: false, hasDnskey: true });
   });
@@ -92,7 +92,7 @@ describe("DnssecCheck", () => {
   it("reports an error when the DoH service fails", async () => {
     stubDoh("example.com", {}, { status: 502, body: "<html>Bad gateway</html>" });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data).toMatchObject({ enabled: false, error: "DNS-over-HTTPS lookup failed" });
   });
@@ -100,7 +100,7 @@ describe("DnssecCheck", () => {
   it("reports an error when the DoH service is unreachable", async () => {
     stubFetch({});
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data).toMatchObject({ enabled: false, adFlag: false });
     expect(result.data.error).toBeTruthy();

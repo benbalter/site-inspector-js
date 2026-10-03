@@ -10,7 +10,7 @@ import { HttpsCheck } from "./https.js";
 
 const mockedSslChecker = vi.mocked(sslChecker);
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
@@ -58,7 +58,7 @@ describe("HttpsCheck", () => {
   it("reports a valid TLS certificate", async () => {
     mockedSslChecker.mockResolvedValue(makeSslResult() as never);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(mockedSslChecker).toHaveBeenCalledWith("example.com", { timeout: 10_000 });
     expect(result.name).toBe("https");
@@ -89,7 +89,7 @@ describe("HttpsCheck", () => {
       }) as never,
     );
 
-    const result = await check.run(dummyEndpoint, "expired.example.com");
+    const result = await check.run(placeholderEndpoint, "expired.example.com");
 
     expect(result.data.valid).toBe(false);
     expect(result.data.validationError).toBe("CERT_HAS_EXPIRED");
@@ -101,7 +101,7 @@ describe("HttpsCheck", () => {
   it("handles a connection error", async () => {
     mockedSslChecker.mockRejectedValue(new Error("ECONNREFUSED"));
 
-    const result = await check.run(dummyEndpoint, "down.example.com");
+    const result = await check.run(placeholderEndpoint, "down.example.com");
 
     expect(result.data.valid).toBe(false);
     expect(result.data.certIssuer).toBeNull();
@@ -122,7 +122,7 @@ describe("HttpsCheck", () => {
   it("populates all output fields", async () => {
     mockedSslChecker.mockResolvedValue(makeSslResult() as never);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const expectedKeys = [
       "valid",
       "validationError",

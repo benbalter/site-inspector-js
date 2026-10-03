@@ -18,7 +18,7 @@ vi.mock("../utils.js", async (importOriginal) => ({
 
 import { EmailSecurityCheck } from "./email-security.js";
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
@@ -58,7 +58,7 @@ describe("EmailSecurityCheck", () => {
       body: "version: STSv1\nmode: enforce\nmx: mail.example.com\n",
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("email-security");
     expect(result.data.bimi).toEqual({
@@ -92,7 +92,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const bimi = result.data.bimi as Record<string, unknown>;
 
     expect(bimi.exists).toBe(true);
@@ -109,7 +109,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const bimi = result.data.bimi as Record<string, unknown>;
 
     expect(bimi.exists).toBe(true);
@@ -129,7 +129,7 @@ describe("EmailSecurityCheck", () => {
       body: "version: STSv1\nmode: enforce\nmx: mail.example.com\n",
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.exists).toBe(true);
@@ -140,7 +140,7 @@ describe("EmailSecurityCheck", () => {
     mockResolveTxt.mockRejectedValue(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
     mockSafeFetch.mockResolvedValue(null);
 
-    await check.run(dummyEndpoint, "example.com");
+    await check.run(placeholderEndpoint, "example.com");
 
     expect(mockSafeFetch).toHaveBeenCalledWith(
       "https://mta-sts.example.com/.well-known/mta-sts.txt",
@@ -152,7 +152,7 @@ describe("EmailSecurityCheck", () => {
     mockResolveTxt.mockRejectedValue(Object.assign(new Error("timeout"), { code: "ETIMEOUT" }));
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.bimi).toMatchObject({ exists: false, error: "ETIMEOUT" });
     expect(result.data.mtaSts).toMatchObject({ exists: false, error: "ETIMEOUT" });
@@ -172,7 +172,7 @@ describe("EmailSecurityCheck", () => {
       body: "version: STSv1\nmode: testing\nmx: mail.example.com\n",
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.mode).toBe("testing");
@@ -188,7 +188,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.exists).toBe(true);
@@ -208,7 +208,7 @@ describe("EmailSecurityCheck", () => {
       body: "",
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.mode).toBe(null);
@@ -227,7 +227,7 @@ describe("EmailSecurityCheck", () => {
       body: "version: STSv1\nmx: mail.example.com\n",
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.mode).toBe(null);
@@ -243,7 +243,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const tlsRpt = result.data.tlsRpt as Record<string, unknown>;
 
     expect(tlsRpt.exists).toBe(true);
@@ -255,7 +255,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.bimi).toEqual({ exists: false, record: null, logo: null, error: null });
     expect(result.data.mtaSts).toEqual({ exists: false, record: null, mode: null, error: null });
@@ -272,7 +272,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.exists).toBe(true);
@@ -292,7 +292,7 @@ describe("EmailSecurityCheck", () => {
       body: "version: STSv1\nmode:   enforce  \nmx: mail.example.com\n",
     });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const mtaSts = result.data.mtaSts as Record<string, unknown>;
 
     expect(mtaSts.mode).toBe("enforce");
@@ -308,7 +308,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
     const tlsRpt = result.data.tlsRpt as Record<string, unknown>;
 
     expect(tlsRpt.exists).toBe(true);
@@ -325,7 +325,7 @@ describe("EmailSecurityCheck", () => {
 
     mockSafeFetch.mockResolvedValue(null);
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data).toHaveProperty("bimi");
     expect(result.data).toHaveProperty("mtaSts");
