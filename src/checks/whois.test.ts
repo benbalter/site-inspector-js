@@ -11,7 +11,7 @@ vi.mock("whois-json", () => ({
 
 import { WhoisCheck } from "./whois.js";
 
-const dummyEndpoint: EndpointData = {
+const placeholderEndpoint: EndpointData = {
   url: "https://example.com",
   statusCode: 200,
   headers: {},
@@ -42,7 +42,7 @@ describe("WhoisCheck", () => {
 
     vi.useFakeTimers({ now: new Date("2025-01-01T00:00:00Z") });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.name).toBe("whois");
     expect(result.data.registrar).toBe("Example Registrar");
@@ -61,7 +61,7 @@ describe("WhoisCheck", () => {
       domainName: "minimal.com",
     });
 
-    const result = await check.run(dummyEndpoint, "minimal.com");
+    const result = await check.run(placeholderEndpoint, "minimal.com");
 
     expect(result.name).toBe("whois");
     expect(result.data.registrar).toBeNull();
@@ -78,7 +78,7 @@ describe("WhoisCheck", () => {
   it("returns error data when WHOIS lookup fails", async () => {
     mockWhois.mockRejectedValue(new Error("WHOIS lookup timed out"));
 
-    const result = await check.run(dummyEndpoint, "fail.com");
+    const result = await check.run(placeholderEndpoint, "fail.com");
 
     expect(result.name).toBe("whois");
     expect(result.data.error).toBe("WHOIS lookup timed out");
@@ -100,7 +100,7 @@ describe("WhoisCheck", () => {
       },
     ]);
 
-    const result = await check.run(dummyEndpoint, "example.co.uk");
+    const result = await check.run(placeholderEndpoint, "example.co.uk");
 
     expect(result.data.registrar).toBe("UK Registrar");
     expect(result.data.nameServers).toEqual(["ns1.uk.com"]);
@@ -115,7 +115,7 @@ describe("WhoisCheck", () => {
 
     vi.useFakeTimers({ now: new Date("2025-01-01T00:00:00Z") });
 
-    const result = await check.run(dummyEndpoint, "example.com");
+    const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data.domainAge).toBe(214); // June 1 2024 → Jan 1 2025
     expect(result.data.expiresIn).toBe(151); // Jan 1 2025 → June 1 2025
