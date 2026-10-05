@@ -70,7 +70,7 @@
     "open-graph-scraper": "^6.12.0",
     "robots-parser": "^3.0.1",
     "ssl-checker": "^3.0.1",
-    "wappalyzer-core": "^6.10.66",
+    "wappalyzer-core": "^7.0.0",
     "whois-json": "^2.0.4"
   },
   "devDependencies": {
