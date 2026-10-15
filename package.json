@@ -67,11 +67,12 @@
     "geoip-lite": "^2.0.3",
     "jsdom": "^30.1.1",
     "lighthouse": "^13.5.0",
+    "node-rdap": "^1.0.0",
     "open-graph-scraper": "^6.12.0",
+    "rdapper": "^0.18.0",
     "robots-parser": "^3.0.1",
     "ssl-checker": "^3.0.1",
-    "wappalyzer-core": "^6.10.66",
-    "whois-json": "^2.0.4"
+    "wappalyzer-core": "^6.10.66"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

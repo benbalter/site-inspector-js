@@ -55,6 +55,23 @@ describe("assessField", () => {
     expect(assessField("mobile", "grade", "F")).toBe("attention");
     expect(assessField("mobile", "grade", "C")).toBe("neutral");
   });
+
+  it("flags a domain registration about to lapse", () => {
+    expect(assessField("whois", "expiresIn", -3)).toBe("attention");
+    expect(assessField("whois", "expiresIn", 14)).toBe("attention");
+    expect(assessField("whois", "expiresIn", 15)).toBe("pass");
+    expect(assessField("whois", "expiresIn", null)).toBe("neutral");
+  });
+
+  it("credits a transfer lock without flagging its absence", () => {
+    expect(assessField("whois", "transferLock", true)).toBe("pass");
+    expect(assessField("whois", "transferLock", false)).toBe("neutral");
+  });
+
+  it("flags DNSSEC that fails validation", () => {
+    expect(assessField("dnssec", "validationFailed", true)).toBe("attention");
+    expect(assessField("dnssec", "validationFailed", false)).toBe("pass");
+  });
 });
 
 describe("assess", () => {

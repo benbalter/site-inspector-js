@@ -35,7 +35,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
   },
   {
     title: "DNS & Infrastructure",
-    checks: ["dns", "ipv6", "geo", "whois"],
+    checks: ["dns", "ipv6", "geo", "network", "whois"],
   },
   {
     title: "Content & SEO",
@@ -87,7 +87,8 @@ export const CHECK_LABELS: Record<string, string> = {
   "email-security": "Email Security (SPF/DKIM/DMARC)",
   ipv6: "IPv6",
   geo: "Geolocation",
-  whois: "WHOIS",
+  network: "Network Owner",
+  whois: "Domain Registration",
   opengraph: "Open Graph",
   "structured-data": "Structured Data",
   i18n: "Internationalization",

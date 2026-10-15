@@ -61,6 +61,7 @@ describe("DnssecCheck", () => {
       hasDnskey: true,
       hasDs: true,
       hasRrsig: true,
+      validationFailed: false,
       error: null,
     });
   });
@@ -87,6 +88,24 @@ describe("DnssecCheck", () => {
     const result = await check.run(placeholderEndpoint, "example.com");
 
     expect(result.data).toMatchObject({ enabled: true, adFlag: false, hasDnskey: true });
+  });
+
+  it("flags a published DS whose chain doesn't validate", async () => {
+    // A bogus zone like dnssec-failed.org: the parent publishes a DS, but the
+    // resolver can't validate the zone's own answers.
+    stubDoh("example.com", { A: { count: 0 }, DS: { AD: true, count: 1 } });
+
+    const result = await check.run(placeholderEndpoint, "example.com");
+
+    expect(result.data).toMatchObject({ hasDs: true, adFlag: false, validationFailed: true });
+  });
+
+  it("leaves validation unknown for unsigned zones and failed lookups", async () => {
+    stubDoh("example.com", { A: { count: 1 } });
+    expect((await check.run(placeholderEndpoint, "example.com")).data.validationFailed).toBeNull();
+
+    stubFetch({});
+    expect((await check.run(placeholderEndpoint, "example.com")).data.validationFailed).toBeNull();
   });
 
   it("reports an error when the DoH service fails", async () => {

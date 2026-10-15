@@ -54,6 +54,10 @@ export class DnssecCheck implements Check {
         hasDnskey,
         hasDs,
         hasRrsig,
+        // The parent vouches for keys (DS) the resolver can't validate the
+        // zone against, so validating resolvers refuse to answer for it.
+        // Unknown (null) for unsigned zones, where there's nothing to fail.
+        validationFailed: error === null && hasDs ? !adFlag : null,
         error,
       },
     };

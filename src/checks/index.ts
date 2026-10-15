@@ -30,6 +30,7 @@ import { EmailSecurityCheck } from "./email-security.js";
 import { DnssecCheck } from "./dnssec.js";
 import { Ipv6Check } from "./ipv6.js";
 import { GeoCheck } from "./geo.js";
+import { NetworkCheck } from "./network.js";
 import { CanonicalCheck } from "./canonical.js";
 import { I18nCheck } from "./i18n.js";
 import { MobileCheck } from "./mobile.js";
@@ -71,6 +72,7 @@ const ALL_CHECKS: Check[] = [
   new DnssecCheck(),
   new Ipv6Check(),
   new GeoCheck(),
+  new NetworkCheck(),
   new CanonicalCheck(),
   new I18nCheck(),
   new MobileCheck(),

@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **38 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **39 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -168,7 +168,7 @@ import type {
 
 ## Checks
 
-Site Inspector runs 38 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 39 checks organized into six categories. All checks run in parallel and return structured data.
 
 ### 🔒 Security
 
@@ -195,10 +195,11 @@ Site Inspector runs 38 checks organized into six categories. All checks run in p
 | Check | Description | Library |
 |-------|-------------|---------|
 | **dns** | A, AAAA, MX, CAA records; IPv6 support; CDN detection via CNAME; reverse DNS | — |
-| **whois** | Domain registration — registrar, creation/expiry dates, nameservers, domain age | [whois-json](https://www.npmjs.com/package/whois-json) |
+| **whois** | Domain registration via RDAP, falling back to WHOIS — registrar, creation/expiry dates, nameservers, domain age, EPP statuses, transfer lock, registry DNSSEC, registrant privacy | [rdapper](https://www.npmjs.com/package/rdapper) |
 | **dnssec** | DNSSEC validation via DNS-over-HTTPS — DNSKEY, DS, RRSIG record presence and AD flag | — |
 | **ipv6** | IPv6 support — AAAA record resolution and TCP connectivity testing | — |
 | **geo** | IP geolocation — country, region, city, timezone, coordinates via IP lookup | [geoip-lite](https://www.npmjs.com/package/geoip-lite) |
+| **network** | Who holds the site's IP network, via the regional internet registry's RDAP — network name, CIDR, holder organization, country, abuse contact | [node-rdap](https://www.npmjs.com/package/node-rdap) |
 
 ### 📄 Content & SEO
 

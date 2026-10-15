@@ -80,6 +80,7 @@ const POLARITY: Record<string, Polarity> = {
   "dns-security.dmarc.exists": "positive-bonus",
   "dns-security.dmarc.strongPolicy": "positive-bonus",
   "dnssec.enabled": "positive-bonus",
+  "dnssec.validationFailed": "negative",
   "email-security.bimi.exists": "positive-bonus",
   "email-security.mtaSts.exists": "positive-bonus",
   "email-security.tlsRpt.exists": "positive-bonus",
@@ -93,6 +94,10 @@ const POLARITY: Record<string, Polarity> = {
   "dns.ipv6": "positive-bonus",
   "ipv6.hasIpv6": "positive-bonus",
   "ipv6.dualStack": "positive-bonus",
+
+  // domain registration. A missing lock isn't flagged: some registries that
+  // use EPP statuses (.au) have no transfer lock to set.
+  "whois.transferLock": "positive-bonus",
 
   // content & SEO
   "content.robotsTxt": "positive-bonus",
@@ -138,6 +143,12 @@ const VALUE_RULES: Record<string, (value: unknown) => Severity> = {
   // Letter grades: A/B pass, D/F need attention, C is unremarkable.
   "cache-headers.grade": gradeSeverity,
   "mobile.grade": gradeSeverity,
+  // Two weeks, not a month: auto-renewing yearly domains spend a month of every
+  // year within 30 days of expiry, and most renew in the final days.
+  "whois.expiresIn": (v) => {
+    if (typeof v !== "number") return "neutral";
+    return v <= 14 ? "attention" : "pass";
+  },
 };
 
 function gradeSeverity(value: unknown): Severity {

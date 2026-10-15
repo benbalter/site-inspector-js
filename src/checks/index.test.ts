@@ -189,6 +189,12 @@ vi.mock("./geo.js", () => ({
     run = vi.fn().mockResolvedValue({ name: "geo", data: {} });
   },
 }));
+vi.mock("./network.js", () => ({
+  NetworkCheck: class {
+    name = "network";
+    run = vi.fn().mockResolvedValue({ name: "network", data: {} });
+  },
+}));
 vi.mock("./canonical.js", () => ({
   CanonicalCheck: class {
     name = "canonical";
@@ -283,6 +289,7 @@ describe("Check Registry", () => {
     expect(names).toContain("dnssec");
     expect(names).toContain("ipv6");
     expect(names).toContain("geo");
+    expect(names).toContain("network");
     expect(names).toContain("canonical");
     expect(names).toContain("i18n");
     expect(names).toContain("mobile");
@@ -291,12 +298,12 @@ describe("Check Registry", () => {
     expect(names).toContain("a11y-axe");
     expect(names).toContain("api-discovery");
     expect(names).toContain("pwa");
-    expect(names).toHaveLength(38);
+    expect(names).toHaveLength(39);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(38);
+    expect(Object.keys(results)).toHaveLength(39);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });
@@ -499,6 +506,12 @@ describe("Check Registry", () => {
       GeoCheck: class {
         name = "geo";
         run = vi.fn().mockResolvedValue({ name: "geo", data: {} });
+      },
+    }));
+    vi.doMock("./network.js", () => ({
+      NetworkCheck: class {
+        name = "network";
+        run = vi.fn().mockResolvedValue({ name: "network", data: {} });
       },
     }));
     vi.doMock("./canonical.js", () => ({
