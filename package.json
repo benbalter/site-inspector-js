@@ -72,7 +72,7 @@
     "rdapper": "^0.18.0",
     "robots-parser": "^3.0.1",
     "ssl-checker": "^3.0.1",
-    "wappalyzer-core": "^6.10.66"
+    "wappalyzer-core": "^7.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
