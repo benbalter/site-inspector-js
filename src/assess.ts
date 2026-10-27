@@ -101,6 +101,8 @@ const POLARITY: Record<string, Polarity> = {
   // doesn't mean there isn't one.
   "email-security.dkim.exists": "positive-bonus",
   "email-security.dane.exists": "positive-bonus",
+  "smtp-tls.starttls": "positive-required",
+  "smtp-tls.validCertificates": "positive-bonus",
 
   // privacy
   "privacy.hasPrivacyPolicy": "positive-bonus",

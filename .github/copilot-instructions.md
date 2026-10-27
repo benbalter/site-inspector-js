@@ -36,7 +36,7 @@ Every check implements the `Check` interface from `src/checks/check.ts`:
 ```typescript
 interface Check {
   name: string;
-  heavy?: boolean; // launches Chrome or jsdom
+  heavy?: boolean; // launches Chrome or jsdom, or opens sockets to hosts other than the domain
   run(endpoint: EndpointData, domain: string, ctx?: CheckContext): Promise<CheckResult>;
 }
 ```
@@ -51,7 +51,7 @@ interface Check {
 
 ### Adding a New Check
 
-1. Create `src/checks/{name}.ts` exporting a class that implements `Check` (set `heavy = true` if it launches Chrome or jsdom)
+1. Create `src/checks/{name}.ts` exporting a class that implements `Check` (set `heavy = true` if it launches Chrome or jsdom, or connects outside `fetch()` to hosts other than the inspected domain, which the web UI's SSRF guard can't see)
 2. Create `src/checks/{name}.test.ts` with vitest tests
 3. Import and register the class in `src/checks/index.ts` (add to `ALL_CHECKS` array)
 4. Update the `src/checks/index.test.ts` registry tests (add vi.mock, update counts)

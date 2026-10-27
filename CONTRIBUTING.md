@@ -24,7 +24,7 @@ Write a test that fails first, then fix it. Prefer the real library or the real 
 
 ## Adding a check
 
-1. Create `src/checks/{name}.ts` with a class that implements `Check`. Set `heavy = true` if it launches Chrome or jsdom, and load heavy dependencies inside `run()` rather than at import.
+1. Create `src/checks/{name}.ts` with a class that implements `Check`. Set `heavy = true` if it launches Chrome or jsdom, or connects outside `fetch()` to hosts other than the inspected domain (the web UI's SSRF guard only covers `fetch()`), and load heavy dependencies inside `run()` rather than at import.
 2. Add `src/checks/{name}.test.ts`.
 3. Register it in `ALL_CHECKS` in `src/checks/index.ts`, and update
    `src/checks/index.test.ts`.

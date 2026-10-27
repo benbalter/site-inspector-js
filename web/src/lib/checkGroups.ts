@@ -32,6 +32,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
       "dns-security",
       "dnssec",
       "email-security",
+      "smtp-tls",
       "privacy",
     ],
   },
@@ -109,6 +110,7 @@ export const CHECK_LABELS: Record<string, string> = {
   rpki: "RPKI Route Validity",
   links: "Links & 404s",
   "vulnerable-libraries": "Vulnerable JS Libraries",
+  "smtp-tls": "Mail Server TLS (STARTTLS)",
 };
 
 export function checkLabel(name: string): string {

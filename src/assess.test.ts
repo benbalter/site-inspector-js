@@ -52,6 +52,8 @@ describe("assessField", () => {
     expect(assessField("tls-versions", "ocspStapling", false)).toBe("neutral");
     expect(assessField("tls-versions", "forwardSecrecy", false)).toBe("attention");
     expect(assessField("email-security", "dkim.exists", false)).toBe("neutral");
+    expect(assessField("smtp-tls", "starttls", false)).toBe("attention");
+    expect(assessField("smtp-tls", "connected", false)).toBe("neutral");
     expect(assessField("tls-versions", "staticRsaKeyExchange", true)).toBe("neutral");
   });
 

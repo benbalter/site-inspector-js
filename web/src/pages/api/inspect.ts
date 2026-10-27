@@ -149,8 +149,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
   }
 
-  // Heavy checks drive a browser/jsdom that bypasses the fetch guard, so they
-  // are only available when the app is running locally.
+  // Heavy checks drive a browser/jsdom or open raw sockets (to mail servers),
+  // bypassing the fetch guard, so they're only available locally.
   const selectedChecks = defaultChecks(checks, publicMode(), fastChecks);
   const heavyChecks = availableChecks({ heavy: true });
   const heavy = (selectedChecks ?? valid).filter((c) => heavyChecks.includes(c));

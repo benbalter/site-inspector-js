@@ -4,7 +4,7 @@ import Layout from "../layouts/Layout.astro";
 import { checkLabel } from "../lib/checkGroups";
 import { publicMode } from "../lib/network";
 
-// The engine says which checks are heavy (launch Chrome or jsdom). Those are
+// The engine says which checks are heavy (Chrome, jsdom, or raw sockets). Those are
 // opt-in, and not offered at all in public mode (the API rejects them there).
 const fastChecks = availableChecks({ heavy: false });
 const heavy = publicMode() ? [] : availableChecks({ heavy: true });
@@ -63,7 +63,7 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
     {heavy.length > 0 && (
       <details class="border-t border-hairline px-3 pb-3 pt-2">
         <summary class="kicker cursor-pointer list-none hover:text-accent">
-          + Advanced — slower checks (launch headless Chrome)
+          + Advanced — slower checks (headless Chrome, mail servers)
         </summary>
         <div class="mt-3 flex flex-wrap gap-4">
           {heavy.map((name) => (

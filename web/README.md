@@ -63,14 +63,15 @@ curl https://site-inspector.balter.dev/api/inspect \
 
 The `domain` field is required. `checks` is optional; when omitted on a public deployment, the API runs all fast checks. Provide a smaller subset when a concise response is preferable. `timeout` is optional and clamped to 1–30 seconds. The response contains domain properties and structured facts keyed by check name; check-level failures appear in `checks[name].data.error`.
 
-Public deployments reject heavy Chrome/jsdom checks, cap request bodies at 16 KiB, and enforce process-local request and concurrency limits. These are best-effort safeguards for a demo service, not API-key quotas or durable per-client rate limits. A request over the rate limit returns `429` and a `Retry-After` header. Do not send credentials or private URLs as inspection targets.
+Public deployments reject heavy checks (Chrome, jsdom, and raw SMTP connections), cap request bodies at 16 KiB, and enforce process-local request and concurrency limits. These are best-effort safeguards for a demo service, not API-key quotas or durable per-client rate limits. A request over the rate limit returns `429` and a `Retry-After` header. Do not send credentials or private URLs as inspection targets.
 
 ### Fast vs. heavy checks
 
-By default the app runs the fast HTTP/DNS/header/security/content checks (a few seconds). The **Advanced** section exposes opt-in checkboxes for the slow checks that launch headless Chrome:
+By default the app runs the fast HTTP/DNS/header/security/content checks (a few seconds). The **Advanced** section exposes opt-in checkboxes for the slow checks:
 
-- `lighthouse` — Lighthouse performance/SEO/accessibility scores
-- `a11y-axe` — automated accessibility testing via axe-core
+- `lighthouse` — Lighthouse performance/SEO/accessibility scores (headless Chrome)
+- `a11y-axe` — automated accessibility testing via axe-core (jsdom)
+- `smtp-tls` — STARTTLS on the domain's mail servers (port 25, which many networks block)
 
 Enabling these can push a run to 30–60 seconds. Only one heavy run is allowed at a time.
 
@@ -88,8 +89,9 @@ The API makes outbound requests to whatever domain it's given, so it guards agai
   `fetch` dispatcher that refuses to connect to loopback, private, link-local,
   CGNAT, or other reserved addresses. It applies to every redirect hop and
   isn't fooled by DNS rebinding.
-- **No heavy checks in public mode.** Lighthouse drives Chrome, and axe runs in
-  jsdom, both outside the fetch guard, so they're disabled when
+- **No heavy checks in public mode.** Lighthouse drives Chrome, axe runs in
+  jsdom, and smtp-tls opens raw sockets to whatever hosts a domain's MX
+  records name, all outside the fetch guard, so they're disabled when
   `SITE_INSPECTOR_PUBLIC=1`.
 
 ## Building for production

@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **44 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **45 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -181,7 +181,7 @@ import type {
 
 ## Checks
 
-Site Inspector runs 44 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 45 checks organized into six categories. All checks run in parallel and return structured data.
 
 ### 🔒 Security
 
@@ -202,6 +202,7 @@ Site Inspector runs 44 checks organized into six categories. All checks run in p
 | **permissions-policy** | Permissions-Policy header parsing — blocked/allowed features, dangerous grants | — |
 | **tls-versions** | TLS version support testing — TLS 1.0, 1.1, 1.2, 1.3 handshake verification; HTTP/2 (via ALPN), HTTP/3 (via `Alt-Svc`), OCSP stapling; forward secrecy, AEAD ciphers, and whether static RSA key exchange is still accepted (3DES/RC4 aren't probed: OpenSSL 3 can't offer them) | — |
 | **email-security** | Extended email security — BIMI, MTA-STS, TLS-RPT DNS record detection; DKIM keys at common provider selectors (selectors can't be listed, so this can find DKIM but not rule it out); DANE TLSA records for the mail servers | — |
+| **smtp-tls** | Whether the domain's mail servers offer STARTTLS, and the TLS version and certificate they use (up to 2 MX hosts; sends only EHLO, STARTTLS, QUIT). Heavy: needs outbound port 25, which many networks block | — |
 | **hsts-preload** | HSTS preload list status and eligibility via hstspreload.org API | — |
 | **privacy** | Privacy indicators — consent banners, privacy/cookie policies, tracker detection | — |
 

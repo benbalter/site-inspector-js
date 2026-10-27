@@ -30,6 +30,7 @@ import { PermissionsPolicyCheck } from "./permissions-policy.js";
 import { CacheHeadersCheck } from "./cache-headers.js";
 import { TlsVersionsCheck } from "./tls-versions.js";
 import { EmailSecurityCheck } from "./email-security.js";
+import { SmtpTlsCheck } from "./smtp-tls.js";
 import { DnssecCheck } from "./dnssec.js";
 import { Ipv6Check } from "./ipv6.js";
 import { GeoCheck } from "./geo.js";
@@ -77,6 +78,7 @@ const ALL_CHECKS: Check[] = [
   new CacheHeadersCheck(),
   new TlsVersionsCheck(),
   new EmailSecurityCheck(),
+  new SmtpTlsCheck(),
   new DnssecCheck(),
   new Ipv6Check(),
   new GeoCheck(),

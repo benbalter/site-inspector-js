@@ -219,6 +219,13 @@ vi.mock("./vulnerable-libraries.js", () => ({
     run = vi.fn().mockResolvedValue({ name: "vulnerable-libraries", data: {} });
   },
 }));
+vi.mock("./smtp-tls.js", () => ({
+  SmtpTlsCheck: class {
+    name = "smtp-tls";
+    heavy = true;
+    run = vi.fn().mockResolvedValue({ name: "smtp-tls", data: {} });
+  },
+}));
 vi.mock("./network.js", () => ({
   NetworkCheck: class {
     name = "network";
@@ -320,6 +327,7 @@ describe("Check Registry", () => {
     expect(names).toContain("ipv6");
     expect(names).toContain("geo");
     expect(names).toContain("network");
+    expect(names).toContain("smtp-tls");
     expect(names).toContain("vulnerable-libraries");
     expect(names).toContain("links");
     expect(names).toContain("rpki");
@@ -333,12 +341,12 @@ describe("Check Registry", () => {
     expect(names).toContain("a11y-axe");
     expect(names).toContain("api-discovery");
     expect(names).toContain("pwa");
-    expect(names).toHaveLength(44);
+    expect(names).toHaveLength(45);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(44);
+    expect(Object.keys(results)).toHaveLength(45);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });
@@ -573,6 +581,13 @@ describe("Check Registry", () => {
         run = vi.fn().mockResolvedValue({ name: "vulnerable-libraries", data: {} });
       },
     }));
+    vi.doMock("./smtp-tls.js", () => ({
+      SmtpTlsCheck: class {
+        name = "smtp-tls";
+        heavy = true;
+        run = vi.fn().mockResolvedValue({ name: "smtp-tls", data: {} });
+      },
+    }));
     vi.doMock("./network.js", () => ({
       NetworkCheck: class {
         name = "network";
@@ -703,6 +718,7 @@ describe("availableChecks filters", () => {
     const fast = availableChecks({ heavy: false });
 
     expect(heavy).toContain("lighthouse");
+    expect(heavy).toContain("smtp-tls");
     expect(fast).not.toContain("lighthouse");
     expect([...fast, ...heavy].sort()).toEqual(availableChecks().sort());
   });

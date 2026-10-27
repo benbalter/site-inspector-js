@@ -15,8 +15,10 @@ export interface Check {
   /** Unique name for this check (e.g. "dns", "headers"). */
   name: string;
   /**
-   * Whether the check is slow and resource-hungry (launches Chrome or jsdom).
-   * Heavy checks run one at a time, after the others finish.
+   * Whether the check is slow and resource-hungry (launches Chrome or jsdom),
+   * or connects outside `fetch()` to hosts other than the inspected domain
+   * (like mail servers). Heavy checks run one at a time, after the others
+   * finish, and the public web UI doesn't run them.
    */
   heavy?: boolean;
   /**
