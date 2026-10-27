@@ -145,4 +145,23 @@ describe("VulnerableLibrariesCheck", () => {
       hasVulnerableLibraries: false,
     });
   });
+
+  it("bounds how much script content it scans, since scanning blocks the event loop", async () => {
+    const banner =
+      "/*! jQuery v3.4.1 | (c) JS Foundation and other contributors | jquery.org/license */";
+    stubFetch({
+      "https://example.com/js/early.js": { body: banner + "x".repeat(1_000_000) },
+      "https://example.com/js/late.js": {
+        body: "x".repeat(1_000_000) + banner.replace("3.4.1", "3.3.1"),
+      },
+    });
+
+    const result = await check.run(
+      makeEndpoint('<script src="/js/early.js"></script><script src="/js/late.js"></script>'),
+      "example.com",
+    );
+
+    const sources = (result.data.libraries as Library[]).map((l) => l.source);
+    expect(sources).toEqual(["https://example.com/js/early.js"]);
+  });
 });

@@ -21,6 +21,14 @@ const MAX_SCRIPTS = 20;
 const MAX_DOWNLOADS = 10;
 const CONCURRENCY = 5;
 const DOWNLOAD_TIMEOUT_MS = 5_000;
+/**
+ * retire.js scans content with regexes, synchronously: a check's time budget
+ * can't interrupt it, so on a shared server a page full of huge scripts would
+ * stall every request. Library banners sit at the top of a file (or of each
+ * chunk in a bundle), so scan the start of each script and cap the total.
+ */
+const MAX_SCAN_BYTES_PER_SCRIPT = 512 * 1024;
+const MAX_SCAN_BYTES_PER_PAGE = 2 * 1024 * 1024;
 
 const SEVERITY_ORDER = ["low", "medium", "high", "critical"];
 
@@ -85,16 +93,22 @@ export class VulnerableLibrariesCheck implements Check {
       }
     }
 
+    let budget = MAX_SCAN_BYTES_PER_PAGE;
+    const scanContent = (content: string, source: string) => {
+      const scanned = content.slice(0, Math.min(MAX_SCAN_BYTES_PER_SCRIPT, budget));
+      budget -= scanned.length;
+      if (scanned.length === 0) return;
+      const components = retire.scanFileContent(scanned, repo, hasher);
+      found.push(...components.map((component) => ({ component, source })));
+    };
+
     await forEachLimit(unidentified.slice(0, MAX_DOWNLOADS), CONCURRENCY, async (url) => {
       const response = await safeFetch(url, DOWNLOAD_TIMEOUT_MS);
-      if (!response?.ok) return;
-      const components = retire.scanFileContent(response.body, repo, hasher);
-      found.push(...components.map((component) => ({ component, source: url })));
+      if (response?.ok) scanContent(response.body, url);
     });
 
     $("script:not([src])").each((_i, el) => {
-      const components = retire.scanFileContent($(el).text(), repo, hasher);
-      found.push(...components.map((component) => ({ component, source: "inline" })));
+      scanContent($(el).text(), "inline");
     });
 
     // One entry per library and version, whichever script found it first.
