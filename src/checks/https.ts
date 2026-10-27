@@ -37,6 +37,7 @@ export class HttpsCheck implements Check {
           fingerprint256: result.fingerprint256,
           // Not ssl-checker's chainComplete, which requires the chain to end in
           // a self-signed cert, so cross-signed roots (google.com) fail it.
+          // https://github.com/dyaa/ssl-checker/issues/619
           chainComplete: !MISSING_ISSUER_ERRORS.has(result.validationError ?? ""),
           chainLength: result.chain?.length ?? 0,
           error: null,
