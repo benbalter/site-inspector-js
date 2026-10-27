@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, it } from "node:test";
-import { guardedLookup, isLoopbackClient, isPublicAddress, isValidHostname } from "./network.ts";
+import { Agent, fetch } from "undici";
+import {
+  guardedConnect,
+  guardedLookup,
+  isLoopbackClient,
+  isPublicAddress,
+  isValidHostname,
+} from "./network.ts";
 
 describe("isPublicAddress", () => {
   it("allows public addresses", () => {
@@ -66,6 +75,46 @@ describe("guardedLookup", () => {
       assert.equal(err?.code, "ERR_NON_PUBLIC_ADDRESS");
       done();
     });
+  });
+});
+
+describe("guardedConnect", () => {
+  // Node skips DNS lookup for IP-literal hosts, so a lookup hook alone never
+  // sees them: a link, script, or redirect to http://127.0.0.1/ got through.
+  it("refuses IP-literal hosts in non-public ranges, which skip DNS lookup", async () => {
+    const server = http.createServer((_req, res) => res.end("secret"));
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const { port } = server.address() as AddressInfo;
+    const dispatcher = new Agent({ connect: guardedConnect });
+    try {
+      for (const host of ["127.0.0.1", "[::ffff:127.0.0.1]"]) {
+        await assert.rejects(
+          fetch(`http://${host}:${port}/`, { dispatcher }),
+          (err: Error & { cause?: NodeJS.ErrnoException }) => {
+            assert.equal(err.cause?.code, "ERR_NON_PUBLIC_ADDRESS");
+            return true;
+          },
+        );
+      }
+    } finally {
+      await dispatcher.close();
+      server.close();
+    }
+  });
+
+  it("still refuses hostnames that resolve to non-public addresses", async () => {
+    const dispatcher = new Agent({ connect: guardedConnect });
+    try {
+      await assert.rejects(
+        fetch("http://localhost:8080/", { dispatcher }),
+        (err: Error & { cause?: NodeJS.ErrnoException }) => {
+          assert.equal(err.cause?.code, "ERR_NON_PUBLIC_ADDRESS");
+          return true;
+        },
+      );
+    } finally {
+      await dispatcher.close();
+    }
   });
 });
 

@@ -4,7 +4,7 @@
 
 import dns from "node:dns";
 import { BlockList, isIP } from "node:net";
-import { Agent, setGlobalDispatcher } from "undici";
+import { Agent, buildConnector, setGlobalDispatcher } from "undici";
 
 const blocked = new BlockList();
 // IPv4
@@ -78,16 +78,36 @@ export function guardedLookup(
     if (err) return callback(err, []);
     const bad = addresses.find((a) => !isPublicAddress(a.address));
     if (bad) {
-      const e: NodeJS.ErrnoException = new Error(
-        `Refusing to connect to non-public address ${bad.address} for ${hostname}`,
-      );
-      e.code = "ERR_NON_PUBLIC_ADDRESS";
-      return callback(e, []);
+      return callback(nonPublicError(bad.address, hostname), []);
     }
     if (options.all) return callback(null, addresses);
     callback(null, addresses[0].address, addresses[0].family);
   });
 }
+
+function nonPublicError(address: string, hostname: string): NodeJS.ErrnoException {
+  const e: NodeJS.ErrnoException = new Error(
+    `Refusing to connect to non-public address ${address} for ${hostname}`,
+  );
+  e.code = "ERR_NON_PUBLIC_ADDRESS";
+  return e;
+}
+
+const lookupConnector = buildConnector({ lookup: guardedLookup });
+
+/**
+ * An undici connector that refuses non-public addresses. Hostnames are checked
+ * by {@link guardedLookup}; IP literals are checked here, because Node skips
+ * the lookup for them entirely, so a URL like http://169.254.169.254/ (from a
+ * redirect, link, or script src) would otherwise connect unchecked.
+ */
+export const guardedConnect: buildConnector.connector = (options, callback) => {
+  const host = options.hostname.replace(/^\[(.*)\]$/, "$1");
+  if (isIP(host) && !isPublicAddress(host)) {
+    return callback(nonPublicError(host, options.hostname), null);
+  }
+  return lookupConnector(options, callback);
+};
 
 let installed = false;
 
@@ -99,7 +119,7 @@ let installed = false;
 export function installFetchGuard(): void {
   if (installed) return;
   installed = true;
-  setGlobalDispatcher(new Agent({ connect: { lookup: guardedLookup } }));
+  setGlobalDispatcher(new Agent({ connect: guardedConnect }));
 }
 
 /** Whether the server should accept requests from non-loopback clients. */
