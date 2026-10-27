@@ -41,6 +41,7 @@ const KEY_LABELS: Record<string, string> = {
   crossOriginResourcePolicy: "Cross-Origin-Resource-Policy",
   crossOriginIsolated: "Cross-Origin Isolated",
   prefixedCount: "Prefixed Cookies",
+  certificateCount: "Certificates",
   invalidPrefixed: "Invalid Prefixed Cookies",
   prefixViolation: "Cookie Prefix Violation",
   sMaxAge: "s-maxage",

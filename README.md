@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **39 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **40 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -175,7 +175,7 @@ import type {
 
 ## Checks
 
-Site Inspector runs 39 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 40 checks organized into six categories. All checks run in parallel and return structured data.
 
 ### 🔒 Security
 
@@ -183,6 +183,7 @@ Site Inspector runs 39 checks organized into six categories. All checks run in p
 |-------|-------------|---------|
 | **headers** | Security headers — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener/Embedder/Resource-Policy (opener and cross-origin isolation), and more | — |
 | **https** | TLS certificate validity, issuer, expiry, protocol, cipher, chain completeness (whether the server sends every intermediate) | [ssl-checker](https://www.npmjs.com/package/ssl-checker) |
+| **certificate-transparency** | Unexpired certificates for the domain and its subdomains in the public Certificate Transparency logs — count, issuing CAs, wildcard use, next expiry, and the subdomains they name | [crt.sh](https://crt.sh) |
 | **hsts** | Strict-Transport-Security header — max-age, includeSubDomains, preload readiness | — |
 | **csp** | Content Security Policy evaluation of the header and `<meta>` policies combined — detects unsafe-inline, unsafe-eval, missing directives, bypasses | [csp_evaluator](https://www.npmjs.com/package/csp_evaluator) |
 | **cookies** | Cookie inventory — Secure, HttpOnly, SameSite flag coverage; `__Host-`/`__Secure-` prefixed cookies that break their rules (browsers drop them) | — |

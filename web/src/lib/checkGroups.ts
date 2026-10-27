@@ -16,6 +16,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
     title: "Security & Privacy",
     checks: [
       "https",
+      "certificate-transparency",
       "tls-versions",
       "hsts",
       "hsts-preload",
@@ -82,6 +83,7 @@ export const CHECK_LABELS: Record<string, string> = {
   "referrer-policy": "Referrer Policy",
   "permissions-policy": "Permissions Policy",
   "tls-versions": "TLS Versions",
+  "certificate-transparency": "Certificate Transparency",
   "dns-security": "DNS Security",
   dnssec: "DNSSEC",
   "email-security": "Email Security (SPF/DKIM/DMARC)",

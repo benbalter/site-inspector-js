@@ -3,6 +3,7 @@ import type { EndpointData, CheckResult, InspectionProgress } from "../types.js"
 import { DnsCheck } from "./dns.js";
 import { HeadersCheck } from "./headers.js";
 import { HttpsCheck } from "./https.js";
+import { CertificateTransparencyCheck } from "./certificate-transparency.js";
 import { HstsCheck } from "./hsts.js";
 import { ContentCheck } from "./content.js";
 import { CookiesCheck } from "./cookies.js";
@@ -45,6 +46,7 @@ const ALL_CHECKS: Check[] = [
   new DnsCheck(),
   new HeadersCheck(),
   new HttpsCheck(),
+  new CertificateTransparencyCheck(),
   new HstsCheck(),
   new ContentCheck(),
   new CookiesCheck(),
