@@ -9,15 +9,48 @@
   --color-surface: #ffffff;
   --color-ink: #10151c;
   --color-ink-muted: #5a6473;
-  --color-ink-faint: #97a0af;
+  /* Darkest faint ink that still clears 4.5:1 on white surfaces. */
+  --color-ink-faint: #69717f;
   --color-hairline: #dde2ea;
   --color-hairline-strong: #c7cdd8;
   --color-accent: #1f47e6;
   --color-accent-strong: #1636bd;
+
+  --color-pass: #0a7c46;
+  --color-pass-bg: #e7f4ec;
+  --color-pass-line: #c2e6d0;
+  --color-attention: #bd2f26;
+  --color-attention-bg: #fbe9e7;
+  --color-attention-line: #f2c6c0;
+  --color-on-attention: #ffffff;
+}
+
+/* Dark: the same instrument on a night bench. Every pair keeps ≥4.5:1. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #0b0f14;
+    --color-surface: #131921;
+    --color-ink: #e6eaf0;
+    --color-ink-muted: #a3adbb;
+    --color-ink-faint: #8590a0;
+    --color-hairline: #222a35;
+    --color-hairline-strong: #343e4c;
+    --color-accent: #7f9cff;
+    --color-accent-strong: #a8baff;
+
+    --color-pass: #4fc98d;
+    --color-pass-bg: #0f2a1d;
+    --color-pass-line: #1d4d34;
+    --color-attention: #ff8b80;
+    --color-attention-bg: #2e1311;
+    --color-attention-line: #5c2520;
+    --color-on-attention: #131921;
+  }
 }
 
 @layer base {
   html {
+    color-scheme: light dark;
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
   }
@@ -26,10 +59,25 @@
     background-color: var(--color-paper);
     /* Faint blueprint grid for instrument atmosphere. */
     background-image:
-      linear-gradient(to right, rgba(16, 21, 28, 0.035) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(16, 21, 28, 0.035) 1px, transparent 1px);
+      linear-gradient(
+        to right,
+        color-mix(in srgb, var(--color-ink) 3.5%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--color-ink) 3.5%, transparent) 1px,
+        transparent 1px
+      );
     background-size: 28px 28px;
     background-position: -1px -1px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
 }
 
@@ -84,14 +132,15 @@
     line-height: 1;
   }
   .chip-pass {
-    color: #0a7c46;
-    background: #e7f4ec;
-    border-color: #c2e6d0;
+    color: var(--color-pass);
+    background: var(--color-pass-bg);
+    border-color: var(--color-pass-line);
   }
+  /* Filled, not tinted: attention reads as darker than pass even without hue. */
   .chip-attention {
-    color: #bd2f26;
-    background: #fbe9e7;
-    border-color: #f2c6c0;
+    color: var(--color-on-attention);
+    background: var(--color-attention);
+    border-color: var(--color-attention);
   }
   /* Neutral facts carry no judgment — monochrome ink, never red/green. */
   .chip-neutral {
@@ -100,7 +149,7 @@
     border-color: var(--color-hairline-strong);
   }
   .chip-neutral .glyph {
-    color: var(--color-ink-faint);
+    color: var(--color-ink-muted);
   }
 
   /* ── Detected technologies ───────────────────────────────────────────── */
@@ -124,11 +173,15 @@
     height: 30px;
     border-radius: 6px;
     object-fit: contain;
+    /* A light plate in both themes: most favicons are drawn for white. */
     background: #fff;
     border: 1px solid var(--color-hairline);
     flex-shrink: 0;
   }
   .tech-monogram {
+    background: hsl(var(--hue) 55% 93%);
+    color: hsl(var(--hue) 45% 32%);
+    border-color: hsl(var(--hue) 40% 82%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -193,13 +246,17 @@
   animation: reveal 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-@keyframes scan {
-  0% {
-    transform: translateY(-100%);
+@media (prefers-color-scheme: dark) {
+  .tech-monogram {
+    background: hsl(var(--hue) 30% 17%);
+    color: hsl(var(--hue) 60% 78%);
+    border-color: hsl(var(--hue) 30% 30%);
   }
-  100% {
-    transform: translateY(400%);
-  }
+}
+
+/* Anchor jumps land below the sticky summary bar (its height is set from JS). */
+#results [id] {
+  scroll-margin-top: calc(var(--summary-h, 0px) + 1.5rem);
 }
 
 /* ── "Just show me what's wrong" filter ──────────────────────────────────── */

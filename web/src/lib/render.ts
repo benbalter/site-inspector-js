@@ -42,10 +42,20 @@ function slug(s: string): string {
 function chip(label: string, severity: Severity, value: boolean): HTMLElement {
   const span = el("span", `chip chip-${severity}`);
   span.dataset.sev = severity;
-  span.append(el("span", "glyph", value ? "✓" : "✗"), document.createTextNode(label));
-  span.title = `${value ? "Yes" : "No"}${severity === "neutral" ? "" : severity === "pass" ? " (good)" : " (needs attention)"}`;
+  const glyph = el("span", "glyph", value ? "✓" : "✗");
+  glyph.setAttribute("aria-hidden", "true");
+  // Screen readers get the value and verdict as words, not a glyph and a color.
+  const spoken = `${value ? "Yes" : "No"}${VERDICT_TEXT[severity]}`;
+  span.append(glyph, document.createTextNode(label), el("span", "sr-only", `: ${spoken}`));
+  span.title = spoken;
   return span;
 }
+
+const VERDICT_TEXT: Record<Severity, string> = {
+  pass: " (good)",
+  attention: " (needs attention)",
+  neutral: "",
+};
 
 /** Lists longer than this show the first few and a "+ N more" toggle. */
 const LIST_LIMIT = 8;
@@ -66,12 +76,14 @@ function appendCollapsible(
   if (extra <= 0) return [];
   const btn = el("button", "field-label mt-1 hover:text-accent", `+ ${extra} more`);
   btn.type = "button";
+  btn.setAttribute("aria-expanded", "false");
   btn.addEventListener("click", () => {
     const hidden = list.querySelectorAll(":scope > .overflow-item.hidden").length > 0;
     for (const item of list.querySelectorAll(":scope > .overflow-item")) {
       item.classList.toggle("hidden", !hidden);
     }
     btn.textContent = hidden ? "− Show fewer" : `+ ${extra} more`;
+    btn.setAttribute("aria-expanded", String(hidden));
   });
   return [btn];
 }
@@ -176,9 +188,11 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
     box.append(text);
     const btn = el("button", "field-label mt-1 hover:text-accent", "+ Show all");
     btn.type = "button";
+    btn.setAttribute("aria-expanded", "false");
     btn.addEventListener("click", () => {
       const clamped = text.classList.toggle("line-clamp-3");
       btn.textContent = clamped ? "+ Show all" : "− Show less";
+      btn.setAttribute("aria-expanded", String(!clamped));
     });
     wrap.append(box, btn);
     return wrap;
@@ -215,6 +229,7 @@ function renderObject(
 
 function countBadge(count: number): HTMLElement {
   const badge = el("span", "chip chip-attention text-[0.6875rem]", `${count}`);
+  badge.append(el("span", "sr-only", count === 1 ? " needs attention" : " need attention"));
   return badge;
 }
 
@@ -245,10 +260,7 @@ function hashHue(s: string): number {
 function monogram(name: string): HTMLElement {
   const d = el("div", "tech-logo tech-monogram");
   d.textContent = (name || "?").trim().charAt(0).toUpperCase();
-  const hue = hashHue(name || "?");
-  d.style.backgroundColor = `hsl(${hue} 55% 93%)`;
-  d.style.color = `hsl(${hue} 45% 32%)`;
-  d.style.borderColor = `hsl(${hue} 40% 82%)`;
+  d.style.setProperty("--hue", String(hashHue(name || "?")));
   return d;
 }
 
@@ -326,9 +338,11 @@ function addShowEmptyToggle(card: HTMLElement): void {
   btn.type = "button";
   const collapsed = () => `+ ${count} empty field${count > 1 ? "s" : ""}`;
   btn.textContent = collapsed();
+  btn.setAttribute("aria-expanded", "false");
   btn.addEventListener("click", () => {
     const showing = card.classList.toggle("show-empty");
     btn.textContent = showing ? "− Hide empty fields" : collapsed();
+    btn.setAttribute("aria-expanded", String(showing));
   });
   card.append(btn);
 }
@@ -339,13 +353,13 @@ function checkCard(check: CheckResult, attention: number, index: number): HTMLEl
   card.style.animationDelay = `${Math.min(index * 40, 320)}ms`;
 
   const head = el("div", "mb-2 flex items-center justify-between gap-2");
-  head.append(el("h3", "text-sm font-semibold text-ink", checkLabel(check.name)));
+  head.append(el("h4", "text-sm font-semibold text-ink", checkLabel(check.name)));
   if (attention > 0) head.append(countBadge(attention));
   card.append(head);
 
   const data = check.data as Record<string, unknown>;
   if (data && typeof data.error === "string") {
-    const err = el("p", "val text-[#bd2f26]", `Error: ${data.error}`);
+    const err = el("p", "val text-attention", `Error: ${data.error}`);
     card.append(err);
   } else if (check.name === "sniffer") {
     card.append(renderTechnologies(data));
@@ -361,7 +375,7 @@ function propertiesCard(props: DomainProperties, attention: number): HTMLElement
   card.dataset.attention = String(attention);
 
   const head = el("div", "mb-3 flex items-center justify-between");
-  head.append(el("h2", "kicker", "Domain Properties"));
+  head.append(el("h3", "kicker", "Domain Properties"));
   if (attention > 0) head.append(countBadge(attention));
   card.append(head);
 
@@ -393,7 +407,7 @@ function summaryBar(
 ): HTMLElement {
   const bar = el(
     "div",
-    "card sticky top-3 z-10 mb-6 p-4 backdrop-blur supports-[backdrop-filter]:bg-white/85",
+    "card sticky top-3 z-10 mb-6 p-4 backdrop-blur supports-[backdrop-filter]:bg-surface/85",
   );
 
   const top = el("div", "flex flex-wrap items-center justify-between gap-3");
@@ -407,7 +421,7 @@ function summaryBar(
     );
   } else {
     status.append(
-      el("span", "text-2xl font-bold text-[#bd2f26] leading-none", String(attentionCount)),
+      el("span", "text-2xl font-bold text-attention leading-none", String(attentionCount)),
       el("span", "kicker", attentionCount === 1 ? "item needs attention" : "items need attention"),
     );
   }
@@ -419,7 +433,7 @@ function summaryBar(
   input.type = "checkbox";
   const track = el(
     "span",
-    "relative h-5 w-9 rounded-full bg-hairline-strong transition-colors peer-checked:bg-accent after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-4",
+    "relative h-5 w-9 rounded-full bg-hairline-strong transition-colors peer-checked:bg-accent after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-surface after:transition-transform peer-checked:after:translate-x-4 peer-focus-visible:ring-2 peer-focus-visible:ring-accent peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
   );
   toggle.append(input, track, el("span", "kicker", "Only issues"));
   input.addEventListener("change", () => {
@@ -430,14 +444,18 @@ function summaryBar(
 
   // Section nav
   if (navItems.length) {
-    const nav = el("nav", "mt-3 flex flex-wrap gap-1.5 border-t border-hairline pt-3");
+    const nav = el(
+      "nav",
+      "-mx-4 mt-3 flex gap-1.5 overflow-x-auto border-t border-hairline px-4 pt-3 sm:mx-0 sm:flex-wrap sm:px-0",
+    );
+    nav.setAttribute("aria-label", "Report sections");
     for (const item of navItems) {
-      const a = el("a", "navpill flex items-center gap-1.5");
+      const a = el("a", "navpill flex shrink-0 items-center gap-1.5");
       a.href = `#${item.id}`;
       a.dataset.attention = String(item.attention);
       a.append(document.createTextNode(item.title));
       if (item.attention > 0) {
-        a.append(el("span", "font-semibold text-[#bd2f26]", String(item.attention)));
+        a.append(el("span", "font-semibold text-attention", String(item.attention)));
       }
       nav.append(a);
     }
@@ -453,7 +471,7 @@ function section(title: string, id: string, cards: HTMLElement[], attention: num
   sec.dataset.attention = String(attention);
 
   const head = el("div", "mb-3 flex items-center gap-2");
-  head.append(el("h2", "text-base font-bold tracking-tight text-ink", title));
+  head.append(el("h3", "text-base font-bold tracking-tight text-ink", title));
   if (attention > 0) head.append(countBadge(attention));
   sec.append(head);
 
@@ -472,8 +490,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
 
   // Header
   const header = el("div", "mb-5");
-  header.append(el("div", "kicker mb-1", "Site Inspector"));
-  header.append(el("h1", "text-3xl font-bold tracking-tight text-ink", result.domain));
+  header.append(el("h2", "text-3xl font-bold tracking-tight text-ink", result.domain));
   const meta = el("p", "val mt-1 text-ink-muted");
   meta.textContent = result.canonicalUrl
     ? `${result.canonicalUrl} · inspected ${new Date(result.inspectedAt).toLocaleString()}`
@@ -486,7 +503,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
     container.append(propertiesCard(result.properties, byCheck["properties"] ?? 0));
     const down = el("div", "card reveal mt-6 border-dashed p-8 text-center");
     down.append(
-      el("div", "kicker mb-2 text-[#bd2f26]", "No signal"),
+      el("div", "kicker mb-2 text-attention", "No signal"),
       el("p", "text-lg font-semibold text-ink", "This site appears to be down"),
       el(
         "p",
@@ -537,7 +554,11 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
   }
 
   // Summary bar (with toggle wired to this container)
-  container.append(summaryBar(assessment.attentionCount, navItems, container));
+  const bar = summaryBar(assessment.attentionCount, navItems, container);
+  container.append(bar);
+  new ResizeObserver(() => {
+    container.style.setProperty("--summary-h", `${bar.offsetHeight + 12}px`);
+  }).observe(bar);
 
   // Properties card
   const propsWrap = el("div", "mb-8");
@@ -552,7 +573,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
   if (assessment.attentionCount === 0) container.classList.add("no-issues");
   const clear = el("div", "issues-clear card reveal hidden p-8 text-center");
   clear.append(
-    el("div", "kicker mb-2 text-[#0a7c46]", "All clear"),
+    el("div", "kicker mb-2 text-pass", "All clear"),
     el("p", "text-lg font-semibold text-ink", "Nothing needs attention"),
     el(
       "p",
