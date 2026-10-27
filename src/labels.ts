@@ -73,6 +73,7 @@ const WORD_FIXES: Record<string, string> = {
   Cidr: "CIDR",
   Cdn: "CDN",
   Csp: "CSP",
+  Cves: "CVEs",
   Dmarc: "DMARC",
   Dnskey: "DNSKEY",
   Dnssec: "DNSSEC",

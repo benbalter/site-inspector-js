@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **43 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **44 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -181,7 +181,7 @@ import type {
 
 ## Checks
 
-Site Inspector runs 43 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 44 checks organized into six categories. All checks run in parallel and return structured data.
 
 ### 🔒 Security
 
@@ -194,6 +194,7 @@ Site Inspector runs 43 checks organized into six categories. All checks run in p
 | **csp** | Content Security Policy evaluation of the header and `<meta>` policies combined — detects unsafe-inline, unsafe-eval, missing directives, bypasses | [csp_evaluator](https://www.npmjs.com/package/csp_evaluator) |
 | **cookies** | Cookie inventory — Secure, HttpOnly, SameSite flag coverage; `__Host-`/`__Secure-` prefixed cookies that break their rules (browsers drop them) | — |
 | **sri** | Subresource Integrity — coverage for cross-origin scripts and stylesheets | — |
+| **vulnerable-libraries** | JavaScript libraries with known vulnerabilities — identified from script URLs and file names, then from the contents of up to 10 unidentified scripts and inline scripts; reports each library's version, vulnerability count, highest severity, and CVEs | [retire.js](https://github.com/RetireJS/retire.js) |
 | **mixed-content** | Detects `http://` resources loaded on HTTPS pages (active vs. passive) | — |
 | **dns-security** | Email authentication — SPF and DMARC record parsing, policy strength assessment; subdomains without a DMARC record inherit the organizational domain's | — |
 | **cors** | CORS header analysis — Access-Control-Allow-Origin, methods, headers, credentials | — |
@@ -275,9 +276,9 @@ Before running checks, Site Inspector probes four endpoint variants of the domai
 
 Input like `www.example.com` or `https://example.com/path` is normalized to `example.com` first.
 
-## Updating Wappalyzer Fingerprints
+## Updating Vendored Data
 
-The technology detection fingerprints are vendored in the `data/` directory from the [enthec/webappanalyzer](https://github.com/enthec/webappanalyzer) project. To update them:
+The technology detection fingerprints are vendored in the `data/` directory from the [enthec/webappanalyzer](https://github.com/enthec/webappanalyzer) project, and the vulnerable-library database in `data/retire/` from [retire.js](https://github.com/RetireJS/retire.js). To update both:
 
 ```bash
 ./scripts/update-fingerprints.sh

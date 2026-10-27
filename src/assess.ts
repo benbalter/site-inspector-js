@@ -63,6 +63,7 @@ const POLARITY: Record<string, Polarity> = {
 
   // transport / content mixing
   "mixed-content.hasMixedContent": "negative",
+  "vulnerable-libraries.hasVulnerableLibraries": "negative",
   "tls-versions.supported.TLSv1": "negative",
   "tls-versions.supported.TLSv1.1": "negative",
   "tls-versions.supported.TLSv1.2": "positive-bonus",

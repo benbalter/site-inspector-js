@@ -24,6 +24,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
       "csp",
       "cookies",
       "sri",
+      "vulnerable-libraries",
       "mixed-content",
       "cors",
       "referrer-policy",
@@ -107,6 +108,7 @@ export const CHECK_LABELS: Record<string, string> = {
   "web-presence": "Web Presence",
   rpki: "RPKI Route Validity",
   links: "Links & 404s",
+  "vulnerable-libraries": "Vulnerable JS Libraries",
 };
 
 export function checkLabel(name: string): string {

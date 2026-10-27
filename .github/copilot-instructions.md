@@ -79,7 +79,7 @@ const lib = require("package-name");
 - `src/checks/index.ts` — Check registry: `runChecks()`, `availableChecks({ heavy })`
 - `src/testing/fetch-stub.ts` — `stubFetch()` test helper (canned responses by URL)
 - `web/` — Astro SSR front end; `web/src/lib/network.ts` holds its SSRF guards
-- `data/` — Vendored Wappalyzer fingerprints (do not edit manually; update via `scripts/update-fingerprints.sh`)
+- `data/` — Vendored Wappalyzer fingerprints and the retire.js vulnerability database (do not edit manually; update via `scripts/update-fingerprints.sh`)
 
 ## Commands
 

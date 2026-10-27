@@ -33,6 +33,7 @@ describe("assessField", () => {
     expect(assessField("tls-versions", "supported.TLSv1", true)).toBe("attention");
     expect(assessField("rpki", "invalid", true)).toBe("attention");
     expect(assessField("links", "soft404", true)).toBe("attention");
+    expect(assessField("vulnerable-libraries", "hasVulnerableLibraries", true)).toBe("attention");
     expect(assessField("links", "hasBrokenLinks", false)).toBe("pass");
     expect(assessField("cookies", "prefixViolation", true)).toBe("attention");
   });

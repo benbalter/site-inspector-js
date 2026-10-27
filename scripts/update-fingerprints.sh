@@ -32,8 +32,12 @@ for pid in "${pids[@]}"; do
   wait "$pid"
 done
 
+echo "Downloading the retire.js vulnerability repository..."
+fetch "https://raw.githubusercontent.com/RetireJS/retire.js/master/repository/jsrepository-v5.json" \
+  "$TMP_DIR/jsrepository.json"
+
 echo "Validating JSON..."
-for file in "$TMP_DIR"/categories.json "$TMP_DIR"/technologies/*.json; do
+for file in "$TMP_DIR"/categories.json "$TMP_DIR"/technologies/*.json "$TMP_DIR"/jsrepository.json; do
   node -e 'JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"))' "$file" ||
     { echo "Invalid JSON: $(basename "$file")" >&2; exit 1; }
 done
@@ -41,5 +45,7 @@ done
 mkdir -p "$TECH_DIR"
 cp "$TMP_DIR/categories.json" "$DATA_DIR/categories.json"
 cp "$TMP_DIR"/technologies/*.json "$TECH_DIR/"
+mkdir -p "$DATA_DIR/retire"
+cp "$TMP_DIR/jsrepository.json" "$DATA_DIR/retire/jsrepository.json"
 
 echo "Done! Downloaded $(ls "$TMP_DIR/technologies" | wc -l | tr -d ' ') technology files."
