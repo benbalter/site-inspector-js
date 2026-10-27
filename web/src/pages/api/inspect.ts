@@ -187,11 +187,11 @@ export const POST: APIRoute = async ({ request }) => {
 
   // Clients that accept NDJSON get live progress, then the result.
   if (request.headers.get("accept")?.includes(NDJSON)) {
-    return streamInspection(domain, { checks: selectedChecks, timeout }, release);
+    return streamInspection(domain, { checks: selectedChecks, timeout, screenshot: true }, release);
   }
 
   try {
-    const result = await inspect(domain, { checks: selectedChecks, timeout });
+    const result = await inspect(domain, { checks: selectedChecks, timeout, screenshot: true });
     return json(result);
   } catch (err) {
     return json({ error: errorMessage(err) }, 500);
@@ -207,7 +207,7 @@ function errorMessage(err: unknown): string {
 /** Run the inspection, streaming progress events and then the result as NDJSON. */
 function streamInspection(
   domain: string,
-  options: { checks?: string[]; timeout: number },
+  options: { checks?: string[]; timeout: number; screenshot: boolean },
   release: () => void,
 ): Response {
   const encoder = new TextEncoder();

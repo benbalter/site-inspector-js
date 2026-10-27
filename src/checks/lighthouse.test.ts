@@ -184,4 +184,103 @@ describe("LighthouseCheck", () => {
     });
     await vi.waitFor(() => expect(mockKill).toHaveBeenCalled());
   });
+
+  describe("network activity", () => {
+    // Trimmed from a real Lighthouse 13.5 report of a news site.
+    const lhr = {
+      categories: { performance: { score: 0.5 } },
+      entities: [
+        { name: "nyt.com", origins: ["https://www.nytimes.com"], isFirstParty: true },
+        { name: "Google Tag Manager", origins: ["https://www.googletagmanager.com"] },
+        { name: "Amazon Ads", origins: ["https://c.amazon-adsystem.com"] },
+      ],
+      audits: {
+        "network-requests": {
+          details: {
+            type: "table",
+            items: [
+              { url: "https://www.nytimes.com/", resourceType: "Document", entity: "nyt.com" },
+              { url: "https://static01.nyt.com/a.js", resourceType: "Script", entity: "nyt.com" },
+              { url: "https://static01.nyt.com/b.js", resourceType: "Script", entity: "nyt.com" },
+              { url: "https://www.googletagmanager.com/gtm.js?id=x", resourceType: "Script" },
+              { url: "data:image/png;base64,AAAA", resourceType: "Image" },
+            ],
+          },
+        },
+        "final-screenshot": {
+          scoreDisplayMode: "informative",
+          details: { type: "screenshot", timestamp: 1, data: "data:image/jpeg;base64,/9j/4AA" },
+        },
+      },
+    };
+
+    it("reports request count, hosts contacted, and third parties", async () => {
+      mockLighthouse.mockResolvedValue({ lhr });
+      const result = await check.run(makeEndpoint(), "example.com");
+
+      expect(result.data.requestCount).toBe(5);
+      expect(result.data.hostCount).toBe(3);
+      expect(result.data.hosts).toEqual([
+        "static01.nyt.com",
+        "www.googletagmanager.com",
+        "www.nytimes.com",
+      ]);
+      expect(result.data.thirdParties).toEqual(["Amazon Ads", "Google Tag Manager"]);
+    });
+
+    it("counts the inspected domain as first party when it redirected elsewhere", async () => {
+      mockLighthouse.mockResolvedValue({
+        lhr: {
+          ...lhr,
+          entities: [
+            { name: "balter.com", origins: ["https://ben.balter.com"], isFirstParty: true },
+            { name: "benbalter.com", origins: ["https://benbalter.com"] },
+            { name: "Cloudflare", origins: ["https://static.cloudflareinsights.com"] },
+          ],
+        },
+      });
+      const result = await check.run(makeEndpoint(), "benbalter.com");
+      expect(result.data.thirdParties).toEqual(["Cloudflare"]);
+    });
+
+    it("leaves the screenshot out unless asked for", async () => {
+      mockLighthouse.mockResolvedValue({ lhr });
+      const result = await check.run(makeEndpoint(), "example.com");
+      expect(result.data).not.toHaveProperty("screenshot");
+    });
+
+    it("includes the final screenshot when the context asks for it", async () => {
+      mockLighthouse.mockResolvedValue({ lhr });
+      const result = await check.run(makeEndpoint(), "example.com", {
+        timeoutMs: 1000,
+        signal: new AbortController().signal,
+        screenshot: true,
+      });
+      expect(result.data.screenshot).toBe("data:image/jpeg;base64,/9j/4AA");
+    });
+
+    it("caps the host list but still counts every host", async () => {
+      const items = Array.from({ length: 150 }, (_, i) => ({ url: `https://h${i}.example/` }));
+      mockLighthouse.mockResolvedValue({
+        lhr: { ...lhr, audits: { "network-requests": { details: { items } } } },
+      });
+      const result = await check.run(makeEndpoint(), "example.com");
+      expect(result.data.hostCount).toBe(150);
+      expect(result.data.hosts).toHaveLength(100);
+    });
+
+    it("reports nulls when the report has no network data", async () => {
+      mockLighthouse.mockResolvedValue({ lhr: { categories: {}, audits: {} } });
+      const result = await check.run(makeEndpoint(), "example.com", {
+        timeoutMs: 1000,
+        signal: new AbortController().signal,
+        screenshot: true,
+      });
+      expect(result.data.requestCount).toBeNull();
+      expect(result.data.hostCount).toBeNull();
+      expect(result.data.hosts).toEqual([]);
+      expect(result.data.thirdParties).toEqual([]);
+      expect(result.data.screenshot).toBeNull();
+    });
+  });
 });

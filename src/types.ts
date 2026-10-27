@@ -12,6 +12,11 @@ export interface InspectOptions {
    */
   allEndpoints?: boolean;
   /**
+   * Include a screenshot of the page (a JPEG data URI) in the Lighthouse
+   * check's `screenshot` field. Off by default, since it adds tens of KB.
+   */
+  screenshot?: boolean;
+  /**
    * Called as the inspection progresses, for live progress displays. Errors
    * thrown by the callback are ignored.
    */

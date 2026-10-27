@@ -69,6 +69,9 @@ site-inspector inspect example.com --all-endpoints
 # Custom timeout (milliseconds)
 site-inspector inspect example.com --timeout 15000
 
+# Save a screenshot of the page (runs Lighthouse, so it needs Chrome)
+site-inspector inspect example.com --screenshot example.jpg
+
 # Fail (exit 1) if anything needs attention — handy in CI
 site-inspector inspect example.com --fail-on-issues
 
@@ -100,6 +103,10 @@ console.log(result.checks.hsts.data.preloadReady);         // true
 console.log(result.checks.sniffer.data.technologies);      // [{ name: "WordPress", ... }]
 console.log(result.checks.csp.data.highSeverityCount);     // 0
 console.log(result.checks["dns-security"].data.dmarc.policy); // "reject"
+
+// Include a screenshot (a JPEG data URI) in the Lighthouse check's results
+const withShot = await inspect("example.com", { screenshot: true });
+console.log(withShot.checks.lighthouse.data.screenshot); // "data:image/jpeg;base64,..."
 
 // Run only specific checks with a custom timeout
 const partial = await inspect("example.com", {
@@ -221,7 +228,7 @@ Site Inspector runs 39 checks organized into six categories. All checks run in p
 |-------|-------------|---------|
 | **performance** | Response time, page size, compression, Server-Timing header, size category | — |
 | **carbon** | Page weight analysis — HTML size, external resource counts, inline script/style sizes | — |
-| **lighthouse** | Performance, accessibility, best-practices, SEO scores and Web Vitals (requires Chrome) | [Lighthouse](https://github.com/GoogleChrome/lighthouse) |
+| **lighthouse** | Performance, accessibility, best-practices, SEO scores and Web Vitals; every host the page contacted and the third parties Lighthouse recognizes; optional screenshot (requires Chrome) | [Lighthouse](https://github.com/GoogleChrome/lighthouse) |
 | **cache-headers** | HTTP caching analysis — Cache-Control directives, ETag, Last-Modified, Vary, caching quality score | [cache-control-parser](https://www.npmjs.com/package/cache-control-parser) |
 
 ### 🔍 Technology

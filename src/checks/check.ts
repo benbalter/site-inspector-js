@@ -6,6 +6,8 @@ export interface CheckContext {
   timeoutMs: number;
   /** Aborted when the check exceeds its time budget. */
   signal: AbortSignal;
+  /** Whether checks that can take a screenshot should include it (as a data URI). */
+  screenshot?: boolean;
 }
 
 /** Interface that all checks must implement. */

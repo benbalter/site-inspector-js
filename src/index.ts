@@ -53,6 +53,7 @@ export async function inspect(
     checkTimeout,
     checks: checkFilter,
     allEndpoints = false,
+    screenshot = false,
     onProgress,
   } = options;
 
@@ -92,6 +93,7 @@ export async function inspect(
   const checkResults = await runChecks(endpointData, domain.domain, checkFilter, {
     timeoutMs: timeout,
     checkTimeoutMs: checkTimeout,
+    screenshot,
     onProgress,
   });
 

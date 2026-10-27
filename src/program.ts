@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { Command, InvalidArgumentError } from "commander";
 import chalk from "chalk";
 import { inspect } from "./index.js";
@@ -22,6 +23,7 @@ interface InspectCliOptions {
   checks?: string[];
   onlyIssues?: boolean;
   failOnIssues?: boolean;
+  screenshot?: string;
   timeout: number;
 }
 
@@ -49,6 +51,33 @@ function parseChecks(value: string): string[] {
   return names;
 }
 
+/**
+ * Move the Lighthouse screenshot out of the result and into a file, so a data
+ * URI doesn't flood the terminal or the JSON.
+ */
+async function saveScreenshot(result: InspectionResult, path: string): Promise<void> {
+  const data = result.checks.lighthouse?.data;
+  const uri = data?.screenshot;
+  if (data) delete data.screenshot;
+  const match = typeof uri === "string" ? /^data:image\/\w+;base64,(.*)$/.exec(uri) : null;
+  if (!match) {
+    console.error(
+      chalk.yellow(
+        "No screenshot was taken: it comes from the lighthouse check, which needs Chrome.",
+      ),
+    );
+    return;
+  }
+  await writeFile(path, Buffer.from(match[1], "base64"));
+  console.error(chalk.gray(`Saved a screenshot to ${path}`));
+}
+
+/** The screenshot comes from Lighthouse, so `--screenshot` adds it to `--checks`. */
+function withScreenshotCheck(checks?: string[], screenshot?: string): string[] | undefined {
+  if (!checks || screenshot === undefined || checks.includes("lighthouse")) return checks;
+  return [...checks, "lighthouse"];
+}
+
 /** Build the CLI program. Exported so tests can drive it without spawning a process. */
 export function buildProgram(): Command {
   const program = new Command();
@@ -67,6 +96,7 @@ export function buildProgram(): Command {
     .option("-c, --checks <checks>", "Comma-separated list of checks to run", parseChecks)
     .option("-i, --only-issues", "Show only items that need attention")
     .option("--fail-on-issues", "Exit with status 1 if any item needs attention")
+    .option("-s, --screenshot <file>", "Save a screenshot of the page (JPEG; runs Lighthouse)")
     .option("-t, --timeout <ms>", "Request timeout in milliseconds", parseTimeout, 10_000)
     .addHelpText(
       "after",
@@ -77,9 +107,11 @@ export function buildProgram(): Command {
         console.error(chalk.gray(`Inspecting ${domain}...`));
         const result = await inspect(domain, {
           timeout: opts.timeout,
-          checks: opts.checks,
+          checks: withScreenshotCheck(opts.checks, opts.screenshot),
           allEndpoints: opts.allEndpoints,
+          screenshot: opts.screenshot !== undefined,
         });
+        if (opts.screenshot !== undefined) await saveScreenshot(result, opts.screenshot);
         const assessment = assess(result);
 
         if (opts.json) {

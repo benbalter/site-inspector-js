@@ -1,11 +1,14 @@
 import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
+/** Most hosts to list; `hostCount` still counts them all. */
+const MAX_HOSTS = 100;
+
 export class LighthouseCheck implements Check {
   name = "lighthouse";
   heavy = true;
 
-  async run(endpoint: EndpointData, _domain: string, ctx?: CheckContext): Promise<CheckResult> {
+  async run(endpoint: EndpointData, domain: string, ctx?: CheckContext): Promise<CheckResult> {
     try {
       // Dynamic imports so the check doesn't fail at module load time
       // if lighthouse/chrome-launcher aren't installed
@@ -60,6 +63,7 @@ export class LighthouseCheck implements Check {
               speedIndex: metricOrNull(audits, "speed-index"),
               timeToInteractive: metricOrNull(audits, "interactive"),
             },
+            ...networkActivity(lhr, domain, ctx?.screenshot ?? false),
           },
         };
       } finally {
@@ -96,4 +100,61 @@ function metricOrNull(
   const audit = audits?.[key];
   if (!audit || audit.numericValue === undefined) return null;
   return Math.round(audit.numericValue);
+}
+
+interface NetworkReport {
+  entities?: { name: string; origins?: string[]; isFirstParty?: boolean }[];
+  audits: Record<string, { details?: unknown }>;
+}
+
+/**
+ * What the page contacted while loading, like urlscan.io's request log:
+ * every host, and the third parties Lighthouse recognizes by name.
+ */
+function networkActivity(
+  lhr: NetworkReport,
+  domain: string,
+  includeScreenshot: boolean,
+): Record<string, unknown> {
+  const requests = (lhr.audits["network-requests"]?.details as { items?: { url?: string }[] })
+    ?.items;
+  const hosts = new Set<string>();
+  for (const { url } of requests ?? []) {
+    if (!url?.startsWith("http")) continue;
+    try {
+      hosts.add(new URL(url).hostname);
+    } catch {
+      // Skip URLs Lighthouse recorded but URL can't parse.
+    }
+  }
+  const sortedHosts = [...hosts].sort();
+  const thirdParties = (lhr.entities ?? [])
+    .filter((e) => !e.isFirstParty && !e.origins?.some((o) => onDomain(o, domain)))
+    .map((e) => e.name)
+    .sort();
+
+  const activity: Record<string, unknown> = {
+    requestCount: requests ? requests.length : null,
+    hostCount: requests ? sortedHosts.length : null,
+    hosts: sortedHosts.slice(0, MAX_HOSTS),
+    thirdParties,
+  };
+  if (includeScreenshot) {
+    const shot = lhr.audits["final-screenshot"]?.details as { data?: string } | undefined;
+    activity.screenshot = shot?.data ?? null;
+  }
+  return activity;
+}
+
+/**
+ * Lighthouse judges first-party by the page it ended on, so when the domain
+ * redirects elsewhere the domain itself would count as a third party.
+ */
+function onDomain(origin: string, domain: string): boolean {
+  try {
+    const host = new URL(origin).hostname;
+    return host === domain || host.endsWith(`.${domain}`);
+  } catch {
+    return false;
+  }
 }

@@ -604,6 +604,15 @@ describe("runChecks timeouts, ordering, and validation", () => {
     );
   });
 
+  it("passes the screenshot request to checks", async () => {
+    await runChecks(mockEndpoint, "example.com", ["lighthouse"], { screenshot: true });
+    expect(lighthouseRun).toHaveBeenLastCalledWith(
+      mockEndpoint,
+      "example.com",
+      expect.objectContaining({ screenshot: true }),
+    );
+  });
+
   it("runs heavy checks after light ones, keeping registry order in the output", async () => {
     const order: string[] = [];
     lighthouseRun.mockImplementationOnce(async () => {

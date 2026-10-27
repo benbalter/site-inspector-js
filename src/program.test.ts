@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { InspectionResult } from "./types.js";
 
 const { inspectMock } = vi.hoisted(() => ({ inspectMock: vi.fn() }));
@@ -175,5 +178,56 @@ describe("CLI", () => {
     );
     await run("inspect", "example.com");
     expect(stdout.join("\n")).toMatch(/maxAge:.*1 year/);
+  });
+});
+
+describe("--screenshot", () => {
+  let dir: string;
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "site-inspector-"));
+  });
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+  const withShot = (screenshot: string | null) =>
+    makeResult({
+      checks: {
+        lighthouse: {
+          name: "lighthouse",
+          data: { available: true, screenshot },
+        },
+      },
+    });
+
+  it("asks for a screenshot, saves it, and keeps the data URI out of the output", async () => {
+    inspectMock.mockResolvedValue(withShot(`data:image/jpeg;base64,${jpeg.toString("base64")}`));
+    const file = join(dir, "shot.jpg");
+
+    expect(await run("inspect", "example.com", "--json", "--screenshot", file)).toBe(0);
+
+    expect(inspectMock).toHaveBeenCalledWith(
+      "example.com",
+      expect.objectContaining({ screenshot: true }),
+    );
+    expect(await readFile(file)).toEqual(jpeg);
+    const out = JSON.parse(stdout.join("\n"));
+    expect(out.checks.lighthouse.data).not.toHaveProperty("screenshot");
+    expect(stderr.join("\n")).toContain(file);
+  });
+
+  it("adds lighthouse to --checks, since it takes the screenshot", async () => {
+    await run("inspect", "example.com", "-c", "dns", "--screenshot", join(dir, "shot.jpg"));
+    expect(inspectMock).toHaveBeenCalledWith(
+      "example.com",
+      expect.objectContaining({ checks: ["dns", "lighthouse"] }),
+    );
+  });
+
+  it("warns when no screenshot was taken", async () => {
+    inspectMock.mockResolvedValue(makeResult());
+    expect(await run("inspect", "example.com", "--screenshot", join(dir, "shot.jpg"))).toBe(0);
+    expect(stderr.join("\n")).toMatch(/No screenshot/);
   });
 });

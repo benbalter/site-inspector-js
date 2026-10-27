@@ -363,6 +363,20 @@ function checkCard(check: CheckResult, attention: number, index: number): HTMLEl
     card.append(err);
   } else if (check.name === "sniffer") {
     card.append(renderTechnologies(data));
+  } else if (check.name === "lighthouse" && "screenshot" in data) {
+    const { screenshot, ...rest } = data;
+    if (typeof screenshot === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(screenshot)) {
+      const img = el(
+        "img",
+        "mb-3 max-h-72 w-full rounded border border-hairline object-cover object-top",
+      );
+      img.src = screenshot;
+      img.alt = "Screenshot of the page after it loaded";
+      img.loading = "lazy";
+      card.append(img);
+    }
+    card.append(renderObject(check.name, [], rest));
+    addShowEmptyToggle(card);
   } else {
     card.append(renderObject(check.name, [], data));
     addShowEmptyToggle(card);

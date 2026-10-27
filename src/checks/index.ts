@@ -114,6 +114,8 @@ export interface RunChecksOptions {
   timeoutMs?: number;
   /** Maximum time any single check may run (default 60s, or 180s for heavy checks). */
   checkTimeoutMs?: number;
+  /** Ask checks that can take a screenshot to include it. */
+  screenshot?: boolean;
   /** Called when each check starts and finishes. Errors it throws are ignored. */
   onProgress?: (event: Extract<InspectionProgress, { type: "check-start" | "check-done" }>) => void;
 }
@@ -126,7 +128,7 @@ async function runOne(
   check: Check,
   endpoint: EndpointData,
   domain: string,
-  timeoutMs: number,
+  ctx: Omit<CheckContext, "signal">,
   checkTimeoutMs: number,
 ): Promise<CheckResult> {
   const controller = new AbortController();
@@ -140,7 +142,7 @@ async function runOne(
 
   try {
     return await Promise.race([
-      check.run(endpoint, domain, { timeoutMs, signal: controller.signal }),
+      check.run(endpoint, domain, { ...ctx, signal: controller.signal }),
       deadline,
     ]);
   } catch (err) {
@@ -169,7 +171,7 @@ export async function runChecks(
   filter?: string[],
   options: RunChecksOptions = {},
 ): Promise<Record<string, CheckResult>> {
-  const { timeoutMs = 10_000, checkTimeoutMs, onProgress } = options;
+  const { timeoutMs = 10_000, checkTimeoutMs, screenshot, onProgress } = options;
   const emit: NonNullable<RunChecksOptions["onProgress"]> = (event) => {
     try {
       onProgress?.(event);
@@ -188,7 +190,7 @@ export async function runChecks(
       c,
       endpoint,
       domain,
-      timeoutMs,
+      { timeoutMs, screenshot },
       checkTimeoutMs ?? (c.heavy ? DEFAULT_HEAVY_CHECK_TIMEOUT : DEFAULT_CHECK_TIMEOUT),
     );
     completed++;
