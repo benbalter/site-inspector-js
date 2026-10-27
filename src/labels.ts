@@ -32,6 +32,8 @@ const KEY_LABELS: Record<string, string> = {
   http3: "HTTP/3",
   alpnProtocol: "ALPN Protocol",
   ocspStapling: "OCSP Stapling",
+  aead: "AEAD Ciphers",
+  staticRsaKeyExchange: "Static RSA Key Exchange (No Forward Secrecy)",
   p3p: "P3P",
   hasXDefault: "Has x-default",
   ll: "Coordinates",

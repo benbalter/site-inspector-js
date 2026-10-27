@@ -26,11 +26,64 @@ const TLS_VERSIONS = [
   },
 ];
 
+/**
+ * TLS 1.2 suites by property. Each probe offers only one kind; a handshake
+ * means the server accepts at least one of them. (TLS 1.3 suites are all
+ * forward secret and AEAD, so they need no probe.)
+ */
+const CIPHER_PROBES = {
+  // ECDHE/DHE key exchange with an AEAD cipher (GCM or ChaCha20-Poly1305).
+  aead: [
+    "ECDHE-ECDSA-AES128-GCM-SHA256",
+    "ECDHE-RSA-AES128-GCM-SHA256",
+    "ECDHE-ECDSA-AES256-GCM-SHA384",
+    "ECDHE-RSA-AES256-GCM-SHA384",
+    "ECDHE-ECDSA-CHACHA20-POLY1305",
+    "ECDHE-RSA-CHACHA20-POLY1305",
+    "DHE-RSA-AES128-GCM-SHA256",
+    "DHE-RSA-AES256-GCM-SHA384",
+  ],
+  // ECDHE key exchange with CBC ciphers: forward secret, but not AEAD.
+  forwardSecretCbc: [
+    "ECDHE-ECDSA-AES128-SHA",
+    "ECDHE-RSA-AES128-SHA",
+    "ECDHE-ECDSA-AES256-SHA",
+    "ECDHE-RSA-AES256-SHA",
+    "ECDHE-ECDSA-AES128-SHA256",
+    "ECDHE-RSA-AES128-SHA256",
+    "ECDHE-ECDSA-AES256-SHA384",
+    "ECDHE-RSA-AES256-SHA384",
+  ],
+  // Static RSA key exchange: no forward secrecy.
+  staticRsa: [
+    "AES128-GCM-SHA256",
+    "AES256-GCM-SHA384",
+    "AES128-SHA",
+    "AES256-SHA",
+    "AES128-SHA256",
+    "AES256-SHA256",
+  ],
+};
+
+/**
+ * The suites in `suites` this OpenSSL build can offer, as an OpenSSL cipher
+ * list, or null if none. A suite we can't offer would make the server look
+ * like it refuses it. (That's why there's no 3DES or RC4 probe: OpenSSL 3
+ * can't offer them, so we couldn't tell a server that accepts them from one
+ * that doesn't.)
+ */
+function offerable(suites: string[]): string | null {
+  const available = new Set((tls.getCiphers() ?? []).map((c) => c.toUpperCase()));
+  const list = suites.filter((s) => available.has(s));
+  return list.length > 0 ? list.join(":") : null;
+}
+
 function testTlsVersion(
   host: string,
   port: number,
   minVersion: tls.SecureVersion,
   maxVersion: tls.SecureVersion,
+  ciphers?: string,
 ): Promise<boolean> {
   return new Promise((resolve) => {
     // OpenSSL 3's default security level refuses TLS 1.0/1.1 handshakes
@@ -48,6 +101,7 @@ function testTlsVersion(
         rejectUnauthorized: false,
         timeout: 5000,
         ...(legacy && { ciphers: "DEFAULT@SECLEVEL=0" }),
+        ...(ciphers && { ciphers }),
       },
       () => {
         socket.destroy();
@@ -113,6 +167,12 @@ function advertisesHttp3(altSvc: string | undefined): boolean {
   return /(?:^|,)\s*h3(?:-\d+)?=/.test(altSvc ?? "");
 }
 
+/** True if any is true; null if none is but some couldn't be tested. */
+function anyTrue(...values: (boolean | null)[]): boolean | null {
+  if (values.some((v) => v === true)) return true;
+  return values.some((v) => v === null) ? null : false;
+}
+
 export class TlsVersionsCheck implements Check {
   name = "tls-versions";
 
@@ -121,6 +181,17 @@ export class TlsVersionsCheck implements Check {
     const host = url.hostname;
     const port = url.port ? Number(url.port) : 443;
 
+    const probeCiphers = async (suites: string[]): Promise<boolean | null> => {
+      const list = offerable(suites);
+      return list === null ? null : testTlsVersion(host, port, "TLSv1.2", "TLSv1.2", list);
+    };
+    // Started now, awaited below, so they run alongside the version probes.
+    const cipherProbes = Promise.all([
+      probeCiphers(CIPHER_PROBES.aead),
+      probeCiphers(CIPHER_PROBES.forwardSecretCbc),
+      probeCiphers(CIPHER_PROBES.staticRsa),
+    ]);
+
     const [extensions, ...results] = await Promise.all([
       probeExtensions(host, port),
       ...TLS_VERSIONS.map(async (v) => ({
@@ -128,6 +199,8 @@ export class TlsVersionsCheck implements Check {
         supported: await testTlsVersion(host, port, v.minVersion, v.maxVersion),
       })),
     ]);
+
+    const [aead12, forwardSecretCbc, staticRsa] = await cipherProbes;
 
     const supported: Record<string, boolean> = {};
     for (const r of results) {
@@ -152,6 +225,10 @@ export class TlsVersionsCheck implements Check {
         http2: extensions ? extensions.alpnProtocol === "h2" : null,
         http3: advertisesHttp3(endpoint.headers["alt-svc"]),
         ocspStapling: extensions?.ocspStapling ?? null,
+        // TLS 1.3 suites are all forward secret and AEAD.
+        forwardSecrecy: anyTrue(latestSupported, aead12, forwardSecretCbc),
+        aead: anyTrue(latestSupported, aead12),
+        staticRsaKeyExchange: staticRsa,
       },
     };
   }

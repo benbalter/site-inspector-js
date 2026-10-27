@@ -71,6 +71,10 @@ const POLARITY: Record<string, Polarity> = {
   "tls-versions.hasDeprecated": "negative",
   "tls-versions.tls13": "positive-bonus",
   "tls-versions.http2": "positive-bonus",
+  // SSL Labs caps the grade without these. Accepting static RSA key exchange
+  // as well stays neutral: nearly every major site still does, for old clients.
+  "tls-versions.forwardSecrecy": "positive-required",
+  "tls-versions.aead": "positive-required",
   "tls-versions.http3": "positive-bonus",
   // ocspStapling stays neutral: Let's Encrypt ended OCSP in 2025, so most
   // certificates have nothing to staple.

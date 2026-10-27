@@ -4,10 +4,14 @@ import { TlsVersionsCheck } from "./tls-versions.js";
 import type { EndpointData } from "../types.js";
 
 vi.mock("node:tls");
+const realTls = await vi.importActual<typeof tls>("node:tls");
 
 describe("TlsVersionsCheck", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Which ciphers this OpenSSL build can offer is a fact about the machine,
+    // not something to mock.
+    vi.mocked(tls.getCiphers).mockImplementation(realTls.getCiphers);
   });
 
   function mockTlsConnect(supportedVersions: string[] = []) {
@@ -213,11 +217,11 @@ describe("TlsVersionsCheck", () => {
       "example.com",
     );
 
+    // Version probes only: the cipher probes pin TLS 1.2 with their own lists.
     const byVersion = Object.fromEntries(
-      (vi.mocked(tls.connect).mock.calls as unknown as [tls.ConnectionOptions][]).map(([opts]) => [
-        opts.maxVersion,
-        opts.ciphers,
-      ]),
+      (vi.mocked(tls.connect).mock.calls as unknown as [tls.ConnectionOptions][])
+        .filter(([opts]) => opts.ciphers === undefined || opts.ciphers.includes("SECLEVEL"))
+        .map(([opts]) => [opts.maxVersion, opts.ciphers]),
     );
     // OpenSSL 3 refuses legacy handshakes at the default level, which made
     // TLS 1.0/1.1 always look unsupported.
@@ -365,6 +369,89 @@ describe("TlsVersionsCheck", () => {
       expect(none.data.http3).toBe(false);
       const missing = await check.run(endpoint(), "example.com");
       expect(missing.data.http3).toBe(false);
+    });
+  });
+
+  describe("cipher suites", () => {
+    const endpoint: EndpointData = {
+      url: "https://example.com",
+      statusCode: 200,
+      headers: {},
+      body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
+      redirectChain: [],
+    };
+
+    /**
+     * Versions in `versions` handshake. A TLS 1.2 cipher probe succeeds when
+     * its list includes any cipher in `accepted`.
+     */
+    function mockServer(versions: string[], accepted: string[]) {
+      const connectMock = vi.fn((opts: tls.ConnectionOptions, cb?: () => void) => {
+        const handlers: Record<string, Array<() => void>> = {};
+        const socket = {
+          on: vi.fn((event: string, handler: () => void) => {
+            (handlers[event] ??= []).push(handler);
+            return socket;
+          }),
+          destroy: vi.fn(),
+          alpnProtocol: false,
+        };
+        const cipherProbe = opts.ciphers !== undefined && !opts.ciphers.includes("SECLEVEL");
+        const ok = cipherProbe
+          ? versions.includes("TLSv1.2") &&
+            (opts.ciphers ?? "").split(":").some((c) => accepted.includes(c))
+          : opts.maxVersion === undefined || versions.includes(opts.maxVersion);
+        setImmediate(() => (ok ? cb?.() : handlers.error?.forEach((h) => h())));
+        return socket;
+      });
+      vi.mocked(tls.connect).mockImplementation(connectMock as unknown as typeof tls.connect);
+    }
+
+    it("reports forward secrecy and AEAD, and a server still accepting RSA key exchange", async () => {
+      mockServer(["TLSv1.2"], ["ECDHE-RSA-AES128-GCM-SHA256", "AES128-SHA"]);
+      const result = await new TlsVersionsCheck().run(endpoint, "example.com");
+      expect(result.data.forwardSecrecy).toBe(true);
+      expect(result.data.aead).toBe(true);
+      expect(result.data.staticRsaKeyExchange).toBe(true);
+    });
+
+    it("reports a server without forward secrecy or AEAD", async () => {
+      mockServer(["TLSv1.2"], ["AES128-SHA"]);
+      const result = await new TlsVersionsCheck().run(endpoint, "example.com");
+      expect(result.data.forwardSecrecy).toBe(false);
+      expect(result.data.aead).toBe(false);
+      expect(result.data.staticRsaKeyExchange).toBe(true);
+    });
+
+    it("counts forward-secret CBC suites as forward secrecy without AEAD", async () => {
+      mockServer(["TLSv1.2"], ["ECDHE-RSA-AES128-SHA"]);
+      const result = await new TlsVersionsCheck().run(endpoint, "example.com");
+      expect(result.data.forwardSecrecy).toBe(true);
+      expect(result.data.aead).toBe(false);
+      expect(result.data.staticRsaKeyExchange).toBe(false);
+    });
+
+    it("credits TLS 1.3, whose suites are all forward secret and AEAD", async () => {
+      mockServer(["TLSv1.3"], []);
+      const result = await new TlsVersionsCheck().run(endpoint, "example.com");
+      expect(result.data.forwardSecrecy).toBe(true);
+      expect(result.data.aead).toBe(true);
+      expect(result.data.staticRsaKeyExchange).toBe(false);
+    });
+
+    it("only offers ciphers this OpenSSL build can negotiate", async () => {
+      mockServer(["TLSv1.2"], []);
+      await new TlsVersionsCheck().run(endpoint, "example.com");
+      const available = new Set(tls.getCiphers().map((c) => c.toUpperCase()));
+      for (const [opts] of vi.mocked(tls.connect).mock.calls as unknown as [
+        tls.ConnectionOptions,
+      ][]) {
+        if (opts.ciphers === undefined || opts.ciphers.includes("SECLEVEL")) continue;
+        expect(opts.maxVersion).toBe("TLSv1.2");
+        for (const cipher of opts.ciphers.split(":")) expect(available).toContain(cipher);
+      }
     });
   });
 });
