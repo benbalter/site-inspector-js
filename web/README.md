@@ -25,6 +25,8 @@ npm run dev
 
 Open the URL Astro prints (http://localhost:4321 by default) and inspect a domain such as `example.com`.
 
+To link straight to a report, add `?domain=`: `http://localhost:4321/?domain=example.com` pre-fills the form and runs the inspection on load (fast checks only). Running an inspection also updates the address bar to that form, so you can copy and share it.
+
 ## How it works
 
 - `src/pages/index.astro` — the domain form. It computes the **fast** check set

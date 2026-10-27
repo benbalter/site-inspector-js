@@ -177,6 +177,11 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
     ).map((c) => c.value);
     const checks = [...fastChecks, ...heavy];
 
+    // Keep the address bar in sync so the report's URL can be shared or bookmarked.
+    const url = new URL(location.href);
+    url.searchParams.set("domain", domain);
+    history.replaceState(null, "", url);
+
     submitBtn.disabled = true;
     resultsEl.replaceChildren();
     const progress = progressStatus(domain);
@@ -214,4 +219,11 @@ const heavy = publicMode() ? [] : availableChecks({ heavy: true });
       submitBtn.disabled = false;
     }
   });
+
+  // `?domain=example.com` pre-fills the form and runs the inspection right away.
+  const linked = new URLSearchParams(location.search).get("domain")?.trim();
+  if (linked) {
+    domainInput.value = linked;
+    form.requestSubmit();
+  }
 </script>
