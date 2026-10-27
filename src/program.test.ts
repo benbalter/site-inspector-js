@@ -116,6 +116,8 @@ describe("CLI", () => {
     expect(out.domain).toBe("example.com");
     expect(out.checks.hsts).toBeDefined();
     expect(out.assessment.attentionCount).toBe(1);
+    expect(out.assessment.grade).toBe("A");
+    expect(out.assessment.score).toBe(90);
     expect(out.assessment.attention[0]).toMatchObject({ check: "hsts", path: "enabled" });
   });
 
@@ -125,6 +127,8 @@ describe("CLI", () => {
     expect(out).toEqual({
       domain: "example.com",
       canonicalUrl: "https://example.com",
+      grade: "A",
+      score: 90,
       attentionCount: 1,
       attention: [expect.objectContaining({ check: "hsts", path: "enabled" })],
     });
@@ -133,6 +137,7 @@ describe("CLI", () => {
   it("lists issues with --only-issues", async () => {
     await run("inspect", "example.com", "--only-issues");
     const out = stdout.join("\n");
+    expect(out).toMatch(/Grade: .*A.* \(90\/100\)/);
     expect(out).toMatch(/1 item needs attention/);
     expect(out).toMatch(/Hsts/);
     expect(out).toContain("Strict-Transport-Security");
@@ -266,7 +271,12 @@ describe("several domains", () => {
     expect(stdout).toHaveLength(2);
     const lines = stdout.map((line) => JSON.parse(line));
     expect(lines.map((l) => l.domain)).toEqual(["a.test", "b.test"]);
-    expect(lines[0].assessment).toEqual({ attentionCount: 0, attention: [] });
+    expect(lines[0].assessment).toEqual({
+      grade: "A+",
+      score: 100,
+      attentionCount: 0,
+      attention: [],
+    });
   });
 
   it("prints a JSON array with --json", async () => {
@@ -281,7 +291,7 @@ describe("several domains", () => {
     );
     await run("inspect", "a.test", "b.test");
     const out = stdout.join("\n");
-    expect(out).toMatch(/a\.test.*0 need attention/);
+    expect(out).toMatch(/a\.test.*A\+.*0 need attention/);
     expect(out).toMatch(/b\.test.*1 need attention/);
   });
 

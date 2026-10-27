@@ -7,7 +7,7 @@ import { PROPERTY_LABELS, assess, assessField, formatFieldValue, titleCase } fro
 import { availableChecks } from "./checks/index.js";
 import { VERSION } from "./utils.js";
 import type { InspectionResult } from "./types.js";
-import type { Assessment, Severity } from "./assess.js";
+import type { Assessment, Grade, Severity } from "./assess.js";
 
 /** Exit codes the CLI can return. */
 export const EXIT = {
@@ -94,16 +94,24 @@ async function collectDomains(args: string[], input?: string): Promise<string[]>
 
 /** The JSON shape for one result, or just its issues with --only-issues. */
 function jsonOutput(result: InspectionResult, assessment: Assessment, onlyIssues?: boolean) {
-  const { attention, attentionCount } = assessment;
+  const { attention, attentionCount, grade, score } = assessment;
   return onlyIssues
-    ? { domain: result.domain, canonicalUrl: result.canonicalUrl, attentionCount, attention }
-    : { ...result, assessment: { attentionCount, attention } };
+    ? {
+        domain: result.domain,
+        canonicalUrl: result.canonicalUrl,
+        grade,
+        score,
+        attentionCount,
+        attention,
+      }
+    : { ...result, assessment: { grade, score, attentionCount, attention } };
 }
 
 interface SummaryRow {
   domain: string;
   up: boolean;
   attentionCount: number;
+  grade?: Grade;
   error?: string;
 }
 
@@ -111,7 +119,7 @@ interface SummaryRow {
 function printBulkSummary(rows: SummaryRow[]): void {
   const width = Math.max(...rows.map((r) => r.domain.length));
   console.log(chalk.bold.underline("Summary"));
-  for (const { domain, up, attentionCount, error } of rows) {
+  for (const { domain, up, attentionCount, grade, error } of rows) {
     const status = error
       ? chalk.red(`error: ${error}`)
       : !up
@@ -119,7 +127,9 @@ function printBulkSummary(rows: SummaryRow[]): void {
         : attentionCount > 0
           ? chalk.yellow(`${attentionCount} need attention`)
           : chalk.green(`${attentionCount} need attention`);
-    console.log(`  ${domain.padEnd(width)}  ${status}`);
+    // Padded so the column lines up whether the grade is "A+" or "F".
+    const graded = grade && up && !error ? `${gradeText(grade, 2)}  ` : "";
+    console.log(`  ${domain.padEnd(width)}  ${graded}${status}`);
   }
   console.log();
 }
@@ -205,7 +215,12 @@ export function buildProgram(): Command {
           }
 
           const up = result.properties.up;
-          summary.push({ domain: result.domain, up, attentionCount: assessment.attentionCount });
+          summary.push({
+            domain: result.domain,
+            up,
+            attentionCount: assessment.attentionCount,
+            grade: assessment.grade,
+          });
           if (!up) {
             exitCode = Math.max(exitCode, EXIT.down);
           } else if (opts.failOnIssues && assessment.attentionCount > 0) {
@@ -291,9 +306,24 @@ function printResult(result: InspectionResult): void {
   }
 }
 
-/** Print the "N items need attention" rollup line. */
+/** The grade, colored: A green, B–C yellow, D–F red. */
+function gradeText(grade: Grade, width = 0): string {
+  const color = grade.startsWith("A")
+    ? chalk.green
+    : grade === "B" || grade === "C"
+      ? chalk.yellow
+      : chalk.red;
+  return color.bold(grade.padEnd(width));
+}
+
+function gradeLine(grade: Grade, score: number): string {
+  return `Grade: ${gradeText(grade)}${chalk.gray(` (${score}/100)`)}`;
+}
+
+/** Print the grade and "N items need attention" rollup lines. */
 function printSummary(result: InspectionResult): void {
-  const { attentionCount } = assess(result);
+  const { attentionCount, grade, score } = assess(result);
+  console.log(gradeLine(grade, score));
   if (attentionCount === 0) {
     console.log(chalk.green("✓ No issues found"));
   } else {
@@ -306,7 +336,8 @@ function printSummary(result: InspectionResult): void {
 function printIssues(result: InspectionResult): void {
   console.log();
   console.log(chalk.bold.underline(`Site Inspector: ${result.domain}`));
-  const { attention, attentionCount } = assess(result);
+  const { attention, attentionCount, grade, score } = assess(result);
+  console.log(gradeLine(grade, score));
   if (attentionCount === 0) {
     console.log(chalk.green("✓ No issues found"));
     console.log();

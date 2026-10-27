@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { ATTENTION_FIELDS, PROPERTY_LABELS, REMEDIATION, assess, assessField } from "./assess.js";
+import {
+  ATTENTION_FIELDS,
+  CRITICAL_FIELDS,
+  GRADE_DUPLICATES,
+  PROPERTY_LABELS,
+  REMEDIATION,
+  assess,
+  assessField,
+  gradeFor,
+} from "./assess.js";
 import type { DomainProperties, InspectionResult } from "./types.js";
 
 describe("assessField", () => {
@@ -198,5 +207,86 @@ describe("remediation links", () => {
     const hsts = findings.find((f) => f.check === "hsts");
     expect(hsts?.learnMore).toBe(REMEDIATION["hsts.enabled"]);
     expect(findings.find((f) => f.check === "dns")).not.toHaveProperty("learnMore");
+  });
+});
+
+describe("grade", () => {
+  const finding = (check: string, path: string) => ({
+    check,
+    path,
+    label: path,
+    value: false,
+    severity: "attention" as const,
+  });
+
+  it("gives A+ when nothing needs attention", () => {
+    expect(gradeFor([])).toEqual({ grade: "A+", score: 100, criticalCount: 0 });
+  });
+
+  it("takes 10 points per ordinary issue", () => {
+    expect(gradeFor([finding("hsts", "enabled")])).toMatchObject({ grade: "A", score: 90 });
+    expect(gradeFor([finding("hsts", "enabled"), finding("csp", "hasCsp")])).toMatchObject({
+      grade: "B",
+      score: 80,
+    });
+  });
+
+  it("takes 25 points per critical issue", () => {
+    expect(gradeFor([finding("https", "valid")])).toEqual({
+      grade: "C",
+      score: 75,
+      criticalCount: 1,
+    });
+  });
+
+  it("charges once for findings that restate the same problem", () => {
+    // Old TLS versions: the per-version flags and hasDeprecated are one issue.
+    expect(
+      gradeFor([
+        finding("tls-versions", "supported.TLSv1"),
+        finding("tls-versions", "supported.TLSv1.1"),
+        finding("tls-versions", "hasDeprecated"),
+      ]),
+    ).toMatchObject({ grade: "A", score: 90 });
+    // Both checks read the same viewport meta tag.
+    expect(
+      gradeFor([finding("mobile", "hasViewport"), finding("accessibility", "viewport")]),
+    ).toMatchObject({ score: 90 });
+  });
+
+  it("still charges a restated finding when the one covering it isn't flagged", () => {
+    expect(gradeFor([finding("tls-versions", "supported.TLSv1")])).toMatchObject({ score: 90 });
+  });
+
+  it("only treats real verdict fields as duplicates", () => {
+    for (const [field, coveredBy] of Object.entries(GRADE_DUPLICATES)) {
+      expect(ATTENTION_FIELDS).toContain(field);
+      expect(ATTENTION_FIELDS).toContain(coveredBy);
+    }
+  });
+
+  it("bottoms out at F and a score of 0", () => {
+    const many = Array.from({ length: 20 }, () => finding("hsts", "enabled"));
+    expect(gradeFor(many)).toMatchObject({ grade: "F", score: 0 });
+  });
+
+  it("only counts findings that need attention", () => {
+    expect(gradeFor([{ ...finding("hsts", "enabled"), severity: "pass" }]).grade).toBe("A+");
+  });
+
+  it("marks only fields that can need attention as critical", () => {
+    for (const key of CRITICAL_FIELDS) expect(ATTENTION_FIELDS).toContain(key);
+  });
+
+  it("is part of every assessment", () => {
+    const assessment = assess({
+      domain: "example.com",
+      canonicalUrl: "https://example.com",
+      properties: {} as DomainProperties,
+      checks: { hsts: { name: "hsts", data: { enabled: false } } },
+      inspectedAt: "2026-01-01T00:00:00.000Z",
+    } as InspectionResult);
+    expect(assessment.grade).toBe("A");
+    expect(assessment.score).toBe(90);
   });
 });

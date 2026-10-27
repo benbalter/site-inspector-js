@@ -13,7 +13,7 @@ import {
   formatFieldValue,
   remediationUrl,
 } from "site-inspector/assess";
-import type { Severity } from "site-inspector/assess";
+import type { GradeResult, Severity } from "site-inspector/assess";
 import type { InspectionResult, CheckResult, DomainProperties } from "site-inspector";
 import { CHECK_GROUPS, checkLabel } from "./checkGroups";
 
@@ -432,6 +432,7 @@ function propertiesCard(props: DomainProperties, attention: number): HTMLElement
 }
 
 function summaryBar(
+  grade: GradeResult,
   attentionCount: number,
   navItems: { title: string; id: string; attention: number }[],
   container: HTMLElement,
@@ -443,8 +444,17 @@ function summaryBar(
 
   const top = el("div", "flex flex-wrap items-center justify-between gap-3");
 
-  // Status readout
+  // Status readout, led by the overall grade
   const status = el("div", "flex items-baseline gap-2");
+  const gradeSeverity: Severity = grade.grade.startsWith("A")
+    ? "pass"
+    : grade.grade === "D" || grade.grade === "F"
+      ? "attention"
+      : "neutral";
+  const badge = el("span", `chip chip-${gradeSeverity} text-lg font-bold`, grade.grade);
+  badge.title = `Score ${grade.score}/100: 10 points off per issue, 25 per critical one`;
+  badge.setAttribute("aria-label", `Grade ${grade.grade}, score ${grade.score} out of 100`);
+  status.append(badge);
   if (attentionCount === 0) {
     status.append(
       el("span", "chip chip-pass", "✓ All clear"),
@@ -585,7 +595,7 @@ export function renderResult(result: InspectionResult, container: HTMLElement): 
   }
 
   // Summary bar (with toggle wired to this container)
-  const bar = summaryBar(assessment.attentionCount, navItems, container);
+  const bar = summaryBar(assessment, assessment.attentionCount, navItems, container);
   container.append(bar);
   new ResizeObserver(() => {
     container.style.setProperty("--summary-h", `${bar.offsetHeight + 12}px`);

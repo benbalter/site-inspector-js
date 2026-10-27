@@ -136,6 +136,12 @@ for (const finding of attention) {
   console.log(`- ${finding.check}: ${finding.label}`);
 }
 
+// An overall letter grade, like MDN HTTP Observatory's: start at 100, take
+// 10 points off per issue and 25 per critical one (no HTTPS, an invalid cert,
+// mixed content, vulnerable libraries, ...). A+ means nothing needs attention;
+// then A is 90+, B 80+, C 70+, D 60+, F below. It covers whichever checks ran.
+const { grade, score } = assess(result); // e.g. "B", 80
+
 // Findings that need attention link to a page explaining the fix
 attention[0].learnMore; // e.g. "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security"
 

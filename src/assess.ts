@@ -244,8 +244,93 @@ export interface Finding {
   learnMore?: string;
 }
 
+/** A letter grade, best to worst. */
+export type Grade = "A+" | "A" | "B" | "C" | "D" | "F";
+
+/** The overall grade for a set of findings; see {@link gradeFor}. */
+export interface GradeResult {
+  grade: Grade;
+  /** 0–100: 100 minus the penalty for each finding that needs attention. */
+  score: number;
+  /** How many of those findings are critical. */
+  criticalCount: number;
+}
+
+/**
+ * Findings that mean visitors are exposed right now, rather than missing a
+ * hardening step: each costs {@link CRITICAL_PENALTY} instead of
+ * {@link ISSUE_PENALTY}.
+ */
+export const CRITICAL_FIELDS: readonly string[] = [
+  "properties.up",
+  "properties.https",
+  "properties.downgradesHttps",
+  "properties.serverError",
+  "https.valid",
+  "mixed-content.hasMixedContent",
+  "vulnerable-libraries.hasVulnerableLibraries",
+  "dnssec.validationFailed",
+  "rpki.invalid",
+  "smtp-tls.starttls",
+];
+
+/**
+ * Verdicts that restate another: each maps to the field covering it. When
+ * both need attention, only the covering field costs points, so one problem
+ * isn't charged two or three times.
+ */
+export const GRADE_DUPLICATES: Readonly<Record<string, string>> = {
+  "tls-versions.supported.TLSv1": "tls-versions.hasDeprecated",
+  "tls-versions.supported.TLSv1.1": "tls-versions.hasDeprecated",
+  // Both checks read the same viewport meta tag.
+  "accessibility.viewport": "mobile.hasViewport",
+  // Blocking every crawler blocks Googlebot too.
+  "robots.blocksGooglebot": "robots.blocksAll",
+};
+
+const ISSUE_PENALTY = 10;
+const CRITICAL_PENALTY = 25;
+
+/**
+ * Grade findings like MDN HTTP Observatory does: start at 100 and subtract
+ * for each problem, so passing extras never inflate the grade and only what
+ * needs attention moves it. An ordinary issue costs 10 points, a critical one
+ * 25, and a finding that restates another ({@link GRADE_DUPLICATES}) costs
+ * nothing extra. A+ means nothing needs attention; then A is 90+, B 80+, C 70+, D 60+,
+ * and F below. The grade covers whichever checks ran.
+ */
+export function gradeFor(findings: readonly Finding[]): GradeResult {
+  const flagged = new Set(
+    findings.filter((f) => f.severity === "attention").map((f) => `${f.check}.${f.path}`),
+  );
+  const attention = findings.filter((f) => {
+    if (f.severity !== "attention") return false;
+    const coveredBy = GRADE_DUPLICATES[`${f.check}.${f.path}`];
+    return !(coveredBy && flagged.has(coveredBy));
+  });
+  const criticalCount = attention.filter((f) =>
+    CRITICAL_FIELDS.includes(`${f.check}.${f.path}`),
+  ).length;
+  const penalty =
+    criticalCount * CRITICAL_PENALTY + (attention.length - criticalCount) * ISSUE_PENALTY;
+  const score = Math.max(0, 100 - penalty);
+  const grade: Grade =
+    attention.length === 0
+      ? "A+"
+      : score >= 90
+        ? "A"
+        : score >= 80
+          ? "B"
+          : score >= 70
+            ? "C"
+            : score >= 60
+              ? "D"
+              : "F";
+  return { grade, score, criticalCount };
+}
+
 /** The result of assessing an entire inspection. */
-export interface Assessment {
+export interface Assessment extends GradeResult {
   /** Every graded field found: all booleans, plus values a rule grades. */
   findings: Finding[];
   /** Just the findings that need attention. */
@@ -311,6 +396,7 @@ export function assess(result: InspectionResult): Assessment {
     attention,
     attentionCount: attention.length,
     attentionByCheck,
+    ...gradeFor(findings),
   };
 }
 
