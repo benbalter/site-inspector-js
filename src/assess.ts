@@ -116,6 +116,8 @@ const POLARITY: Record<string, Polarity> = {
   "content.sitemapXml": "positive-bonus",
   "canonical.noindex": "negative",
   "canonical.conflict": "negative",
+  "links.soft404": "negative",
+  "links.hasBrokenLinks": "negative",
   "opengraph.socialReady": "positive-bonus",
   "structured-data.hasJsonLd": "positive-bonus",
   "robots.exists": "positive-bonus",

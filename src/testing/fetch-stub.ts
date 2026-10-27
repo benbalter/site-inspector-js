@@ -14,7 +14,7 @@ export interface FakeResponse {
  * URL. Unknown URLs fail like an unreachable host.
  */
 export function stubFetch(routes: Record<string, FakeResponse>) {
-  const spy = vi.fn(async (input: string | URL | Request) => {
+  const spy = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     const route = routes[url];
     if (!route) {

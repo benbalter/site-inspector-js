@@ -43,6 +43,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
     checks: [
       "content",
       "canonical",
+      "links",
       "opengraph",
       "structured-data",
       "robots",
@@ -105,6 +106,7 @@ export const CHECK_LABELS: Record<string, string> = {
   pwa: "Progressive Web App",
   "web-presence": "Web Presence",
   rpki: "RPKI Route Validity",
+  links: "Links & 404s",
 };
 
 export function checkLabel(name: string): string {

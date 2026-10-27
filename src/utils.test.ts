@@ -8,6 +8,7 @@ import {
   normalizeDomain,
   parseHtml,
   probeUrl,
+  probeStatus,
   readBody,
 } from "./utils.js";
 import { stubFetch } from "./testing/fetch-stub.js";
@@ -177,6 +178,34 @@ describe("fetchJson", () => {
     const result = await fetchJson("https://example.com/data.json", 10000);
 
     expect(result).toEqual({ data: true });
+  });
+});
+
+describe("probeStatus", () => {
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns the status code", async () => {
+    fetchSpy.mockResolvedValue({ status: 404 });
+    expect(await probeStatus("https://example.com/missing")).toBe(404);
+  });
+
+  it("retries as GET when the server rejects HEAD", async () => {
+    fetchSpy.mockResolvedValueOnce({ status: 405 }).mockResolvedValueOnce({ status: 200 });
+    expect(await probeStatus("https://example.com/test")).toBe(200);
+  });
+
+  it("returns null when the request fails", async () => {
+    fetchSpy.mockRejectedValue(new Error("Network error"));
+    expect(await probeStatus("https://example.com/fail")).toBeNull();
   });
 });
 

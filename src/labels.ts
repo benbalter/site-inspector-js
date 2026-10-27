@@ -45,6 +45,8 @@ const KEY_LABELS: Record<string, string> = {
   crossOriginResourcePolicy: "Cross-Origin-Resource-Policy",
   crossOriginIsolated: "Cross-Origin Isolated",
   prefixedCount: "Prefixed Cookies",
+  soft404: "Soft 404",
+  notFoundStatus: "Status of a Missing Page",
   certificateCount: "Certificates",
   pageWeightBytes: "Page Weight",
   co2PerViewGrams: "CO₂ per View (g)",

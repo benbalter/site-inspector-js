@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **42 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **43 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -181,7 +181,7 @@ import type {
 
 ## Checks
 
-Site Inspector runs 42 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 43 checks organized into six categories. All checks run in parallel and return structured data.
 
 ### 🔒 Security
 
@@ -228,6 +228,7 @@ Site Inspector runs 42 checks organized into six categories. All checks run in p
 | **accessibility** | `lang` attribute, heading hierarchy, image alt text coverage, viewport meta | — |
 | **well-known** | `security.txt` (RFC 9116), `change-password`, OpenID Connect, WebFinger, MTA-STS, Android asset links, Apple app-site-association, NodeInfo (Fediverse), `humans.txt` | — |
 | **canonical** | Canonical URL detection — HTML link tag, HTTP Link header, self-referential check, noindex conflict detection | [cheerio](https://www.npmjs.com/package/cheerio) |
+| **links** | Whether a missing page returns a real 404 (not a "soft 404" 200), and broken links on the homepage — up to 20 same-site and 10 external links, at most 2 per external host; only 404/410 (confirmed with GET) counts as broken | — |
 | **i18n** | Internationalization — HTML lang, charset, hreflang tags, Content-Language header, RTL support | [cheerio](https://www.npmjs.com/package/cheerio) |
 | **a11y-axe** | Automated accessibility testing — axe-core rule violations with impact levels and WCAG criteria | [axe-core](https://www.npmjs.com/package/axe-core) |
 

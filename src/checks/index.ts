@@ -35,6 +35,7 @@ import { GeoCheck } from "./geo.js";
 import { NetworkCheck } from "./network.js";
 import { RpkiCheck } from "./rpki.js";
 import { CanonicalCheck } from "./canonical.js";
+import { LinksCheck } from "./links.js";
 import { I18nCheck } from "./i18n.js";
 import { MobileCheck } from "./mobile.js";
 import { FaviconCheck } from "./favicon.js";
@@ -80,6 +81,7 @@ const ALL_CHECKS: Check[] = [
   new NetworkCheck(),
   new RpkiCheck(),
   new CanonicalCheck(),
+  new LinksCheck(),
   new I18nCheck(),
   new MobileCheck(),
   new FaviconCheck(),

@@ -157,6 +157,18 @@ export async function probeUrl(
   method: string = "HEAD",
   timeoutMs = 5000,
 ): Promise<boolean> {
+  return (await probeStatus(url, method, timeoutMs)) === 200;
+}
+
+/**
+ * The status a URL answers with after redirects, or null if the request
+ * failed. HEAD requests that the server rejects (405/501) are retried as GET.
+ */
+export async function probeStatus(
+  url: string,
+  method: string = "HEAD",
+  timeoutMs = 5000,
+): Promise<number | null> {
   const attempt = async (m: string): Promise<number> => {
     const res = await fetch(url, {
       method: m,
@@ -170,13 +182,11 @@ export async function probeUrl(
   };
 
   try {
-    let status = await attempt(method);
-    if (method === "HEAD" && (status === 405 || status === 501)) {
-      status = await attempt("GET");
-    }
-    return status === 200;
+    const status = await attempt(method);
+    if (method === "HEAD" && (status === 405 || status === 501)) return await attempt("GET");
+    return status;
   } catch {
-    return false;
+    return null;
   }
 }
 
