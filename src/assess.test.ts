@@ -38,6 +38,8 @@ describe("assessField", () => {
     expect(assessField("api-discovery", "hasApi", true)).toBe("pass");
     expect(assessField("tls-versions", "supported.TLSv1.2", true)).toBe("pass");
     expect(assessField("ipv6", "hasIpv6", true)).toBe("pass");
+    expect(assessField("headers", "openerIsolation", false)).toBe("neutral");
+    expect(assessField("headers", "crossOriginIsolated", true)).toBe("pass");
   });
 
   it("returns neutral for non-booleans and unknown fields", () => {

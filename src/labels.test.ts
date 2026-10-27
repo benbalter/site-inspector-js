@@ -30,6 +30,8 @@ describe("fieldLabel", () => {
     ["responseTimeMs", "Response Time"],
     ["allSecure", "All Secure"],
     ["TLSv1.2", "TLSv1.2"],
+    ["crossOriginOpenerPolicy", "Cross-Origin-Opener-Policy"],
+    ["crossOriginIsolated", "Cross-Origin Isolated"],
   ])("%s -> %s", (key, label) => {
     expect(fieldLabel(key)).toBe(label);
   });

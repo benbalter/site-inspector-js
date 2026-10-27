@@ -47,8 +47,13 @@ describe("HeadersCheck", () => {
       referrerPolicy: "no-referrer",
       permissionsPolicy: "geolocation=()",
       strictTransportSecurity: "max-age=31536000; includeSubDomains",
+      crossOriginOpenerPolicy: null,
+      crossOriginEmbedderPolicy: null,
+      crossOriginResourcePolicy: null,
       clickjackingProtection: true,
       xssProtection: true,
+      openerIsolation: false,
+      crossOriginIsolated: false,
     });
   });
 
@@ -67,8 +72,13 @@ describe("HeadersCheck", () => {
       referrerPolicy: null,
       permissionsPolicy: null,
       strictTransportSecurity: null,
+      crossOriginOpenerPolicy: null,
+      crossOriginEmbedderPolicy: null,
+      crossOriginResourcePolicy: null,
       clickjackingProtection: false,
       xssProtection: false,
+      openerIsolation: false,
+      crossOriginIsolated: false,
     });
   });
 
@@ -112,5 +122,63 @@ describe("HeadersCheck", () => {
   it('sets xssProtection false for "0"', async () => {
     const result = await check.run(makeEndpoint({ "x-xss-protection": "0" }), "example.com");
     expect(result.data.xssProtection).toBe(false);
+  });
+
+  describe("cross-origin policies", () => {
+    it("reports COOP, COEP, and CORP values", async () => {
+      const result = await check.run(
+        makeEndpoint({
+          "cross-origin-opener-policy": "same-origin",
+          "cross-origin-embedder-policy": "require-corp",
+          "cross-origin-resource-policy": "same-site",
+        }),
+        "example.com",
+      );
+      expect(result.data.crossOriginOpenerPolicy).toBe("same-origin");
+      expect(result.data.crossOriginEmbedderPolicy).toBe("require-corp");
+      expect(result.data.crossOriginResourcePolicy).toBe("same-site");
+      expect(result.data.openerIsolation).toBe(true);
+      expect(result.data.crossOriginIsolated).toBe(true);
+    });
+
+    it("counts same-origin-allow-popups as opener isolation, not cross-origin isolation", async () => {
+      const result = await check.run(
+        makeEndpoint({
+          "cross-origin-opener-policy": "same-origin-allow-popups",
+          "cross-origin-embedder-policy": "require-corp",
+        }),
+        "example.com",
+      );
+      expect(result.data.openerIsolation).toBe(true);
+      expect(result.data.crossOriginIsolated).toBe(false);
+    });
+
+    it("treats unsafe-none as no opener isolation", async () => {
+      const result = await check.run(
+        makeEndpoint({ "cross-origin-opener-policy": "unsafe-none" }),
+        "example.com",
+      );
+      expect(result.data.openerIsolation).toBe(false);
+    });
+
+    it("ignores case, report-to parameters, and accepts credentialless COEP", async () => {
+      const result = await check.run(
+        makeEndpoint({
+          "cross-origin-opener-policy": 'Same-Origin; report-to="coop"',
+          "cross-origin-embedder-policy": "credentialless",
+        }),
+        "example.com",
+      );
+      expect(result.data.openerIsolation).toBe(true);
+      expect(result.data.crossOriginIsolated).toBe(true);
+    });
+
+    it("needs COEP for cross-origin isolation", async () => {
+      const result = await check.run(
+        makeEndpoint({ "cross-origin-opener-policy": "same-origin" }),
+        "example.com",
+      );
+      expect(result.data.crossOriginIsolated).toBe(false);
+    });
   });
 });

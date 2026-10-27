@@ -51,6 +51,9 @@ const POLARITY: Record<string, Polarity> = {
 
   // headers / csp
   "headers.clickjackingProtection": "positive-required",
+  // Bonuses, not requirements: COEP in particular breaks third-party embeds.
+  "headers.openerIsolation": "positive-bonus",
+  "headers.crossOriginIsolated": "positive-bonus",
   "csp.hasCsp": "positive-required",
 
   // cookies

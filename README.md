@@ -174,7 +174,7 @@ Site Inspector runs 39 checks organized into six categories. All checks run in p
 
 | Check | Description | Library |
 |-------|-------------|---------|
-| **headers** | Security headers — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and more | — |
+| **headers** | Security headers — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, Cross-Origin-Opener/Embedder/Resource-Policy (opener and cross-origin isolation), and more | — |
 | **https** | TLS certificate validity, issuer, expiry, protocol, cipher, chain completeness (whether the server sends every intermediate) | [ssl-checker](https://www.npmjs.com/package/ssl-checker) |
 | **hsts** | Strict-Transport-Security header — max-age, includeSubDomains, preload readiness | — |
 | **csp** | Content Security Policy evaluation of the header and `<meta>` policies combined — detects unsafe-inline, unsafe-eval, missing directives, bypasses | [csp_evaluator](https://www.npmjs.com/package/csp_evaluator) |
