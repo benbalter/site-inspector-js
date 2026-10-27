@@ -35,8 +35,8 @@ export class HttpsCheck implements Check {
           cipher: result.cipher,
           bits: result.bits,
           fingerprint256: result.fingerprint256,
-          // Not ssl-checker's chainComplete, which requires the server to send
-          // the root even though servers should omit it.
+          // Not ssl-checker's chainComplete, which requires the chain to end in
+          // a self-signed cert, so cross-signed roots (google.com) fail it.
           chainComplete: !MISSING_ISSUER_ERRORS.has(result.validationError ?? ""),
           chainLength: result.chain?.length ?? 0,
           error: null,

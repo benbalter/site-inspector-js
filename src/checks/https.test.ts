@@ -79,8 +79,8 @@ describe("HttpsCheck", () => {
     expect(result.data.error).toBeNull();
   });
 
-  it("treats a chain that verifies without its root as complete", async () => {
-    // Servers should omit the root; ssl-checker's chainComplete wrongly requires it.
+  it("treats a verified chain ending in a cross-signed root as complete", async () => {
+    // ssl-checker calls a chain ending in a cross-signed root (e.g. GTS Root R4) incomplete.
     mockedSslChecker.mockResolvedValue(makeSslResult({ chainComplete: false }) as never);
     const result = await check.run(placeholderEndpoint, "example.com");
     expect(result.data.chainComplete).toBe(true);
