@@ -59,6 +59,7 @@ const POLARITY: Record<string, Polarity> = {
   // cookies
   "cookies.allSecure": "positive-bonus",
   "cookies.allHttpOnly": "positive-bonus",
+  "cookies.prefixViolation": "negative",
 
   // transport / content mixing
   "mixed-content.hasMixedContent": "negative",

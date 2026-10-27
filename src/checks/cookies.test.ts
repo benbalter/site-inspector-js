@@ -99,4 +99,52 @@ describe("CookiesCheck", () => {
     expect(result.data.allSecure).toBe(true);
     expect(result.data.allHttpOnly).toBe(false);
   });
+
+  describe("cookie name prefixes", () => {
+    it("reports no prefix problems when there are no cookies", async () => {
+      const result = await check.run(makeEndpoint(), "example.com");
+      expect(result.data.prefixedCount).toBe(0);
+      expect(result.data.invalidPrefixed).toEqual([]);
+      expect(result.data.prefixViolation).toBe(false);
+    });
+
+    it("accepts prefixed cookies that follow the rules", async () => {
+      const result = await check.run(
+        makeEndpoint([
+          "__Host-sid=1; Secure; Path=/; HttpOnly",
+          "__Secure-pref=1; Secure; Domain=example.com",
+          "plain=1",
+        ]),
+        "example.com",
+      );
+      expect(result.data.prefixedCount).toBe(2);
+      expect(result.data.invalidPrefixed).toEqual([]);
+      expect(result.data.prefixViolation).toBe(false);
+    });
+
+    it("flags __Secure- cookies without Secure", async () => {
+      const result = await check.run(makeEndpoint(["__Secure-a=1; HttpOnly"]), "example.com");
+      expect(result.data.invalidPrefixed).toEqual(["__Secure-a"]);
+      expect(result.data.prefixViolation).toBe(true);
+    });
+
+    it("flags __Host- cookies with a Domain, a narrower Path, or no Secure", async () => {
+      const result = await check.run(
+        makeEndpoint([
+          "__Host-a=1; Secure; Path=/; Domain=example.com",
+          "__Host-b=1; Secure; Path=/app",
+          "__Host-c=1; Secure",
+          "__Host-d=1; Path=/",
+        ]),
+        "example.com",
+      );
+      expect(result.data.prefixedCount).toBe(4);
+      expect(result.data.invalidPrefixed).toEqual(["__Host-a", "__Host-b", "__Host-c", "__Host-d"]);
+    });
+
+    it("matches prefixes case-insensitively, as browsers do", async () => {
+      const result = await check.run(makeEndpoint(["__host-a=1; Path=/"]), "example.com");
+      expect(result.data.invalidPrefixed).toEqual(["__host-a"]);
+    });
+  });
 });

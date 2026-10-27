@@ -33,6 +33,24 @@ function parseCookie(raw: string): CookieInfo {
   return { name, secure, httpOnly, sameSite };
 }
 
+/**
+ * Whether a cookie uses a name prefix (RFC 6265bis §4.1.3) and breaks its
+ * rules. Browsers silently drop such cookies, so it's a real bug, not style.
+ */
+function prefixStatus(raw: string): { prefixed: boolean; valid: boolean } {
+  const parts = raw.split(";").map((p) => p.trim().toLowerCase());
+  const name = parts[0]?.split("=")[0] ?? "";
+  const attributes = parts.slice(1);
+  const secure = attributes.includes("secure");
+  if (name.startsWith("__secure-")) return { prefixed: true, valid: secure };
+  if (name.startsWith("__host-")) {
+    const hasDomain = attributes.some((a) => a.startsWith("domain="));
+    const rootPath = attributes.some((a) => a.replace(/\s/g, "") === "path=/");
+    return { prefixed: true, valid: secure && !hasDomain && rootPath };
+  }
+  return { prefixed: false, valid: true };
+}
+
 export class CookiesCheck implements Check {
   name = "cookies";
 
@@ -46,11 +64,16 @@ export class CookiesCheck implements Check {
           cookies: [],
           allSecure: true,
           allHttpOnly: true,
+          prefixedCount: 0,
+          invalidPrefixed: [],
+          prefixViolation: false,
         },
       };
     }
 
     const cookies = endpoint.setCookies.map(parseCookie);
+    const prefixes = endpoint.setCookies.map(prefixStatus);
+    const invalidPrefixed = cookies.filter((_c, i) => !prefixes[i].valid).map((c) => c.name);
 
     return {
       name: this.name,
@@ -60,6 +83,9 @@ export class CookiesCheck implements Check {
         cookies,
         allSecure: cookies.every((c) => c.secure),
         allHttpOnly: cookies.every((c) => c.httpOnly),
+        prefixedCount: prefixes.filter((p) => p.prefixed).length,
+        invalidPrefixed,
+        prefixViolation: invalidPrefixed.length > 0,
       },
     };
   }
