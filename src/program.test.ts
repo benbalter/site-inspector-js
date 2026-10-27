@@ -135,6 +135,7 @@ describe("CLI", () => {
     const out = stdout.join("\n");
     expect(out).toMatch(/1 item needs attention/);
     expect(out).toMatch(/Hsts/);
+    expect(out).toContain("Strict-Transport-Security");
   });
 
   it("exits 0 when issues exist without --fail-on-issues", async () => {

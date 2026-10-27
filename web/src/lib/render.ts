@@ -11,6 +11,7 @@ import {
   assessField,
   fieldLabel,
   formatFieldValue,
+  remediationUrl,
 } from "site-inspector/assess";
 import type { Severity } from "site-inspector/assess";
 import type { InspectionResult, CheckResult, DomainProperties } from "site-inspector";
@@ -101,6 +102,17 @@ function formatScalar(value: string | number): string {
   return String(value);
 }
 
+/** A "How to fix" link for a field that needs attention, if the library has one. */
+function fixLink(check: string, path: string): HTMLElement | null {
+  const url = remediationUrl(check, path);
+  if (!url) return null;
+  const a = el("a", "ml-2 text-xs text-accent underline hover:text-accent-strong", "How to fix");
+  a.setAttribute("href", url);
+  a.setAttribute("target", "_blank");
+  a.setAttribute("rel", "noopener noreferrer");
+  return a;
+}
+
 function labelValueRow(
   label: string,
   valueNode: Node,
@@ -126,6 +138,8 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
     const wrap = el("div", "py-0.5");
     wrap.dataset.sev = severity;
     wrap.append(chip(label, severity, value));
+    const fix = severity === "attention" ? fixLink(check, keys.join(".")) : null;
+    if (fix) wrap.append(fix);
     return wrap;
   }
 
@@ -207,7 +221,10 @@ function renderValue(check: string, keys: string[], value: unknown): HTMLElement
   const valueEl =
     severity !== "neutral" ? el("span", `chip chip-${severity}`, text) : el("span", "val", text);
   if (formatted) valueEl.title = String(value);
-  return labelValueRow(label, valueEl, severity);
+  const row = labelValueRow(label, valueEl, severity);
+  const fix = severity === "attention" ? fixLink(check, path) : null;
+  if (fix) row.append(fix);
+  return row;
 }
 
 function renderObject(

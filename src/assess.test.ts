@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PROPERTY_LABELS, assess, assessField } from "./assess.js";
+import { ATTENTION_FIELDS, PROPERTY_LABELS, REMEDIATION, assess, assessField } from "./assess.js";
 import type { DomainProperties, InspectionResult } from "./types.js";
 
 describe("assessField", () => {
@@ -159,5 +159,44 @@ describe("PROPERTY_LABELS", () => {
       redirect: false,
     };
     expect(Object.keys(PROPERTY_LABELS).sort()).toEqual(Object.keys(props).sort());
+  });
+});
+
+describe("remediation links", () => {
+  /** Fields that can need attention but have nothing useful to link to. */
+  const NO_LINK: Record<string, string> = {
+    "properties.up": "the site is down; there's no general fix to point to",
+    "lighthouse.carbonRating": "graded pass or neutral, never attention",
+  };
+
+  it("links every field that can need attention to a fix", () => {
+    const missing = ATTENTION_FIELDS.filter((key) => !REMEDIATION[key] && !NO_LINK[key]);
+    expect(missing).toEqual([]);
+  });
+
+  it("only links fields that exist in the verdict tables", () => {
+    const stale = Object.keys(REMEDIATION).filter((key) => !ATTENTION_FIELDS.includes(key));
+    expect(stale).toEqual([]);
+  });
+
+  it("uses HTTPS links", () => {
+    for (const url of Object.values(REMEDIATION)) expect(url).toMatch(/^https:\/\//);
+  });
+
+  it("attaches the link to findings that need attention, and only those", () => {
+    const { findings } = assess({
+      domain: "example.com",
+      canonicalUrl: "https://example.com",
+      properties: {} as DomainProperties,
+      checks: {
+        hsts: { name: "hsts", data: { enabled: false } },
+        dns: { name: "dns", data: { ipv6: true } },
+      },
+      inspectedAt: "2026-01-01T00:00:00.000Z",
+    } as InspectionResult);
+
+    const hsts = findings.find((f) => f.check === "hsts");
+    expect(hsts?.learnMore).toBe(REMEDIATION["hsts.enabled"]);
+    expect(findings.find((f) => f.check === "dns")).not.toHaveProperty("learnMore");
   });
 });

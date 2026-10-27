@@ -1,5 +1,6 @@
 import type { InspectionResult } from "./types.js";
 import { fieldLabel } from "./labels.js";
+import { remediationUrl } from "./remediation.js";
 
 /**
  * A verdict for a single field: whether it is good, needs attention, or is a
@@ -181,6 +182,17 @@ const VALUE_RULES: Record<string, (value: unknown) => Severity> = {
   },
 };
 
+/**
+ * Every `"<check>.<path>"` key whose verdict can be "attention": the required
+ * and negative booleans, and the fields graded by a value rule.
+ */
+export const ATTENTION_FIELDS: readonly string[] = [
+  ...Object.entries(POLARITY)
+    .filter(([, polarity]) => polarity !== "positive-bonus")
+    .map(([key]) => key),
+  ...Object.keys(VALUE_RULES),
+];
+
 function gradeSeverity(value: unknown): Severity {
   if (typeof value !== "string") return "neutral";
   if (/^[AB]/i.test(value)) return "pass";
@@ -228,6 +240,8 @@ export interface Finding {
   /** The field's value: booleans always, numbers/strings when a rule grades them. */
   value: boolean | number | string;
   severity: Severity;
+  /** For a finding that needs attention, a page explaining how to fix it. */
+  learnMore?: string;
 }
 
 /** The result of assessing an entire inspection. */
@@ -260,12 +274,14 @@ function walk(check: string, keys: string[], value: unknown, out: Finding[]): vo
     const severity = assessField(check, path, value);
     // Booleans are always findings; non-booleans only when a rule graded them.
     if (typeof value === "boolean" || severity !== "neutral") {
+      const learnMore = severity === "attention" ? remediationUrl(check, path) : null;
       out.push({
         check,
         path,
         label: keys.map(fieldLabel).join(" · "),
         value,
         severity,
+        ...(learnMore && { learnMore }),
       });
     }
   }
@@ -297,6 +313,8 @@ export function assess(result: InspectionResult): Assessment {
     attentionByCheck,
   };
 }
+
+export { REMEDIATION, remediationUrl } from "./remediation.js";
 
 // Labels and units live in labels.ts; re-exported so front ends get all
 // presentation metadata from the dependency-free `site-inspector/assess`.

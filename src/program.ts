@@ -322,6 +322,7 @@ function printIssues(result: InspectionResult): void {
       console.log(chalk.bold(titleCase(currentCheck)));
     }
     console.log(`  ${chalk.yellow("✗")} ${finding.label}`);
+    if (finding.learnMore) console.log(`    ${chalk.gray(`How to fix: ${finding.learnMore}`)}`);
   }
   console.log();
 }

@@ -136,6 +136,9 @@ for (const finding of attention) {
   console.log(`- ${finding.check}: ${finding.label}`);
 }
 
+// Findings that need attention link to a page explaining the fix
+attention[0].learnMore; // e.g. "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Strict-Transport-Security"
+
 // Verdict for a single field
 assessField("hsts", "enabled", false);          // "attention"
 assessField("ipv6", "hasIpv6", false);           // "neutral" (absence isn't bad)
