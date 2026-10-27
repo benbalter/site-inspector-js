@@ -14,6 +14,7 @@ import { SriCheck } from "./sri.js";
 import { MixedContentCheck } from "./mixed-content.js";
 import { CarbonCheck } from "./carbon.js";
 import { WhoisCheck } from "./whois.js";
+import { WebPresenceCheck } from "./web-presence.js";
 import { CspCheck } from "./csp.js";
 import { LighthouseCheck } from "./lighthouse.js";
 import { RobotsCheck } from "./robots.js";
@@ -57,6 +58,7 @@ const ALL_CHECKS: Check[] = [
   new MixedContentCheck(),
   new CarbonCheck(),
   new WhoisCheck(),
+  new WebPresenceCheck(),
   new CspCheck(),
   new LighthouseCheck(),
   new RobotsCheck(),

@@ -36,7 +36,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
   },
   {
     title: "DNS & Infrastructure",
-    checks: ["dns", "ipv6", "geo", "network", "whois"],
+    checks: ["dns", "ipv6", "geo", "network", "whois", "web-presence"],
   },
   {
     title: "Content & SEO",
@@ -103,6 +103,7 @@ export const CHECK_LABELS: Record<string, string> = {
   "a11y-axe": "Accessibility (axe-core)",
   sniffer: "Detected Technologies",
   pwa: "Progressive Web App",
+  "web-presence": "Web Presence",
 };
 
 export function checkLabel(name: string): string {

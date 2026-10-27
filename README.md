@@ -4,7 +4,7 @@ A modern TypeScript tool to inspect a domain's technology, security, and capabil
 
 ## Features
 
-- **40 built-in checks** covering security, SEO, performance, accessibility, and technology detection
+- **41 built-in checks** covering security, SEO, performance, accessibility, and technology detection
 - **CLI and library** — use from the terminal or `import` as an ES module
 - **TypeScript-first** — strict mode, full type definitions, ESM
 - **Open-source powered** — leverages best-in-class libraries like [wappalyzer-core](https://www.npmjs.com/package/wappalyzer-core), [ssl-checker](https://www.npmjs.com/package/ssl-checker), [csp_evaluator](https://www.npmjs.com/package/csp_evaluator), [Lighthouse](https://github.com/GoogleChrome/lighthouse), and more
@@ -181,7 +181,7 @@ import type {
 
 ## Checks
 
-Site Inspector runs 40 checks organized into six categories. All checks run in parallel and return structured data.
+Site Inspector runs 41 checks organized into six categories. All checks run in parallel and return structured data.
 
 ### 🔒 Security
 
@@ -214,6 +214,7 @@ Site Inspector runs 40 checks organized into six categories. All checks run in p
 | **ipv6** | IPv6 support — AAAA record resolution and TCP connectivity testing | — |
 | **geo** | IP geolocation — country, region, city, timezone, coordinates via IP lookup | [geoip-lite](https://www.npmjs.com/package/geoip-lite) |
 | **network** | Who holds the site's IP network, via the regional internet registry's RDAP — network name, CIDR, holder organization, country, abuse contact | [node-rdap](https://www.npmjs.com/package/node-rdap) |
+| **web-presence** | How long the domain has been around and how popular it is — first Internet Archive capture and Tranco top-sites rank | [Wayback CDX API](https://archive.org/developers/wayback-cdx-server.html), [Tranco](https://tranco-list.eu) |
 
 ### 📄 Content & SEO
 

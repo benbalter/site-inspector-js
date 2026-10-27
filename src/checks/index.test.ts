@@ -195,6 +195,12 @@ vi.mock("./certificate-transparency.js", () => ({
     run = vi.fn().mockResolvedValue({ name: "certificate-transparency", data: {} });
   },
 }));
+vi.mock("./web-presence.js", () => ({
+  WebPresenceCheck: class {
+    name = "web-presence";
+    run = vi.fn().mockResolvedValue({ name: "web-presence", data: {} });
+  },
+}));
 vi.mock("./network.js", () => ({
   NetworkCheck: class {
     name = "network";
@@ -296,6 +302,7 @@ describe("Check Registry", () => {
     expect(names).toContain("ipv6");
     expect(names).toContain("geo");
     expect(names).toContain("network");
+    expect(names).toContain("web-presence");
     expect(names).toContain("certificate-transparency");
     expect(names).toContain("canonical");
     expect(names).toContain("i18n");
@@ -305,12 +312,12 @@ describe("Check Registry", () => {
     expect(names).toContain("a11y-axe");
     expect(names).toContain("api-discovery");
     expect(names).toContain("pwa");
-    expect(names).toHaveLength(40);
+    expect(names).toHaveLength(41);
   });
 
   it("runs all checks when no filter is specified", async () => {
     const results = await runChecks(mockEndpoint, "example.com");
-    expect(Object.keys(results)).toHaveLength(40);
+    expect(Object.keys(results)).toHaveLength(41);
     expect(results["dns"].data.ipv6).toBe(true);
     expect(results["headers"].data.server).toBe("nginx");
   });
@@ -519,6 +526,12 @@ describe("Check Registry", () => {
       CertificateTransparencyCheck: class {
         name = "certificate-transparency";
         run = vi.fn().mockResolvedValue({ name: "certificate-transparency", data: {} });
+      },
+    }));
+    vi.doMock("./web-presence.js", () => ({
+      WebPresenceCheck: class {
+        name = "web-presence";
+        run = vi.fn().mockResolvedValue({ name: "web-presence", data: {} });
       },
     }));
     vi.doMock("./network.js", () => ({
