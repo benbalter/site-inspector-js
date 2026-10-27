@@ -97,6 +97,10 @@ const POLARITY: Record<string, Polarity> = {
   "email-security.bimi.exists": "positive-bonus",
   "email-security.mtaSts.exists": "positive-bonus",
   "email-security.tlsRpt.exists": "positive-bonus",
+  // Never "attention": DKIM selectors can't be listed, so not finding one
+  // doesn't mean there isn't one.
+  "email-security.dkim.exists": "positive-bonus",
+  "email-security.dane.exists": "positive-bonus",
 
   // privacy
   "privacy.hasPrivacyPolicy": "positive-bonus",

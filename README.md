@@ -201,7 +201,7 @@ Site Inspector runs 44 checks organized into six categories. All checks run in p
 | **referrer-policy** | Referrer-Policy header evaluation and strictness assessment | — |
 | **permissions-policy** | Permissions-Policy header parsing — blocked/allowed features, dangerous grants | — |
 | **tls-versions** | TLS version support testing — TLS 1.0, 1.1, 1.2, 1.3 handshake verification; HTTP/2 (via ALPN), HTTP/3 (via `Alt-Svc`), OCSP stapling; forward secrecy, AEAD ciphers, and whether static RSA key exchange is still accepted (3DES/RC4 aren't probed: OpenSSL 3 can't offer them) | — |
-| **email-security** | Extended email security — BIMI, MTA-STS, TLS-RPT DNS record detection | — |
+| **email-security** | Extended email security — BIMI, MTA-STS, TLS-RPT DNS record detection; DKIM keys at common provider selectors (selectors can't be listed, so this can find DKIM but not rule it out); DANE TLSA records for the mail servers | — |
 | **hsts-preload** | HSTS preload list status and eligibility via hstspreload.org API | — |
 | **privacy** | Privacy indicators — consent banners, privacy/cookie policies, tracker detection | — |
 

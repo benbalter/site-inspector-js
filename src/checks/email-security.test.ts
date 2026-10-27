@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { EndpointData } from "../types.js";
 
-const { mockResolveTxt } = vi.hoisted(() => ({
+const { mockResolveTxt, mockResolveMx, mockResolveTlsa } = vi.hoisted(() => ({
   mockResolveTxt: vi.fn(),
+  mockResolveMx: vi.fn(),
+  mockResolveTlsa: vi.fn(),
 }));
 
 const mockSafeFetch = vi.fn();
 
 vi.mock("node:dns/promises", () => ({
-  default: { resolveTxt: mockResolveTxt },
+  default: { resolveTxt: mockResolveTxt, resolveMx: mockResolveMx, resolveTlsa: mockResolveTlsa },
 }));
 
 vi.mock("../utils.js", async (importOriginal) => ({
@@ -31,8 +33,12 @@ const placeholderEndpoint: EndpointData = {
 describe("EmailSecurityCheck", () => {
   const check = new EmailSecurityCheck();
 
+  const absent = () => Promise.reject(Object.assign(new Error("ENODATA"), { code: "ENODATA" }));
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveMx.mockImplementation(absent);
+    mockResolveTlsa.mockImplementation(absent);
   });
 
   it("has the correct name", () => {
@@ -338,5 +344,101 @@ describe("EmailSecurityCheck", () => {
     expect(result.data.mtaSts).toHaveProperty("mode");
     expect(result.data.tlsRpt).toHaveProperty("exists");
     expect(result.data.tlsRpt).toHaveProperty("record");
+  });
+
+  describe("DKIM", () => {
+    it("finds DKIM keys at common selectors", async () => {
+      mockSafeFetch.mockResolvedValue(null);
+      mockResolveTxt.mockImplementation((name: string) => {
+        if (name === "google._domainkey.example.com") {
+          return Promise.resolve([["v=DKIM1; k=rsa; p=MIIBIjANBgkqh", "kiG9w0BAQEFAAOCAQ8AMIIB"]]);
+        }
+        // Microsoft 365's selectors are CNAMEs; resolveTxt follows them.
+        if (name === "selector1._domainkey.example.com") {
+          return Promise.resolve([["v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3"]]);
+        }
+        return absent();
+      });
+
+      const result = await check.run(placeholderEndpoint, "example.com");
+
+      expect(result.data.dkim).toMatchObject({
+        exists: true,
+        selectors: ["google", "selector1"],
+        error: null,
+      });
+      expect((result.data.dkim as { checked: number }).checked).toBeGreaterThan(10);
+    });
+
+    it("reports no DKIM found as unknown rather than absent, since selectors can't be listed", async () => {
+      mockSafeFetch.mockResolvedValue(null);
+      mockResolveTxt.mockImplementation(absent);
+
+      const result = await check.run(placeholderEndpoint, "example.com");
+
+      expect(result.data.dkim).toMatchObject({ exists: false, selectors: [] });
+    });
+
+    it("ignores TXT records at a selector that aren't DKIM keys", async () => {
+      mockSafeFetch.mockResolvedValue(null);
+      mockResolveTxt.mockImplementation((name: string) =>
+        name === "default._domainkey.example.com"
+          ? Promise.resolve([["some-verification-token"]])
+          : absent(),
+      );
+
+      const result = await check.run(placeholderEndpoint, "example.com");
+
+      expect(result.data.dkim).toMatchObject({ exists: false, selectors: [] });
+    });
+  });
+
+  describe("DANE", () => {
+    it("reports TLSA records for the domain's mail servers", async () => {
+      mockSafeFetch.mockResolvedValue(null);
+      mockResolveTxt.mockImplementation(absent);
+      mockResolveMx.mockResolvedValue([
+        { exchange: "mx2.example.com", priority: 20 },
+        { exchange: "mx1.example.com", priority: 10 },
+      ]);
+      mockResolveTlsa.mockImplementation((name: string) =>
+        name === "_25._tcp.mx1.example.com"
+          ? Promise.resolve([{ certUsage: 3, selector: 1, match: 1, data: new ArrayBuffer(32) }])
+          : absent(),
+      );
+
+      const result = await check.run(placeholderEndpoint, "example.com");
+
+      expect(result.data.dane).toEqual({
+        exists: true,
+        mxHosts: ["mx1.example.com", "mx2.example.com"],
+        hostsWithTlsa: ["mx1.example.com"],
+        error: null,
+      });
+    });
+
+    it("reports no DANE for a domain without mail servers", async () => {
+      mockSafeFetch.mockResolvedValue(null);
+      mockResolveTxt.mockImplementation(absent);
+
+      const result = await check.run(placeholderEndpoint, "example.com");
+
+      expect(result.data.dane).toEqual({
+        exists: false,
+        mxHosts: [],
+        hostsWithTlsa: [],
+        error: null,
+      });
+    });
+
+    it("reports a failed MX lookup as an error, not as no DANE", async () => {
+      mockSafeFetch.mockResolvedValue(null);
+      mockResolveTxt.mockImplementation(absent);
+      mockResolveMx.mockRejectedValue(Object.assign(new Error("SERVFAIL"), { code: "ESERVFAIL" }));
+
+      const result = await check.run(placeholderEndpoint, "example.com");
+
+      expect(result.data.dane).toMatchObject({ exists: false, error: "ESERVFAIL" });
+    });
   });
 });
