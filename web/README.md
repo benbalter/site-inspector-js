@@ -111,4 +111,4 @@ Render Free services sleep after inactivity and may take about a minute to wake.
 ## Notes
 
 - `astro.config.mjs` externalizes `site-inspector` for SSR (`vite.ssr.external`) so Node loads it natively from `node_modules` rather than letting Vite bundle Lighthouse/Chrome. It also uses the passthrough image service (no `sharp` needed, since the UI has no images).
-- Requires Node.js 22.19+.
+- Requires Node.js 22.23.4+ (Astro's minimum). Render reads the version from the repo's `.nvmrc`.
