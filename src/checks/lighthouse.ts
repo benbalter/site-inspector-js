@@ -162,9 +162,10 @@ function onDomain(origin: string, domain: string): boolean {
 }
 
 /**
- * Grams of CO2e per page view, as Website Carbon estimates it: the Sustainable
- * Web Design model on grid-average electricity, applied to the full page
- * weight. (The carbon check reports whether the host runs on green energy.)
+ * Grams of CO2e per page view from the Sustainable Web Design model (the one
+ * Website Carbon uses), applied to the full page weight. Unlike Website
+ * Carbon, it assumes grid-average electricity rather than crediting green
+ * hosting; the carbon check reports whether the host is green.
  */
 function emissions(pageWeightBytes: number | null): Record<string, unknown> {
   if (pageWeightBytes === null) {

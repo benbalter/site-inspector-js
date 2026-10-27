@@ -5,8 +5,12 @@ import { fetchJson } from "../utils.js";
 /** Most subdomains to list; `subdomainCount` still counts them all. */
 const MAX_SUBDOMAINS = 100;
 
-/** crt.sh is slow for busy domains, so it gets more time than most lookups. */
-const CRT_TIMEOUT_MS = 30_000;
+/**
+ * crt.sh is slow for busy domains, so it gets more time than most lookups,
+ * but not so much that one slow query holds up every inspection: the biggest
+ * domains time out either way.
+ */
+const CRT_TIMEOUT_MS = 15_000;
 
 /** One row of crt.sh's JSON output. */
 interface CrtEntry {
