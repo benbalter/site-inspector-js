@@ -1,3 +1,4 @@
+import { co2 } from "@tgwf/co2";
 import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 
@@ -63,6 +64,7 @@ export class LighthouseCheck implements Check {
               speedIndex: metricOrNull(audits, "speed-index"),
               timeToInteractive: metricOrNull(audits, "interactive"),
             },
+            ...emissions(metricOrNull(audits, "total-byte-weight")),
             ...networkActivity(lhr, domain, ctx?.screenshot ?? false),
           },
         };
@@ -157,4 +159,23 @@ function onDomain(origin: string, domain: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Grams of CO2e per page view, as Website Carbon estimates it: the Sustainable
+ * Web Design model on grid-average electricity, applied to the full page
+ * weight. (The carbon check reports whether the host runs on green energy.)
+ */
+function emissions(pageWeightBytes: number | null): Record<string, unknown> {
+  if (pageWeightBytes === null) {
+    return { pageWeightBytes: null, co2PerViewGrams: null, carbonRating: null };
+  }
+  const estimate = new co2({ model: "swd", version: 4, rating: true }).perVisit(pageWeightBytes);
+  const { total, rating } =
+    typeof estimate === "number" ? { total: estimate, rating: null } : estimate;
+  return {
+    pageWeightBytes,
+    co2PerViewGrams: Math.round(total * 100) / 100,
+    carbonRating: rating,
+  };
 }

@@ -283,4 +283,30 @@ describe("LighthouseCheck", () => {
       expect(result.data.screenshot).toBeNull();
     });
   });
+
+  describe("page weight and emissions", () => {
+    it("estimates CO2 per view from the total page weight", async () => {
+      mockLighthouse.mockResolvedValue({
+        lhr: {
+          categories: {},
+          audits: { "total-byte-weight": { numericValue: 2_000_000 } },
+        },
+      });
+      const result = await check.run(makeEndpoint(), "example.com");
+
+      expect(result.data.pageWeightBytes).toBe(2_000_000);
+      // Sustainable Web Design v4 on grid-average electricity (from @tgwf/co2).
+      expect(result.data.co2PerViewGrams).toBe(0.3);
+      expect(result.data.carbonRating).toBe("E");
+    });
+
+    it("reports nulls without a page weight", async () => {
+      mockLighthouse.mockResolvedValue({ lhr: { categories: {}, audits: {} } });
+      const result = await check.run(makeEndpoint(), "example.com");
+
+      expect(result.data.pageWeightBytes).toBeNull();
+      expect(result.data.co2PerViewGrams).toBeNull();
+      expect(result.data.carbonRating).toBeNull();
+    });
+  });
 });

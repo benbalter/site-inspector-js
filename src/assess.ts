@@ -121,6 +121,7 @@ const POLARITY: Record<string, Polarity> = {
   "cache-headers.etag": "positive-bonus",
   "cache-headers.lastModified": "positive-bonus",
   "performance.compressed": "positive-bonus",
+  "carbon.greenHosting": "positive-bonus",
 
   // mobile / pwa
   "mobile.hasViewport": "positive-required",
@@ -147,6 +148,10 @@ const VALUE_RULES: Record<string, (value: unknown) => Severity> = {
   // Letter grades: A/B pass, D/F need attention, C is unremarkable.
   "cache-headers.grade": gradeSeverity,
   "mobile.grade": gradeSeverity,
+  // A good rating is worth a green mark, but a poor one isn't flagged: it's
+  // relative to the web at large, where typical multi-MB pages rate D or worse.
+  "lighthouse.carbonRating": (v) =>
+    typeof v === "string" && /^(A\+?|B)$/.test(v) ? "pass" : "neutral",
   // Two weeks, not a month: auto-renewing yearly domains spend a month of every
   // year within 30 days of expiry, and most renew in the final days.
   "whois.expiresIn": (v) => {

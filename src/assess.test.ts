@@ -41,6 +41,15 @@ describe("assessField", () => {
     expect(assessField("ipv6", "hasIpv6", true)).toBe("pass");
     expect(assessField("headers", "openerIsolation", false)).toBe("neutral");
     expect(assessField("headers", "crossOriginIsolated", true)).toBe("pass");
+    expect(assessField("carbon", "greenHosting", false)).toBe("neutral");
+    expect(assessField("carbon", "greenHosting", true)).toBe("pass");
+  });
+
+  it("passes good carbon ratings without flagging poor ones", () => {
+    expect(assessField("lighthouse", "carbonRating", "A+")).toBe("pass");
+    expect(assessField("lighthouse", "carbonRating", "B")).toBe("pass");
+    expect(assessField("lighthouse", "carbonRating", "C")).toBe("neutral");
+    expect(assessField("lighthouse", "carbonRating", "F")).toBe("neutral");
   });
 
   it("returns neutral for non-booleans and unknown fields", () => {

@@ -228,8 +228,8 @@ Site Inspector runs 40 checks organized into six categories. All checks run in p
 | Check | Description | Library |
 |-------|-------------|---------|
 | **performance** | Response time, page size, compression, Server-Timing header, size category | — |
-| **carbon** | Page weight analysis — HTML size, external resource counts, inline script/style sizes | — |
-| **lighthouse** | Performance, accessibility, best-practices, SEO scores and Web Vitals; every host the page contacted and the third parties Lighthouse recognizes; optional screenshot (requires Chrome) | [Lighthouse](https://github.com/GoogleChrome/lighthouse) |
+| **carbon** | Page weight analysis — HTML size, external resource counts, inline script/style sizes; whether the host runs on green energy | [Green Web Foundation](https://www.thegreenwebfoundation.org/green-web-check/) |
+| **lighthouse** | Performance, accessibility, best-practices, SEO scores and Web Vitals; page weight and estimated CO₂ per view with a Sustainable Web Design rating; every host the page contacted and the third parties Lighthouse recognizes; optional screenshot (requires Chrome) | [Lighthouse](https://github.com/GoogleChrome/lighthouse) + [@tgwf/co2](https://www.npmjs.com/package/@tgwf/co2) |
 | **cache-headers** | HTTP caching analysis — Cache-Control directives, ETag, Last-Modified, Vary, caching quality score | [cache-control-parser](https://www.npmjs.com/package/cache-control-parser) |
 
 ### 🔍 Technology

@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { CarbonCheck } from "./carbon.js";
+import { stubFetch } from "../testing/fetch-stub.js";
 import type { EndpointData } from "../types.js";
 
 function makeEndpoint(body: string): EndpointData {
@@ -16,6 +17,15 @@ function makeEndpoint(body: string): EndpointData {
 
 describe("CarbonCheck", () => {
   const check = new CarbonCheck();
+
+  beforeEach(() => {
+    // No routes: the greencheck lookup fails unless a test adds one.
+    stubFetch({});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
   it("has the name 'carbon'", () => {
     expect(check.name).toBe("carbon");
@@ -115,5 +125,54 @@ describe("CarbonCheck", () => {
     expect(result.data.externalScripts).toBe(1);
     expect(result.data.inlineScripts).toBe(1);
     expect(result.data.inlineScriptSize).toBe("inline();".length);
+  });
+
+  describe("green hosting", () => {
+    const GREENCHECK = "https://api.thegreenwebfoundation.org/api/v3/greencheck/example.com";
+
+    it("reports a green host and who hosts it", async () => {
+      // Trimmed from a real greencheck response.
+      stubFetch({
+        [GREENCHECK]: {
+          body: JSON.stringify({
+            url: "example.com",
+            hosted_by: "Cloudflare",
+            hosted_by_website: "https://www.cloudflare.com",
+            listed_provider: true,
+            green: true,
+          }),
+        },
+      });
+      const result = await check.run(makeEndpoint(""), "example.com");
+      expect(result.data.greenHosting).toBe(true);
+      expect(result.data.hostedBy).toBe("Cloudflare");
+    });
+
+    it("reports a host the Green Web Foundation doesn't know as not green", async () => {
+      stubFetch({
+        [GREENCHECK]: { body: JSON.stringify({ green: false, url: null, data: false }) },
+      });
+      const result = await check.run(makeEndpoint(""), "example.com");
+      expect(result.data.greenHosting).toBe(false);
+      expect(result.data.hostedBy).toBeNull();
+    });
+
+    it("reports null when the lookup fails", async () => {
+      const result = await check.run(makeEndpoint(""), "example.com");
+      expect(result.data.greenHosting).toBeNull();
+      expect(result.data.hostedBy).toBeNull();
+    });
+
+    it("checks the host the page was served from, after redirects", async () => {
+      const fetchSpy = stubFetch({});
+      await check.run(
+        { ...makeEndpoint(""), finalUrl: "https://www.example.org/home" },
+        "example.com",
+      );
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "https://api.thegreenwebfoundation.org/api/v3/greencheck/www.example.org",
+        expect.anything(),
+      );
+    });
   });
 });
