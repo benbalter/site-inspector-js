@@ -1,8 +1,8 @@
-import dns from "node:dns/promises";
 import { configure, entity as lookupEntity, ip as lookupIp } from "node-rdap";
 import type { RdapEntityObjectClass, RdapIpResponse } from "node-rdap";
 import type { Check, CheckContext } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { resolveIp } from "../utils.js";
 
 type Entity = RdapEntityObjectClass;
 
@@ -10,18 +10,6 @@ interface Cidr0 {
   v4prefix?: string;
   v6prefix?: string;
   length: number;
-}
-
-async function resolveIp(domain: string): Promise<string | null> {
-  for (const resolve of [dns.resolve4, dns.resolve6]) {
-    try {
-      const [address] = await resolve(domain);
-      if (address) return address;
-    } catch {
-      /* no record of this family */
-    }
-  }
-  return null;
 }
 
 function vcardValues(entity: Entity, property: string): string[] {

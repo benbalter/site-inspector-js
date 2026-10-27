@@ -215,3 +215,16 @@ export async function findTxtRecords(name: string, pattern: RegExp): Promise<Txt
     return { records: [], error: code ?? (err instanceof Error ? err.message : String(err)) };
   }
 }
+
+/** The domain's first IPv4 address, else its first IPv6 address, else null. */
+export async function resolveIp(domain: string): Promise<string | null> {
+  for (const resolve of [dns.resolve4, dns.resolve6]) {
+    try {
+      const [address] = await resolve(domain);
+      if (address) return address;
+    } catch {
+      /* no record of this family */
+    }
+  }
+  return null;
+}

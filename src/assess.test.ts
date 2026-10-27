@@ -31,6 +31,7 @@ describe("assessField", () => {
     expect(assessField("properties", "downgradesHttps", true)).toBe("attention");
     expect(assessField("properties", "redirect", false)).toBe("pass");
     expect(assessField("tls-versions", "supported.TLSv1", true)).toBe("attention");
+    expect(assessField("rpki", "invalid", true)).toBe("attention");
     expect(assessField("cookies", "prefixViolation", true)).toBe("attention");
   });
 

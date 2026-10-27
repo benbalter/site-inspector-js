@@ -65,6 +65,7 @@ const WORD_FIXES: Record<string, string> = {
   Aaaa: "AAAA",
   Ad: "AD",
   Api: "API",
+  Asn: "ASN",
   Bimi: "BIMI",
   Caa: "CAA",
   Cidr: "CIDR",

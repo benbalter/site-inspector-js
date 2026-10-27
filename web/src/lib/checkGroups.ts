@@ -36,7 +36,7 @@ export const CHECK_GROUPS: CheckGroup[] = [
   },
   {
     title: "DNS & Infrastructure",
-    checks: ["dns", "ipv6", "geo", "network", "whois", "web-presence"],
+    checks: ["dns", "ipv6", "geo", "network", "rpki", "whois", "web-presence"],
   },
   {
     title: "Content & SEO",
@@ -104,6 +104,7 @@ export const CHECK_LABELS: Record<string, string> = {
   sniffer: "Detected Technologies",
   pwa: "Progressive Web App",
   "web-presence": "Web Presence",
+  rpki: "RPKI Route Validity",
 };
 
 export function checkLabel(name: string): string {

@@ -103,6 +103,10 @@ const POLARITY: Record<string, Polarity> = {
   "ipv6.hasIpv6": "positive-bonus",
   "ipv6.dualStack": "positive-bonus",
 
+  // RPKI: a route with no ROA is common and stays neutral.
+  "rpki.valid": "positive-bonus",
+  "rpki.invalid": "negative",
+
   // domain registration. A missing lock isn't flagged: some registries that
   // use EPP statuses (.au) have no transfer lock to set.
   "whois.transferLock": "positive-bonus",

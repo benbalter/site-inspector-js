@@ -33,6 +33,7 @@ import { DnssecCheck } from "./dnssec.js";
 import { Ipv6Check } from "./ipv6.js";
 import { GeoCheck } from "./geo.js";
 import { NetworkCheck } from "./network.js";
+import { RpkiCheck } from "./rpki.js";
 import { CanonicalCheck } from "./canonical.js";
 import { I18nCheck } from "./i18n.js";
 import { MobileCheck } from "./mobile.js";
@@ -77,6 +78,7 @@ const ALL_CHECKS: Check[] = [
   new Ipv6Check(),
   new GeoCheck(),
   new NetworkCheck(),
+  new RpkiCheck(),
   new CanonicalCheck(),
   new I18nCheck(),
   new MobileCheck(),
