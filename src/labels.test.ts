@@ -16,6 +16,7 @@ describe("fieldLabel", () => {
     ["ipv6Reachable", "IPv6 Reachable"],
     ["h1Count", "H1 Count"],
     ["tls13", "TLS 1.3"],
+    ["http2", "HTTP/2"],
     ["hasXDefault", "Has x-default"],
     ["xssProtection", "XSS Protection"],
     ["ogTitle", "OG Title"],

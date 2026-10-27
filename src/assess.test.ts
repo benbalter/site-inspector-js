@@ -43,6 +43,9 @@ describe("assessField", () => {
     expect(assessField("headers", "crossOriginIsolated", true)).toBe("pass");
     expect(assessField("carbon", "greenHosting", false)).toBe("neutral");
     expect(assessField("carbon", "greenHosting", true)).toBe("pass");
+    expect(assessField("tls-versions", "http2", false)).toBe("neutral");
+    expect(assessField("tls-versions", "http3", true)).toBe("pass");
+    expect(assessField("tls-versions", "ocspStapling", false)).toBe("neutral");
   });
 
   it("passes good carbon ratings without flagging poor ones", () => {

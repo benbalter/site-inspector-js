@@ -69,6 +69,10 @@ const POLARITY: Record<string, Polarity> = {
   "tls-versions.supported.TLSv1.3": "positive-bonus",
   "tls-versions.hasDeprecated": "negative",
   "tls-versions.tls13": "positive-bonus",
+  "tls-versions.http2": "positive-bonus",
+  "tls-versions.http3": "positive-bonus",
+  // ocspStapling stays neutral: Let's Encrypt ended OCSP in 2025, so most
+  // certificates have nothing to staple.
 
   // cross-origin
   "cors.misconfigured": "negative",

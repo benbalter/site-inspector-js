@@ -65,6 +65,54 @@ function testTlsVersion(
   });
 }
 
+/** What a default handshake negotiates beyond the protocol version. */
+interface Extensions {
+  /** The ALPN protocol the server picked, or null if it picked none. */
+  alpnProtocol: string | null;
+  /** Whether the server stapled an OCSP response. */
+  ocspStapling: boolean;
+}
+
+/** Handshake once, offering HTTP/2 over ALPN and asking for a stapled OCSP response. */
+function probeExtensions(host: string, port: number): Promise<Extensions | null> {
+  return new Promise((resolve) => {
+    let ocspStapling = false;
+    const socket = tls.connect(
+      {
+        host,
+        port,
+        ...(!net.isIP(host) && { servername: host }),
+        ALPNProtocols: ["h2", "http/1.1"],
+        requestOCSP: true,
+        rejectUnauthorized: false,
+        timeout: 5000,
+      },
+      () => {
+        const alpnProtocol = socket.alpnProtocol || null;
+        socket.destroy();
+        resolve({ alpnProtocol, ocspStapling });
+      },
+    );
+    // Emitted before the handshake completes, with null if nothing was stapled.
+    socket.on("OCSPResponse", (response: Buffer | null) => {
+      ocspStapling = (response?.length ?? 0) > 0;
+    });
+    socket.on("error", () => {
+      socket.destroy();
+      resolve(null);
+    });
+    socket.on("timeout", () => {
+      socket.destroy();
+      resolve(null);
+    });
+  });
+}
+
+/** Whether an Alt-Svc header advertises HTTP/3 (`h3`, or a draft like `h3-29`). */
+function advertisesHttp3(altSvc: string | undefined): boolean {
+  return /(?:^|,)\s*h3(?:-\d+)?=/.test(altSvc ?? "");
+}
+
 export class TlsVersionsCheck implements Check {
   name = "tls-versions";
 
@@ -73,12 +121,13 @@ export class TlsVersionsCheck implements Check {
     const host = url.hostname;
     const port = url.port ? Number(url.port) : 443;
 
-    const results = await Promise.all(
-      TLS_VERSIONS.map(async (v) => ({
+    const [extensions, ...results] = await Promise.all([
+      probeExtensions(host, port),
+      ...TLS_VERSIONS.map(async (v) => ({
         version: v.name,
         supported: await testTlsVersion(host, port, v.minVersion, v.maxVersion),
       })),
-    );
+    ]);
 
     const supported: Record<string, boolean> = {};
     for (const r of results) {
@@ -99,6 +148,10 @@ export class TlsVersionsCheck implements Check {
         hasDeprecated: deprecated.length > 0,
         tls13: latestSupported,
         minimumVersion: results.find((r) => r.supported)?.version ?? null,
+        alpnProtocol: extensions?.alpnProtocol ?? null,
+        http2: extensions ? extensions.alpnProtocol === "h2" : null,
+        http3: advertisesHttp3(endpoint.headers["alt-svc"]),
+        ocspStapling: extensions?.ocspStapling ?? null,
       },
     };
   }

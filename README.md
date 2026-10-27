@@ -193,7 +193,7 @@ Site Inspector runs 40 checks organized into six categories. All checks run in p
 | **cors** | CORS header analysis — Access-Control-Allow-Origin, methods, headers, credentials | — |
 | **referrer-policy** | Referrer-Policy header evaluation and strictness assessment | — |
 | **permissions-policy** | Permissions-Policy header parsing — blocked/allowed features, dangerous grants | — |
-| **tls-versions** | TLS version support testing — TLS 1.0, 1.1, 1.2, 1.3 handshake verification | — |
+| **tls-versions** | TLS version support testing — TLS 1.0, 1.1, 1.2, 1.3 handshake verification; HTTP/2 (via ALPN), HTTP/3 (via `Alt-Svc`), and OCSP stapling | — |
 | **email-security** | Extended email security — BIMI, MTA-STS, TLS-RPT DNS record detection | — |
 | **hsts-preload** | HSTS preload list status and eligibility via hstspreload.org API | — |
 | **privacy** | Privacy indicators — consent banners, privacy/cookie policies, tracker detection | — |

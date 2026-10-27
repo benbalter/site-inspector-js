@@ -270,4 +270,101 @@ describe("TlsVersionsCheck", () => {
       expect(opts.servername).toBeUndefined();
     }
   });
+
+  describe("negotiated extensions", () => {
+    const endpoint = (headers: Record<string, string> = {}): EndpointData => ({
+      url: "https://example.com",
+      statusCode: 200,
+      headers,
+      body: "",
+      finalUrl: "https://example.com",
+      setCookies: [],
+      redirectChain: [],
+    });
+
+    /**
+     * Version probes succeed for TLS 1.3 only; the extension probe (no
+     * version pinned) negotiates `alpn` and staples `ocsp` if given.
+     */
+    function mockExtensions(alpn: string | false | null, ocsp?: Buffer) {
+      const connectMock = vi.fn((opts: Record<string, unknown>, cb?: () => void) => {
+        const handlers: Record<string, Array<(arg?: unknown) => void>> = {};
+        const socket = {
+          alpnProtocol: undefined as string | false | undefined,
+          on: vi.fn((event: string, handler: (arg?: unknown) => void) => {
+            (handlers[event] ??= []).push(handler);
+            return socket;
+          }),
+          destroy: vi.fn(),
+        };
+        const probe = opts.ALPNProtocols !== undefined;
+        setImmediate(() => {
+          if (probe && alpn === null) {
+            handlers.error?.forEach((h) => h(new Error("ECONNRESET")));
+          } else if (probe) {
+            // Like Node, emit OCSPResponse either way: null when nothing was stapled.
+            if (opts.requestOCSP) handlers.OCSPResponse?.forEach((h) => h(ocsp ?? null));
+            socket.alpnProtocol = alpn ?? undefined;
+            cb?.();
+          } else if (opts.maxVersion === "TLSv1.3") {
+            cb?.();
+          } else {
+            handlers.error?.forEach((h) => h());
+          }
+        });
+        return socket;
+      });
+      vi.mocked(tls.connect).mockImplementation(connectMock as unknown as typeof tls.connect);
+    }
+
+    it("reports HTTP/2 when the server picks h2 over ALPN", async () => {
+      mockExtensions("h2");
+      const result = await new TlsVersionsCheck().run(endpoint(), "example.com");
+      expect(result.data.http2).toBe(true);
+      expect(result.data.alpnProtocol).toBe("h2");
+    });
+
+    it("reports no HTTP/2 when the server picks http/1.1 or skips ALPN", async () => {
+      mockExtensions("http/1.1");
+      expect((await new TlsVersionsCheck().run(endpoint(), "example.com")).data.http2).toBe(false);
+      mockExtensions(false);
+      const result = await new TlsVersionsCheck().run(endpoint(), "example.com");
+      expect(result.data.http2).toBe(false);
+      expect(result.data.alpnProtocol).toBeNull();
+    });
+
+    it("reports a stapled OCSP response", async () => {
+      mockExtensions("h2", Buffer.from([0x30, 0x82]));
+      const result = await new TlsVersionsCheck().run(endpoint(), "example.com");
+      expect(result.data.ocspStapling).toBe(true);
+    });
+
+    it("reports no stapling when the server sends no OCSP response", async () => {
+      mockExtensions("h2");
+      const result = await new TlsVersionsCheck().run(endpoint(), "example.com");
+      expect(result.data.ocspStapling).toBe(false);
+    });
+
+    it("reports unknowns when the extension probe fails", async () => {
+      mockExtensions(null);
+      const result = await new TlsVersionsCheck().run(endpoint(), "example.com");
+      expect(result.data.http2).toBeNull();
+      expect(result.data.ocspStapling).toBeNull();
+      expect(result.data.tls13).toBe(true);
+    });
+
+    it("reads HTTP/3 support from the Alt-Svc header", async () => {
+      mockExtensions("h2");
+      const check = new TlsVersionsCheck();
+      const h3 = await check.run(
+        endpoint({ "alt-svc": 'h3=":443"; ma=86400, h3-29=":443"; ma=86400' }),
+        "example.com",
+      );
+      expect(h3.data.http3).toBe(true);
+      const none = await check.run(endpoint({ "alt-svc": 'h2=":443"' }), "example.com");
+      expect(none.data.http3).toBe(false);
+      const missing = await check.run(endpoint(), "example.com");
+      expect(missing.data.http3).toBe(false);
+    });
+  });
 });

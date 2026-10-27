@@ -28,6 +28,10 @@ export function titleCase(s: string): string {
 /** Field keys whose label can't be derived from the key. */
 const KEY_LABELS: Record<string, string> = {
   tls13: "TLS 1.3",
+  http2: "HTTP/2",
+  http3: "HTTP/3",
+  alpnProtocol: "ALPN Protocol",
+  ocspStapling: "OCSP Stapling",
   p3p: "P3P",
   hasXDefault: "Has x-default",
   ll: "Coordinates",
