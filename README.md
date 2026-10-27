@@ -75,13 +75,19 @@ site-inspector inspect example.com --screenshot example.jpg
 # Fail (exit 1) if anything needs attention — handy in CI
 site-inspector inspect example.com --fail-on-issues
 
+# Inspect several domains, from arguments and/or a file (one per line, # comments; - for stdin)
+site-inspector inspect example.com example.org --input domains.txt
+
+# One line of JSON per domain, for jq, spreadsheets, or a database import
+site-inspector inspect --input domains.txt --jsonl > results.jsonl
+
 # List all available checks
 site-inspector checks
 ```
 
 With `--json`, the output includes an `assessment` with the items that need attention; add `--only-issues` to output just those.
 
-Exit status: `0` on success, `1` on bad input or an error (or when `--fail-on-issues` finds something), and `2` when the domain doesn't respond on any endpoint.
+Exit status: `0` on success, `1` on bad input or an error (or when `--fail-on-issues` finds something), and `2` when the domain doesn't respond on any endpoint. With several domains, they're inspected one at a time, a failure on one doesn't stop the rest, and the worst status wins. In text mode the run ends with a one-line summary per domain; `--json` prints an array.
 
 ## Library Usage
 

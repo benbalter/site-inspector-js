@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { InspectionResult } from "./types.js";
@@ -229,5 +229,97 @@ describe("--screenshot", () => {
     inspectMock.mockResolvedValue(makeResult());
     expect(await run("inspect", "example.com", "--screenshot", join(dir, "shot.jpg"))).toBe(0);
     expect(stderr.join("\n")).toMatch(/No screenshot/);
+  });
+});
+
+describe("several domains", () => {
+  const clean = (domain: string) =>
+    makeResult({
+      domain,
+      checks: { hsts: { name: "hsts", data: { enabled: true } } },
+    });
+
+  beforeEach(() => {
+    inspectMock.mockImplementation(async (domain: string) => clean(domain));
+  });
+
+  it("inspects each domain in turn", async () => {
+    expect(await run("inspect", "a.test", "b.test")).toBe(0);
+    expect(inspectMock.mock.calls.map(([d]) => d)).toEqual(["a.test", "b.test"]);
+  });
+
+  it("reads more domains from --input, skipping blank lines and comments", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "site-inspector-"));
+    const file = join(dir, "domains.txt");
+    await writeFile(file, "b.test\n\n# a comment\n  c.test  \n");
+    try {
+      await run("inspect", "a.test", "--input", file, "--jsonl");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+    expect(inspectMock.mock.calls.map(([d]) => d)).toEqual(["a.test", "b.test", "c.test"]);
+  });
+
+  it("prints one JSON object per line with --jsonl", async () => {
+    await run("inspect", "a.test", "b.test", "--jsonl");
+    expect(stdout).toHaveLength(2);
+    const lines = stdout.map((line) => JSON.parse(line));
+    expect(lines.map((l) => l.domain)).toEqual(["a.test", "b.test"]);
+    expect(lines[0].assessment).toEqual({ attentionCount: 0, attention: [] });
+  });
+
+  it("prints a JSON array with --json", async () => {
+    await run("inspect", "a.test", "b.test", "--json");
+    const out = JSON.parse(stdout.join("\n"));
+    expect(out.map((r: InspectionResult) => r.domain)).toEqual(["a.test", "b.test"]);
+  });
+
+  it("ends text output with a summary of every domain", async () => {
+    inspectMock.mockImplementation(async (domain: string) =>
+      domain === "b.test" ? makeResult({ domain }) : clean(domain),
+    );
+    await run("inspect", "a.test", "b.test");
+    const out = stdout.join("\n");
+    expect(out).toMatch(/a\.test.*0 need attention/);
+    expect(out).toMatch(/b\.test.*1 need attention/);
+  });
+
+  it("keeps going after an error, and exits 1", async () => {
+    inspectMock.mockImplementation(async (domain: string) => {
+      if (domain === "a.test") throw new Error("boom");
+      return clean(domain);
+    });
+    expect(await run("inspect", "a.test", "b.test", "--jsonl")).toBe(EXIT.error);
+    expect(inspectMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(stdout[0]).domain).toBe("b.test");
+    expect(stderr.join("\n")).toContain("a.test: boom");
+  });
+
+  it("lists failed domains in the text summary", async () => {
+    inspectMock.mockImplementation(async (domain: string) => {
+      if (domain === "a.test") throw new Error("boom");
+      return clean(domain);
+    });
+    await run("inspect", "a.test", "b.test");
+    expect(stdout.join("\n")).toMatch(/a\.test.*error: boom/);
+  });
+
+  it("exits with the worst status across domains", async () => {
+    inspectMock.mockImplementation(async (domain: string) =>
+      domain === "down.test" ? { ...downResult, domain } : makeResult({ domain }),
+    );
+    expect(await run("inspect", "a.test", "down.test", "--fail-on-issues", "--jsonl")).toBe(
+      EXIT.down,
+    );
+  });
+
+  it("refuses --screenshot with more than one domain", async () => {
+    expect(await run("inspect", "a.test", "b.test", "--screenshot", "x.jpg")).toBe(EXIT.error);
+    expect(inspectMock).not.toHaveBeenCalled();
+  });
+
+  it("needs at least one domain", async () => {
+    expect(await run("inspect")).toBe(EXIT.error);
+    expect(inspectMock).not.toHaveBeenCalled();
   });
 });
