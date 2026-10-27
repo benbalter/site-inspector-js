@@ -1,3 +1,4 @@
+import net from "node:net";
 import tls from "node:tls";
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
@@ -39,6 +40,9 @@ function testTlsVersion(
       {
         host,
         port,
+        // Without SNI, CDNs like Cloudflare abort the handshake for every
+        // version. RFC 6066 forbids IP addresses as server names.
+        ...(!net.isIP(host) && { servername: host }),
         minVersion,
         maxVersion,
         rejectUnauthorized: false,

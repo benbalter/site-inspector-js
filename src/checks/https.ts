@@ -5,6 +5,14 @@ import type { EndpointData, CheckResult } from "../types.js";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const EXPIRING_SOON_DAYS = 30;
 
+// OpenSSL errors for a missing intermediate. Node doesn't fetch missing
+// issuers, so any other outcome means the server sent enough to verify.
+const MISSING_ISSUER_ERRORS = new Set([
+  "UNABLE_TO_GET_ISSUER_CERT",
+  "UNABLE_TO_GET_ISSUER_CERT_LOCALLY",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+]);
+
 export class HttpsCheck implements Check {
   name = "https";
 
@@ -27,7 +35,9 @@ export class HttpsCheck implements Check {
           cipher: result.cipher,
           bits: result.bits,
           fingerprint256: result.fingerprint256,
-          chainComplete: result.chainComplete,
+          // Not ssl-checker's chainComplete, which requires the server to send
+          // the root even though servers should omit it.
+          chainComplete: !MISSING_ISSUER_ERRORS.has(result.validationError ?? ""),
           chainLength: result.chain?.length ?? 0,
           error: null,
         },

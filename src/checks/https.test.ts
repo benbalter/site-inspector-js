@@ -79,6 +79,26 @@ describe("HttpsCheck", () => {
     expect(result.data.error).toBeNull();
   });
 
+  it("treats a chain that verifies without its root as complete", async () => {
+    // Servers should omit the root; ssl-checker's chainComplete wrongly requires it.
+    mockedSslChecker.mockResolvedValue(makeSslResult({ chainComplete: false }) as never);
+    const result = await check.run(placeholderEndpoint, "example.com");
+    expect(result.data.chainComplete).toBe(true);
+  });
+
+  it("reports an incomplete chain when the server omits an intermediate", async () => {
+    mockedSslChecker.mockResolvedValue(
+      makeSslResult({
+        valid: false,
+        validationError: "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+        chain: [],
+        chainComplete: false,
+      }) as never,
+    );
+    const result = await check.run(placeholderEndpoint, "example.com");
+    expect(result.data.chainComplete).toBe(false);
+  });
+
   it("reports an invalid/expired certificate", async () => {
     mockedSslChecker.mockResolvedValue(
       makeSslResult({

@@ -113,7 +113,14 @@ describe("DnssecCheck", () => {
 
     const result = await check.run(placeholderEndpoint, "example.com");
 
-    expect(result.data).toMatchObject({ enabled: false, error: "DNS-over-HTTPS lookup failed" });
+    expect(result.data).toMatchObject({
+      enabled: null,
+      adFlag: null,
+      hasDnskey: null,
+      hasDs: null,
+      hasRrsig: null,
+      error: expect.stringContaining("dns.google") as unknown,
+    });
   });
 
   it("reports an error when the DoH service is unreachable", async () => {
@@ -121,7 +128,8 @@ describe("DnssecCheck", () => {
 
     const result = await check.run(placeholderEndpoint, "example.com");
 
-    expect(result.data).toMatchObject({ enabled: false, adFlag: false });
+    // Unknown, not "unsigned": networks that block DoH would otherwise misreport.
+    expect(result.data).toMatchObject({ enabled: null, adFlag: null });
     expect(result.data.error).toBeTruthy();
   });
 });

@@ -110,4 +110,18 @@ describe("SriCheck", () => {
     expect(result.data.stylesheetsWithSri).toBe(1);
     expect(result.data.coverage).toBe(100);
   });
+
+  it("ignores absolute URLs on the page's own origin", async () => {
+    const html = `<html><head>
+      <script src="https://example.com/app.js"></script>
+      <link rel="stylesheet" href="//example.com/style.css">
+      <script src="https://cdn.example.com/lib.js"></script>
+    </head></html>`;
+
+    const result = await check.run(makeEndpoint(html), "example.com");
+
+    expect(result.data.totalExternalScripts).toBe(1);
+    expect(result.data.scriptsWithoutSri).toEqual(["https://cdn.example.com/lib.js"]);
+    expect(result.data.totalExternalStylesheets).toBe(0);
+  });
 });

@@ -1,6 +1,9 @@
 import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
+import { getDomain } from "tldts";
 import { findTxtRecords } from "../utils.js";
+
+const DMARC_RE = /^v=DMARC1\s*(;|$)/i;
 
 /** The SPF `all` mechanism, with an omitted qualifier read as `+` (RFC 7208 §4.6.2). */
 function extractAllMechanism(record: string): string | null {
@@ -28,7 +31,7 @@ export class DnsSecurityCheck implements Check {
   async run(_endpoint: EndpointData, domain: string): Promise<CheckResult> {
     const [spfLookup, dmarcLookup] = await Promise.all([
       findTxtRecords(domain, /^v=spf1(\s|$)/i),
-      findTxtRecords(`_dmarc.${domain}`, /^v=DMARC1\s*(;|$)/i),
+      findTxtRecords(`_dmarc.${domain}`, DMARC_RE),
     ]);
 
     // SPF: more than one record is a permerror (RFC 7208 §4.5).
@@ -36,10 +39,20 @@ export class DnsSecurityCheck implements Check {
     const multipleRecords = spfLookup.records.length > 1;
     const allMechanism = spfRecord ? extractAllMechanism(spfRecord) : null;
 
-    // DMARC
-    const dmarcRecord = dmarcLookup.records[0] ?? null;
+    // DMARC: a subdomain without its own record inherits the organizational
+    // domain's, under its sp= policy if set (RFC 7489 §6.6.3).
+    let dmarcRecord = dmarcLookup.records[0] ?? null;
+    let dmarcError = dmarcLookup.error;
+    let inheritedFrom: string | null = null;
+    const orgDomain = getDomain(domain);
+    if (!dmarcRecord && !dmarcError && orgDomain && orgDomain !== domain) {
+      const orgLookup = await findTxtRecords(`_dmarc.${orgDomain}`, DMARC_RE);
+      dmarcRecord = orgLookup.records[0] ?? null;
+      dmarcError = orgLookup.error;
+      if (dmarcRecord) inheritedFrom = orgDomain;
+    }
     const tags = dmarcRecord ? parseDmarcTags(dmarcRecord) : {};
-    const policy = tags.p?.toLowerCase() ?? null;
+    const policy = ((inheritedFrom && tags.sp) || tags.p)?.toLowerCase() ?? null;
     const percentage = tags.pct !== undefined ? Number(tags.pct) : null;
 
     return {
@@ -56,12 +69,13 @@ export class DnsSecurityCheck implements Check {
         dmarc: {
           exists: dmarcRecord !== null,
           record: dmarcRecord,
+          inheritedFrom,
           policy,
           subdomainPolicy: tags.sp?.toLowerCase() ?? null,
           percentage,
           reportUri: tags.rua ?? null,
           strongPolicy: policy === "reject" || policy === "quarantine",
-          error: dmarcLookup.error,
+          error: dmarcError,
         },
       },
     };

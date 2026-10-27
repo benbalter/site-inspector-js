@@ -175,13 +175,13 @@ Site Inspector runs 39 checks organized into six categories. All checks run in p
 | Check | Description | Library |
 |-------|-------------|---------|
 | **headers** | Security headers — CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, and more | — |
-| **https** | TLS certificate validity, issuer, expiry, protocol, cipher, chain completeness | [ssl-checker](https://www.npmjs.com/package/ssl-checker) |
+| **https** | TLS certificate validity, issuer, expiry, protocol, cipher, chain completeness (whether the server sends every intermediate) | [ssl-checker](https://www.npmjs.com/package/ssl-checker) |
 | **hsts** | Strict-Transport-Security header — max-age, includeSubDomains, preload readiness | — |
-| **csp** | Content Security Policy evaluation — detects unsafe-inline, unsafe-eval, missing directives, bypasses | [csp_evaluator](https://www.npmjs.com/package/csp_evaluator) |
+| **csp** | Content Security Policy evaluation of the header and `<meta>` policies combined — detects unsafe-inline, unsafe-eval, missing directives, bypasses | [csp_evaluator](https://www.npmjs.com/package/csp_evaluator) |
 | **cookies** | Cookie inventory — Secure, HttpOnly, SameSite flag coverage | — |
-| **sri** | Subresource Integrity — coverage for external scripts and stylesheets | — |
+| **sri** | Subresource Integrity — coverage for cross-origin scripts and stylesheets | — |
 | **mixed-content** | Detects `http://` resources loaded on HTTPS pages (active vs. passive) | — |
-| **dns-security** | Email authentication — SPF and DMARC record parsing, policy strength assessment | — |
+| **dns-security** | Email authentication — SPF and DMARC record parsing, policy strength assessment; subdomains without a DMARC record inherit the organizational domain's | — |
 | **cors** | CORS header analysis — Access-Control-Allow-Origin, methods, headers, credentials | — |
 | **referrer-policy** | Referrer-Policy header evaluation and strictness assessment | — |
 | **permissions-policy** | Permissions-Policy header parsing — blocked/allowed features, dangerous grants | — |

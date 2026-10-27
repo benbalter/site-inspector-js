@@ -2,10 +2,14 @@ import type { Check } from "./check.js";
 import type { EndpointData, CheckResult } from "../types.js";
 import { parseHtml } from "../utils.js";
 
-const EXTERNAL_URL_RE = /^(?:https?:)?\/\//i;
-
-function isExternal(url: string): boolean {
-  return EXTERNAL_URL_RE.test(url);
+/** Whether a resource loads from another origin, where SRI guards against tampering. */
+function isExternal(url: string, base: string): boolean {
+  try {
+    const resolved = new URL(url, base);
+    return /^https?:$/.test(resolved.protocol) && resolved.origin !== new URL(base).origin;
+  } catch {
+    return false;
+  }
 }
 
 export class SriCheck implements Check {
@@ -20,7 +24,7 @@ export class SriCheck implements Check {
 
     $("script[src]").each((_i, el) => {
       const url = $(el).attr("src");
-      if (!url || !isExternal(url)) return;
+      if (!url || !isExternal(url, endpoint.finalUrl)) return;
       totalExternalScripts++;
       if ($(el).attr("integrity")) {
         scriptsWithSri++;
@@ -35,7 +39,7 @@ export class SriCheck implements Check {
 
     $("link[rel='stylesheet'][href]").each((_i, el) => {
       const url = $(el).attr("href");
-      if (!url || !isExternal(url)) return;
+      if (!url || !isExternal(url, endpoint.finalUrl)) return;
       totalExternalStylesheets++;
       if ($(el).attr("integrity")) {
         stylesheetsWithSri++;

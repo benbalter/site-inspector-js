@@ -13,7 +13,11 @@ const TYPE = { A: 1, DS: 43, RRSIG: 46, DNSKEY: 48 } as const;
 async function queryDoh(name: string, type: number): Promise<DohResponse> {
   const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}&do=1`;
   const res = await fetchJson(url, 5000);
-  if (!res) throw new Error("DNS-over-HTTPS lookup failed");
+  if (!res) {
+    throw new Error(
+      "Couldn't query dns.google over DNS-over-HTTPS (offline, or the network blocks it)",
+    );
+  }
   return res as unknown as DohResponse;
 }
 
@@ -46,14 +50,17 @@ export class DnssecCheck implements Check {
       error = err instanceof Error ? err.message : String(err);
     }
 
+    // A failed lookup means unknown, not unsigned.
+    const known = <T>(value: T): T | null => (error === null ? value : null);
+
     return {
       name: this.name,
       data: {
-        enabled: adFlag || hasDnskey || hasDs,
-        adFlag,
-        hasDnskey,
-        hasDs,
-        hasRrsig,
+        enabled: known(adFlag || hasDnskey || hasDs),
+        adFlag: known(adFlag),
+        hasDnskey: known(hasDnskey),
+        hasDs: known(hasDs),
+        hasRrsig: known(hasRrsig),
         // The parent vouches for keys (DS) the resolver can't validate the
         // zone against, so validating resolvers refuse to answer for it.
         // Unknown (null) for unsigned zones, where there's nothing to fail.

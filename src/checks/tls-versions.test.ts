@@ -226,4 +226,48 @@ describe("TlsVersionsCheck", () => {
     expect(byVersion["TLSv1.2"]).toBeUndefined();
     expect(byVersion["TLSv1.3"]).toBeUndefined();
   });
+
+  it("sends SNI, which CDNs like Cloudflare require to complete a handshake", async () => {
+    mockTlsConnect(["TLSv1.3"]);
+    await new TlsVersionsCheck().run(
+      {
+        url: "https://example.com",
+        statusCode: 200,
+        headers: {},
+        body: "",
+        finalUrl: "https://example.com",
+        setCookies: [],
+        redirectChain: [],
+      },
+      "example.com",
+    );
+
+    for (const [opts] of vi.mocked(tls.connect).mock.calls as unknown as [
+      tls.ConnectionOptions,
+    ][]) {
+      expect(opts.servername).toBe("example.com");
+    }
+  });
+
+  it("omits SNI for IP addresses, which RFC 6066 forbids as server names", async () => {
+    mockTlsConnect(["TLSv1.3"]);
+    await new TlsVersionsCheck().run(
+      {
+        url: "https://192.0.2.1",
+        statusCode: 200,
+        headers: {},
+        body: "",
+        finalUrl: "https://192.0.2.1",
+        setCookies: [],
+        redirectChain: [],
+      },
+      "192.0.2.1",
+    );
+
+    for (const [opts] of vi.mocked(tls.connect).mock.calls as unknown as [
+      tls.ConnectionOptions,
+    ][]) {
+      expect(opts.servername).toBeUndefined();
+    }
+  });
 });

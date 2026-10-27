@@ -53,6 +53,7 @@ describe("DnsSecurityCheck", () => {
     expect(result.data.dmarc).toEqual({
       exists: true,
       record: "v=DMARC1; p=reject; pct=100; rua=mailto:dmarc@example.com",
+      inheritedFrom: null,
       policy: "reject",
       subdomainPolicy: null,
       percentage: 100,
@@ -216,6 +217,32 @@ describe("DnsSecurityCheck", () => {
     it("treats NXDOMAIN and NODATA as simply absent", async () => {
       serve({});
       expect(await spf()).toMatchObject({ exists: false, error: null });
+    });
+
+    it("falls back to the organizational domain's DMARC record (RFC 7489 §6.6.3)", async () => {
+      serve({ "_dmarc.example.com": ["v=DMARC1; p=reject; sp=quarantine"] });
+      const result = await check.run(placeholderEndpoint, "www.example.com");
+      expect(result.data.dmarc).toMatchObject({
+        exists: true,
+        inheritedFrom: "example.com",
+        policy: "quarantine",
+        strongPolicy: true,
+      });
+    });
+
+    it("applies the organizational p= to subdomains when sp= is absent", async () => {
+      serve({ "_dmarc.example.co.uk": ["v=DMARC1; p=reject"] });
+      const result = await check.run(placeholderEndpoint, "mail.example.co.uk");
+      expect(result.data.dmarc).toMatchObject({ inheritedFrom: "example.co.uk", policy: "reject" });
+    });
+
+    it("prefers the subdomain's own DMARC record", async () => {
+      serve({
+        "_dmarc.www.example.com": ["v=DMARC1; p=none"],
+        "_dmarc.example.com": ["v=DMARC1; p=reject"],
+      });
+      const result = await check.run(placeholderEndpoint, "www.example.com");
+      expect(result.data.dmarc).toMatchObject({ inheritedFrom: null, policy: "none" });
     });
   });
 });
